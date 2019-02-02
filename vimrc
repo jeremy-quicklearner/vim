@@ -5,7 +5,7 @@ set shiftwidth=4
 set expandtab
 set autoindent
 
-set number relativenumber
+set number
 set hlsearch
 set incsearch
 syntax on
