@@ -1,4 +1,4 @@
-" From this scirpt, go two levels up (to the repo root) and then down into tmp
+" From this script, go two levels up (to the repo root) and then down into tmp
 let s:tmp = expand('<sfile>:p:h:h') . "/tmp"
 
 " Regex matching the default path for user-specific Vim stuff
