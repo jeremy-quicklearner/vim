@@ -1,10 +1,19 @@
+#!/bin/bash
 
+# A UUID to identify that this script has touch a .vimrc
+MY_UUID="fa0e8780-9acb-479f-a68a-b059277ff70b"
 
+# All Vim stuff goes in this directory
 VIMDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [ -e ~/.vimrc ] ; then
-    echo ".vimrc already exists"
-    exit 1
+# Make sure there's a .vimrc
+if ! [ -e ~/.vimrc ] ; then
+    touch ~/.vimrc
 fi
 
-ln -s $VIMDIR/vimrc ~/.vimrc
+# Modify the .vimrc, but only if it's the first time
+if ! grep -q $MY_UUID ~/.vimrc ; then
+    echo "\" Jeremy's Vim Configurations" >> ~/.vimrc
+    echo "\" $MY_UUID" >> ~/.vimrc
+    echo "source $VIMDIR/src/main.vim" >> ~/.vimrc
+fi
