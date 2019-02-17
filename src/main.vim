@@ -1,18 +1,6 @@
-source <sfile>:p:h/path.vim
-
-set tabstop=4
-set shiftwidth=4
-set expandtab
-set autoindent
-
-set number
-set relativenumber
-set hlsearch
-set incsearch
-syntax on
-
-set wildmode=longest,list,full
-set wildmenu
-
-let mapleader = "-"
-let maplocalleader = "-"
+" Entry point
+source <sfile>:p:h/paths.vim
+source <sfile>:p:h/mappings.vim
+source <sfile>:p:h/formatting.vim
+source <sfile>:p:h/cosmetic.vim
+source <sfile>:p:h/miscellaneous.vim
