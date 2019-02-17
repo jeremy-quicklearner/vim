@@ -1,10 +1,14 @@
 #!/bin/bash
+set -e
 
 # A UUID to identify that this script has touch a .vimrc
 MY_UUID="fa0e8780-9acb-479f-a68a-b059277ff70b"
 
-# All Vim stuff goes in this directory
+# All Vim stuff goes in the directory this script is in
 VIMDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+# Make sure there's a tmp directory for stuff like viminfo
+mkdir -p $VIMDIR/tmp
 
 # Make sure there's a .vimrc
 if ! [ -e ~/.vimrc ] ; then
@@ -12,8 +16,18 @@ if ! [ -e ~/.vimrc ] ; then
 fi
 
 # Modify the .vimrc, but only if it's the first time
+# i.e. if the UUID isn't already there
 if ! grep -q $MY_UUID ~/.vimrc ; then
+    # In case the .vimrc doesn't already end with a newline
+    echo ""                               >> ~/.vimrc
+
+    # So someone reading the .vimrc knows what they're looking at
     echo "\" Jeremy's Vim Configurations" >> ~/.vimrc
-    echo "\" $MY_UUID" >> ~/.vimrc
-    echo "source $VIMDIR/src/main.vim" >> ~/.vimrc
+
+    # So that if this script is run again by mistake, we don't modify the
+    # .vimrc again
+    echo "\" $MY_UUID"                    >> ~/.vimrc
+
+    # Vim will run src/main.vim on startup
+    echo "source $VIMDIR/src/main.vim"    >> ~/.vimrc
 fi
