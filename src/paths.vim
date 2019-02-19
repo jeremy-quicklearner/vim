@@ -1,23 +1,33 @@
 " Changes to default file paths. No polluting the filesystem!
 
-" From this script, go two levels up (to the repo root) and then down into tmp
-let s:tmp = expand('<sfile>:p:h:h') . "/tmp"
+" From this script, go two levels up to reach the repo root
+let s:newVimDir = expand('<sfile>:p:h:h')
 
 " Regex matching the default path for user-specific Vim stuff
-let s:default = $HOME . "/\\.vim"
+let s:oldVimDir = $HOME . '/\.vim.\{-},'
 
-" User-specific temporary Vim stuff will be in the new directory, so look there
-" instead of the default
-let &runtimepath = substitute(&runtimepath, s:default, s:tmp, "g")
+" Subdirectories of the repo root
+let s:after = s:newVimDir . '/src/after'
+let s:tmp = s:newVimDir . '/tmp'
+let s:ext = s:newVimDir . '/ext'
 
-" Put the viminfo file in the new directory
+" Add the external stuff directory to the runtimepath
+let &runtimepath = s:ext . ',' . &runtimepath
+
+" Add the custom after directory to the runtimepath
+let &runtimepath .= ',' . s:after
+
+" Remove the default path from the runtimepath
+let &runtimepath = substitute(&runtimepath, s:oldVimDir, '', 'g')
+
+" Put the viminfo file in the new tmp directory
 let &viminfo = &viminfo . ",n" . s:tmp . "/viminfo"
 
-" Put backups in the new directory
-let &backupdir = s:tmp . "/backup/"
+" Put backups in the new tmp directory
+let &backupdir = s:tmp . "/backup"
 
-" Put swap files in the new directory
-let &directory = s:tmp . "/swap/"
+" Put swap files in the new tmp directory
+let &directory = s:tmp . "/swap"
 
-" Put the undo history in the new directory
-let &undodir = s:tmp . "/undo/"
+" Put the undo history in the new tmp directory
+let &undodir = s:tmp . "/undo"

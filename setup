@@ -7,6 +7,9 @@ MY_UUID="fa0e8780-9acb-479f-a68a-b059277ff70b"
 # All Vim stuff goes in the directory this script is in
 VIMDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+# Make sure there's a directory for external stuff
+mkdir -p $VIMDIR/ext
+
 # Make sure there's a tmp directory for stuff like viminfo
 mkdir -p $VIMDIR/tmp
 
