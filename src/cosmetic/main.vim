@@ -1,9 +1,9 @@
 " Cosmetic adjustments
 
 " Terminal colours
-set t_Co=8
-set t_Sb=[4%dm
-set t_Sf=[3%dm
+" set t_Co=8
+" set t_Sb=[4%dm
+" set t_Sf=[3%dm
 
 " For code, colour columns 80 and 81
 " TODO: Clean this up
