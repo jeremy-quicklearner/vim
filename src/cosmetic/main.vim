@@ -21,6 +21,9 @@ source <sfile>:p:h/textcolour.vim
 " Window stuff
 source <sfile>:p:h/window.vim
 
+" Context-sensitive stuff
+source <sfile>:p:h/contextcolour.vim
+
 " Line numbers
 augroup LineNumbers
     autocmd!
