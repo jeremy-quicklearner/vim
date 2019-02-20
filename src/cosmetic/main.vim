@@ -11,7 +11,8 @@ set t_Sf=[3%dm
 augroup ColumnLimit
     autocmd!
     highlight ColorColumn ctermfg=White ctermbg=Green
-    autocmd BufReadPost,BufNewFile *.vim,*.h,*.c,*.cpp,*.py,*.sh let &colorcolumn="81,82"
+    autocmd BufReadPost,BufNewFile,BufWinEnter *.vim,*.h,*.c,*.cpp,*.py,*.sh
+        \ let &colorcolumn="81,82"
 augroup END
 
 " Syntax highlighting
