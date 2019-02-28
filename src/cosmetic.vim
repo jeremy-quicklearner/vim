@@ -1,4 +1,13 @@
-" Window-related cosmetic changes
+" Cosmetic adjustments
+
+" For code, colour columns 80 and 81
+" TODO: Clean this up
+" TODO: Don't colour the columns in quickfix windows
+augroup ColumnLimit
+    autocmd!
+    autocmd BufReadPost,BufNewFile,BufWinEnter *.vim,*.h,*.c,*.cpp,*.py,*.sh
+        \ let &colorcolumn="81,82"
+augroup END
 
 " Rulers
 set ruler
@@ -26,3 +35,17 @@ augroup ActiveWindow
 
 augroup END
 
+
+" Line numbers
+augroup LineNumbers
+    autocmd!
+    autocmd BufWinEnter * set number
+    autocmd BufWinEnter * set numberwidth=4
+augroup END
+
+" Highlight search results everywhere
+set hlsearch
+set incsearch
+
+" Use my colour scheme
+colorscheme jeremy

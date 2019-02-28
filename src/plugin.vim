@@ -22,8 +22,4 @@ autocmd VimEnter *
 " Load plugins
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
-Plug 'hdima/python-syntax'
 call plug#end()
-
-
-let python_highlight_all = 1
