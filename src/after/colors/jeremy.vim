@@ -113,6 +113,7 @@ highlight Repeat           ctermfg=Cyan    ctermbg=Black
 highlight Statement        ctermfg=Cyan    ctermbg=Black
 highlight StorageClass     ctermfg=Cyan    ctermbg=Black
 highlight Structure        ctermfg=Cyan    ctermbg=Black
+highlight Typedef          ctermfg=Cyan    ctermbg=Black
 
 " Meaningful single characters are magenta
 highlight Delimiter        ctermfg=Magenta ctermbg=Black
@@ -129,6 +130,5 @@ highlight Debug            ctermfg=Red     ctermbg=Red
 highlight Keyword          ctermfg=Red     ctermbg=Red
 highlight SpecialComment   ctermfg=Red     ctermbg=Red
 highlight Tag              ctermfg=Red     ctermbg=Red
-highlight Typedef          ctermfg=Red     ctermbg=Red
 highlight Underlined       ctermfg=Red     ctermbg=Red
 highlight Ignore           ctermfg=Red     ctermbg=Red
