@@ -39,6 +39,7 @@ highlight Visual           ctermfg=Red     ctermbg=Black
 " Error-type stuff is red so it stands out
 highlight ErrorMsg         ctermfg=Red     ctermbg=Black
 highlight WarningMsg       ctermfg=Black   ctermbg=Red
+highlight Question         ctermfg=Black   ctermbg=Red
 highlight SpellBad         ctermfg=Red     ctermbg=Black
 highlight SpellCap         ctermfg=Red     ctermbg=Black
 highlight SpellLocal       ctermfg=Red     ctermbg=Black
@@ -76,7 +77,6 @@ highlight Conceal          ctermfg=Red     ctermbg=Red
 highlight Folded           ctermfg=Red     ctermbg=Red
 highlight FoldColumn       ctermfg=Red     ctermbg=Red
 highlight SignColumn       ctermfg=Red     ctermbg=Red
-highlight Question         ctermfg=Red     ctermbg=Red
 
 " Syntax Highlighting
 

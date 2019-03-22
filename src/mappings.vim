@@ -39,6 +39,5 @@ vnoremap <leader>{ <esc>`<i{<esc>`>a}<esc>
 vnoremap <leader>< <esc>`<i<<esc>`>a><esc>
 
 " Switch line numbers on and off
-nnoremap <leader>n :set nonumber<cr>:set norelativenumber<cr>
-nnoremap <leader>N :set number<cr>:set relativenumber<cr>
+nnoremap <leader>n :set number!<cr>:set relativenumber!<cr>
 
