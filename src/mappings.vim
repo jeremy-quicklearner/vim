@@ -19,6 +19,9 @@ nnoremap <leader>vs :source $MYVIMRC<cr>
 " Window maximizing (like in tmux)
 nnoremap <c-w>z <c-w>_<c-w>\|
 
+nnoremap <leader>= <c-w>+
+nnoremap <leader>- <c-w>-
+
 " Source current file
 nnoremap <leader>% :w<cr>:source %<cr>
 
@@ -37,6 +40,11 @@ vnoremap <leader>( <esc>`<i(<esc>`>a)<esc>
 vnoremap <leader>[ <esc>`<i[<esc>`>a]<esc>
 vnoremap <leader>{ <esc>`<i{<esc>`>a}<esc>
 vnoremap <leader>< <esc>`<i<<esc>`>a><esc>
+
+vnoremap <leader>) <esc>`<i)<esc>`>a(<esc>
+vnoremap <leader>] <esc>`<i]<esc>`>a[<esc>
+vnoremap <leader>} <esc>`<i}<esc>`>a{<esc>
+vnoremap <leader>> <esc>`<i><esc>`>a<<esc>
 
 " Switch line numbers on and off
 nnoremap <leader>n :set number!<cr>:set relativenumber!<cr>
