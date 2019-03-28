@@ -43,6 +43,9 @@ augroup LineNumbers
     autocmd BufWinEnter * set numberwidth=4
 augroup END
 
+" Fold column
+set foldcolumn=1
+
 " Highlight search results everywhere
 set hlsearch
 set incsearch

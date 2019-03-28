@@ -28,6 +28,10 @@ highlight VertSplit        ctermfg=White   ctermbg=Black
 highlight LineNr           ctermfg=Green   ctermbg=Black
 highlight CursorLineNr     ctermfg=Black   ctermbg=Red
 
+" Folding-related stuff is green
+highlight Folded           ctermfg=Black   ctermbg=Green
+highlight FoldColumn       ctermfg=Black   ctermbg=Green
+
 " Cursor-related stuff is red so it stands out
 highlight Cursor           ctermfg=Red     ctermbg=Red
 highlight CursorLine       ctermfg=Red     ctermbg=Black
@@ -74,8 +78,6 @@ highlight ColorColumn      ctermfg=White   ctermbg=Green
 
 " I don't know what these are so they're red until I find them
 highlight Conceal          ctermfg=Red     ctermbg=Red
-highlight Folded           ctermfg=Red     ctermbg=Red
-highlight FoldColumn       ctermfg=Red     ctermbg=Red
 highlight SignColumn       ctermfg=Red     ctermbg=Red
 
 " Syntax Highlighting
