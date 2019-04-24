@@ -24,9 +24,9 @@ highlight StatusLineNC     ctermfg=White   ctermbg=Black
 highlight StatusLineTermNC ctermfg=Black   ctermbg=White
 highlight VertSplit        ctermfg=White   ctermbg=Black
 
-" Line numbers are green but the cursor line number is red
+" Line numbers are green 
 highlight LineNr           ctermfg=Green   ctermbg=Black
-highlight CursorLineNr     ctermfg=Black   ctermbg=Red
+highlight CursorLineNr     ctermfg=Black   ctermbg=Green
 
 " Folding-related stuff is green
 highlight Folded           ctermfg=Black   ctermbg=Green
@@ -34,11 +34,13 @@ highlight FoldColumn       ctermfg=Black   ctermbg=Green
 
 " Cursor-related stuff is red so it stands out
 highlight Cursor           ctermfg=Red     ctermbg=Red
-highlight CursorLine       ctermfg=Red     ctermbg=Black
 highlight CursorColumn     ctermfg=Red     ctermbg=Red
 highlight WildMenu         ctermfg=Black   ctermbg=Red
 highlight MatchParen       ctermfg=Red     ctermbg=Black
 highlight Visual           ctermfg=Red     ctermbg=Black
+
+" Except the cursor line, which is not coloured
+highlight CursorLine       ctermfg=none   ctermbg=none cterm=none
 
 " Error-type stuff is red so it stands out
 highlight ErrorMsg         ctermfg=Red     ctermbg=Black

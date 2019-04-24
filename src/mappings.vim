@@ -34,18 +34,28 @@ nnoremap <leader>{ viw<esc>a}<esc>bi{<esc>lel
 nnoremap <leader>< viw<esc>a><esc>bi<<esc>lel
 
 " Surround visual selections with things
-vnoremap <leader>' <esc>`<i'<esc>`>a'<esc>
-vnoremap <leader>" <esc>`<i"<esc>`>a"<esc>
-vnoremap <leader>( <esc>`<i(<esc>`>a)<esc>
-vnoremap <leader>[ <esc>`<i[<esc>`>a]<esc>
-vnoremap <leader>{ <esc>`<i{<esc>`>a}<esc>
-vnoremap <leader>< <esc>`<i<<esc>`>a><esc>
+vnoremap <leader>' <esc>`>a'<esc>`<i'<esc>
+vnoremap <leader>" <esc>`>a"<esc>`<i"<esc>
+vnoremap <leader>( <esc>`>a)<esc>`<i(<esc>
+vnoremap <leader>[ <esc>`>a]<esc>`<i[<esc>
+vnoremap <leader>{ <esc>`>a}<esc>`<i{<esc>
+vnoremap <leader>< <esc>`>a><esc>`<i<<esc>
+vnoremap <leader><space> <esc>`>a<space><esc>`<i<space><esc>
 
-vnoremap <leader>) <esc>`<i)<esc>`>a(<esc>
-vnoremap <leader>] <esc>`<i]<esc>`>a[<esc>
-vnoremap <leader>} <esc>`<i}<esc>`>a{<esc>
-vnoremap <leader>> <esc>`<i><esc>`>a<<esc>
+vnoremap <leader>) <esc>`>a(<esc>
+vnoremap <leader>] <esc>`>a[<esc>
+vnoremap <leader>} <esc>`>a{<esc>
+vnoremap <leader>> <esc>`>a<<esc>
+
+" Flash the cursor line
+nnoremap <leader>f :Flash<cr>
 
 " Switch line numbers on and off
 nnoremap <leader>n :set number!<cr>:set relativenumber!<cr>
 
+" Peek at entries in quickfix lists
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
+
+" Peek at and jump to quickfix entries in new windows
+nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
+nnoremap <expr> <leader><space> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L<c-w><c-p>" : "\<cr>"
