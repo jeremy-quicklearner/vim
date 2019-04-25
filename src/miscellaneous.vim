@@ -13,3 +13,8 @@ set wildmenu
 
 " Keep 50 lines of ex command history
 set history=50
+
+" Automatically open the quickfix window after populating the quickfix list
+autocmd QuickFixCmdPost [^Ll]* nested cwindow
+" Automatically open the location window after populating the location list
+autocmd QuickFixCmdPost [Ll]* nested lwindow

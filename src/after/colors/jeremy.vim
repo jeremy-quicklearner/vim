@@ -39,8 +39,8 @@ highlight WildMenu         ctermfg=Black   ctermbg=Red
 highlight MatchParen       ctermfg=Red     ctermbg=Black
 highlight Visual           ctermfg=Red     ctermbg=Black
 
-" Except the cursor line, which is not coloured
-highlight CursorLine       ctermfg=none   ctermbg=none cterm=none
+" Except the cursor line, which is yellow
+highlight CursorLine       ctermfg=Black   ctermbg=Yellow cterm=none
 
 " Error-type stuff is red so it stands out
 highlight ErrorMsg         ctermfg=Red     ctermbg=Black
