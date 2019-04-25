@@ -16,12 +16,11 @@ highlight TabLineFill    ctermfg=White     ctermbg=Black
 highlight TabLineSel     ctermfg=Black     ctermbg=Green
 highlight Title          ctermfg=White     ctermbg=Black
 
-" Status line colour for windows - The active one is green and the others
-" are white
-highlight StatusLine       ctermfg=Green   ctermbg=Black
-highlight StatusLineTerm   ctermfg=Black   ctermbg=Green
-highlight StatusLineNC     ctermfg=White   ctermbg=Black
-highlight StatusLineTermNC ctermfg=Black   ctermbg=White
+" Status line colour for windows
+highlight StatusLine       ctermfg=White   ctermbg=Black
+highlight StatusLineTerm   ctermfg=White   ctermbg=Black
+highlight StatusLineNC     ctermfg=White   ctermbg=White
+highlight StatusLineTermNC ctermfg=White   ctermbg=Black
 highlight VertSplit        ctermfg=White   ctermbg=Black
 
 " Line numbers are green 
@@ -36,11 +35,11 @@ highlight FoldColumn       ctermfg=Black   ctermbg=Green
 highlight Cursor           ctermfg=Red     ctermbg=Red
 highlight CursorColumn     ctermfg=Red     ctermbg=Red
 highlight WildMenu         ctermfg=Black   ctermbg=Red
-highlight MatchParen       ctermfg=Red     ctermbg=Black
 highlight Visual           ctermfg=Red     ctermbg=Black
 
-" Except the cursor line, which is yellow
+" Except stuff that persists in inactive windows, which is yellow
 highlight CursorLine       ctermfg=Black   ctermbg=Yellow cterm=none
+highlight MatchParen       ctermfg=Black   ctermbg=Yellow
 
 " Error-type stuff is red so it stands out
 highlight ErrorMsg         ctermfg=Red     ctermbg=Black
@@ -128,6 +127,19 @@ highlight Function         ctermfg=White   ctermbg=Black
 highlight Identifier       ctermfg=White   ctermbg=Black
 highlight Label            ctermfg=White   ctermbg=Black
 highlight Type             ctermfg=White   ctermbg=Black
+
+" For the status line
+highlight User1            ctermbg=White   ctermfg=Black
+highlight User2            ctermbg=Red     ctermfg=Black
+highlight User3            ctermbg=Green   ctermfg=Black
+highlight User4            ctermbg=Yellow  ctermfg=Black
+
+highlight User5            ctermbg=Black   ctermfg=White
+highlight User6            ctermbg=Black   ctermfg=Red
+highlight User7            ctermbg=Black   ctermfg=Green
+highlight User8            ctermbg=Black   ctermfg=Yellow
+
+highlight User9            ctermbg=Black   ctermfg=Green
 
 " Anything I haven't seen yet is red, so I can find it easily and recolour it
 highlight Debug            ctermfg=Red     ctermbg=Red

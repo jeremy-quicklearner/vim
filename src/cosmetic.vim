@@ -9,11 +9,43 @@ augroup ColumnLimit
         \ let &colorcolumn="81,82"
 augroup END
 
-" Rulers
-set ruler
+" Setup the status line, parametrized by colour
+function! SetStatusLine(c1,c2,c3,c4)
+   " Always show the status line
+   setlocal laststatus=2
+   set statusline=""
+   " Buffer type
+   execute('setlocal statusline+=%' . a:c3 . '*\ %y')
+   " Buffer state
+   execute('setlocal statusline+=%' . a:c4 . '*%r')
+   execute('setlocal statusline+=%' . a:c4 . '*%m')
+   " Filename
+   execute('setlocal statusline+=%' . a:c1 . '*\ %f\ ')
+   " Argument status
+   execute('setlocal statusline+=%' . a:c4 . '*%a%' . a:c1 . '*')
+   " Long space
+   setlocal statusline+=%=
+   " Current line / Total lines (% of file)
+   execute('setlocal statusline+=%' . a:c3 . '*\ %l')
+   setlocal statusline+=/
+   setlocal statusline+=%L
+   setlocal statusline+=(
+   setlocal statusline+=%p
+   setlocal statusline+=%%)\ 
+endfunction
+function! SetStatusLineGeneral()
+   if &buftype ==# 'terminal'
+       call SetStatusLine(5,6,7,8)
+   else
+       call SetStatusLine(1,2,3,4)
+   endif
+endfunction
 
-" Always show the status line
-set laststatus=2
+augroup StatusLine
+   autocmd!
+   " Use different colours for terminal windows
+   autocmd BufWinEnter * call SetStatusLineGeneral()
+augroup END
 
 " Indicate the active window
 augroup ActiveWindow
