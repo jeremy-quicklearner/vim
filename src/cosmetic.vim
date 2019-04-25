@@ -26,14 +26,14 @@ function! SetStatusLine(c1,c2,c3,c4)
    " Long space
    setlocal statusline+=%=
    " Current line / Total lines (% of file)
-   execute('setlocal statusline+=%' . a:c3 . '*\ %l')
-   setlocal statusline+=/
-   setlocal statusline+=%L
-   setlocal statusline+=(
-   setlocal statusline+=%p
-   setlocal statusline+=%%)\ 
+   execute('setlocal statusline+=%' . a:c3 . '*[%c]')
+   setlocal statusline+=[%l/%L][%p%%]
 endfunction
+
+" Setup the status line
 function! SetStatusLineGeneral()
+   " For some reason, the statusline for terminal windows inverts all the
+   " colours. My colour scheme defines User[5-8] as inverses of User[1-4].
    if &buftype ==# 'terminal'
        call SetStatusLine(5,6,7,8)
    else
@@ -61,7 +61,6 @@ augroup ActiveWindow
     autocmd WinEnter * set nocursorline
     autocmd WinLeave * set cursorline
 augroup END
-
 
 " Line numbers
 augroup LineNumbers

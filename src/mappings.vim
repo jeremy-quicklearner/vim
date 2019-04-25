@@ -1,4 +1,4 @@
-" Mappings
+" mappings
 let mapleader = "-"
 let maplocalleader = "-"
 
@@ -32,6 +32,11 @@ nnoremap <leader>( viw<esc>a)<esc>bi(<esc>lel
 nnoremap <leader>[ viw<esc>a]<esc>bi[<esc>lel
 nnoremap <leader>{ viw<esc>a}<esc>bi{<esc>lel
 nnoremap <leader>< viw<esc>a><esc>bi<<esc>lel
+
+nnoremap <leader>) viw<esc>a(<esc>bi)<esc>lel
+nnoremap <leader>] viw<esc>a[<esc>bi)<esc>lel
+nnoremap <leader>} viw<esc>a{<esc>bi}<esc>lel
+nnoremap <leader>> viw<esc>a<<esc>bi><esc>lel
 
 " Surround visual selections with things
 vnoremap <leader>' <esc>`>a'<esc>`<i'<esc>
