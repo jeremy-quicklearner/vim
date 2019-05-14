@@ -18,9 +18,13 @@ nnoremap <leader>vs :source $MYVIMRC<cr>
 
 " Window maximizing (like in tmux)
 nnoremap <c-w>z <c-w>_<c-w>\|
+vnoremap <c-w>z <c-w>_<c-w>\|
 
 nnoremap <leader>= <c-w>+
+vnoremap <leader>= <c-w>+
+
 nnoremap <leader>- <c-w>-
+vnoremap <leader>- <c-w>-
 
 " Source current file
 nnoremap <leader>% :w<cr>:source %<cr>
@@ -47,10 +51,10 @@ vnoremap <leader>{ <esc>`>a}<esc>`<i{<esc>
 vnoremap <leader>< <esc>`>a><esc>`<i<<esc>
 vnoremap <leader><space> <esc>`>a<space><esc>`<i<space><esc>
 
-vnoremap <leader>) <esc>`>a(<esc>
-vnoremap <leader>] <esc>`>a[<esc>
-vnoremap <leader>} <esc>`>a{<esc>
-vnoremap <leader>> <esc>`>a<<esc>
+vnoremap <leader>) <esc>`>a(<esc>`<i)<esc>
+vnoremap <leader>] <esc>`>a[<esc>`<i]<esc>
+vnoremap <leader>} <esc>`>a{<esc>`<i}<esc>
+vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 
 " Flash the cursor line
 nnoremap <leader>f :Flash<cr>

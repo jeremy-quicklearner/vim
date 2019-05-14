@@ -18,7 +18,7 @@ function! SetStatusLine(c1,c2,c3,c4)
    execute('setlocal statusline+=%' . a:c3 . '*\ %y')
    " Buffer state
    execute('setlocal statusline+=%' . a:c4 . '*%r')
-   execute('setlocal statusline+=%' . a:c4 . '*%m')
+   execute('setlocal statusline+=%' . a:c4 . '*%m%<')
    " Filename
    execute('setlocal statusline+=%' . a:c1 . '*\ %f\ ')
    " Argument status
