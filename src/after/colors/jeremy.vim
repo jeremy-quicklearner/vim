@@ -27,10 +27,6 @@ highlight VertSplit        ctermfg=White   ctermbg=Black
 highlight LineNr           ctermfg=Green   ctermbg=Black
 highlight CursorLineNr     ctermfg=Black   ctermbg=Green
 
-" Folding-related stuff is green
-highlight Folded           ctermfg=Black   ctermbg=Green
-highlight FoldColumn       ctermfg=Black   ctermbg=Green
-
 " Cursor-related stuff is red so it stands out
 highlight Cursor           ctermfg=Red     ctermbg=Red
 highlight CursorColumn     ctermfg=Red     ctermbg=Red
@@ -53,6 +49,11 @@ highlight SpellRare        ctermfg=Red     ctermbg=Black
 " Search-related stuff is yellow so it stands out, but not as much as the cursor
 highlight IncSearch        ctermfg=Black   ctermbg=Yellow
 highlight Search           ctermfg=Black   ctermbg=Yellow
+highlight QuickFixLine     ctermfg=Yellow  ctermbg=Black
+
+" Folding-related stuff is yellow so it stands out, but not as much as the cursor
+highlight Folded           ctermfg=Yellow  ctermbg=Black
+highlight FoldColumn       ctermfg=Yellow  ctermbg=Black
 
 " The Pmenu (Autocompletion menu) is Cyan
 highlight Pmenu            ctermfg=Black   ctermbg=Cyan
@@ -75,7 +76,7 @@ highlight NonText          ctermfg=Magenta ctermbg=Black
 highlight Normal           ctermfg=White   ctermbg=Black
 
 " Off-limits columns to the right are green
-highlight ColorColumn      ctermfg=White   ctermbg=Green
+highlight ColorColumn      ctermfg=Black   ctermbg=Green
 
 " I don't know what these are so they're red until I find them
 highlight Conceal          ctermfg=Red     ctermbg=Red
