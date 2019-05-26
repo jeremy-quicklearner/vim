@@ -18,3 +18,6 @@ set history=50
 autocmd QuickFixCmdPost [^Ll]* nested cwindow
 " Automatically open the location window after populating the location list
 autocmd QuickFixCmdPost [Ll]* nested lwindow
+
+" A sign for marking interesting lines
+sign define jeremy text=() texthl=User3 linehl=User3

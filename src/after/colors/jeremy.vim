@@ -80,7 +80,8 @@ highlight ColorColumn      ctermfg=Black   ctermbg=Green
 
 " I don't know what these are so they're red until I find them
 highlight Conceal          ctermfg=Red     ctermbg=Red
-highlight SignColumn       ctermfg=Red     ctermbg=Red
+highlight SignColumn       ctermfg=Red     ctermbg=Black
+highlight Sign ctermfg=Red ctermbg=Red
 
 " Syntax Highlighting
 
