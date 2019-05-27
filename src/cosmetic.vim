@@ -72,6 +72,9 @@ augroup END
 " Fold column
 set foldcolumn=1
 
+" Show the sign column only if there are signs
+set signcolumn=auto
+
 " Highlight search results everywhere
 set hlsearch
 set incsearch

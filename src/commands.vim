@@ -24,8 +24,26 @@ command! -nargs=+ -complete=command Bufdo call BufDo(<q-args>)
 " Flash the cursor line
 function! FlashCursorLine(command)
 
+   " Get a list of the signs in the current buffer
+   let signs = execute("sign place buffer=" . bufnr('%'))
+
+   " If there are no signs already, stop the signcolumn from appearing
+   if len(split(signs)) < 4
+      setlocal signcolumn=no
+   endif
+
+   " We will use the current line number as our sign ID. If it is taken,
+   " remember what sign it is
+   let unplaceCmd = "sign unplace " . line('.') . " buffer=" . bufnr("%")
+   for signline in split(signs, '\n')
+      if signline =~# '^\s*line=\d*\s*id=' . line('.') . '\s*name=.*$'
+         let oldSign = split(split(signline)[2], '=')[1]
+         let unplaceCmd = "sign place " . line('.') . " line=" . line('.') . " name=" . oldSign . " buffer=" . bufnr('%')
+      endif
+   endfor
+
    " Place a cursorflash sign
-   execute "sign place " . line('.') . " line=" . line('.') .  " name=cursorflash buffer=" . bufnr("%")
+   execute "sign place " . line('.') . " line=" . line('.') . " name=cursorflash buffer=" . bufnr("%")
 
    " Flash twice more
    for i in range(1, 2)
@@ -33,7 +51,7 @@ function! FlashCursorLine(command)
       sleep 150m
 
       " Unplace the cursorflash sign
-      execute "sign unplace " . line('.') . " buffer=" . bufnr("%")
+      execute unplaceCmd
 
       " Delay so the cursorflash sign sticks around for a bit
       sleep 150m
@@ -46,6 +64,11 @@ function! FlashCursorLine(command)
    sleep 150m
 
    " Unplace the cursorflash sign
-   execute "sign unplace " . line('.') . " buffer=" . bufnr("%")
+   execute unplaceCmd
+ 
+   " If we stopped the signcolumn from appearing, stop... stopping it.
+   if len(split(execute("sign place buffer=" . bufnr('%')))) < 4
+      setlocal signcolumn=auto
+   endif
 endfunction
 command! -nargs=0 -complete=command Flash call FlashCursorLine("")

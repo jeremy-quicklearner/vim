@@ -57,10 +57,10 @@ vnoremap <leader>} <esc>`>a{<esc>`<i}<esc>
 vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 
 " Flash the cursor line
-nnoremap <leader>f :Flash<cr>
+nnoremap <silent> <leader>f :Flash<cr>
 
 " Switch line numbers on and off
-nnoremap <leader>n :set number!<cr>:set relativenumber!<cr>
+nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
 
 " Peek at entries in quickfix lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
@@ -68,6 +68,26 @@ nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 " Peek at and jump to quickfix entries in new windows nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
 nnoremap <expr> <leader><space> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L<c-w><c-p>" : "\<cr>"
 
-" Place and unplace the 'interesting' sign on the current line
-nnoremap <leader>s :execute "sign place " . line('.') . " line=" . line('.') .  " name=interesting file=" . expand("%:p")<cr>
-nnoremap <leader>S :sign unplace<cr>
+" Place signs from src/miscellaneous on the current line
+nnoremap <silent> <leader>sr :call PlaceJeremySigns("explicit", "red", [line(".")]) <cr>
+nnoremap <silent> <leader>sg :call PlaceJeremySigns("explicit", "green", [line(".")]) <cr>
+nnoremap <silent> <leader>sy :call PlaceJeremySigns("explicit", "yellow", [line(".")]) <cr>
+nnoremap <silent> <leader>sb :call PlaceJeremySigns("explicit", "blue", [line(".")]) <cr>
+nnoremap <silent> <leader>sm :call PlaceJeremySigns("explicit", "magenta", [line(".")]) <cr>
+nnoremap <silent> <leader>sc :call PlaceJeremySigns("explicit", "cyan", [line(".")]) <cr>
+nnoremap <silent> <leader>sw :call PlaceJeremySigns("explicit", "white", [line(".")]) <cr>
+
+" Place signs from src/miscellaneous on visually selected lines
+vnoremap <silent> <leader>sr <esc>:call PlaceJeremySigns(visualmode(), "red", [])<cr>
+vnoremap <silent> <leader>sg <esc>:call PlaceJeremySigns(visualmode(), "green", [])<cr>
+vnoremap <silent> <leader>sy <esc>:call PlaceJeremySigns(visualmode(), "yellow", [])<cr>
+vnoremap <silent> <leader>sb <esc>:call PlaceJeremySigns(visualmode(), "blue", [])<cr>
+vnoremap <silent> <leader>sm <esc>:call PlaceJeremySigns(visualmode(), "magenta", [])<cr>
+vnoremap <silent> <leader>sc <esc>:call PlaceJeremySigns(visualmode(), "cyan", [])<cr>
+vnoremap <silent> <leader>sw <esc>:call PlaceJeremySigns(visualmode(), "white", [])<cr>
+
+" Unplace the signs from src/miscellaneous on the current line
+nnoremap <leader>S :call UnplaceJeremySigns("explicit", [line(".")]) <cr>
+
+" Place signs from src/miscellaneous on visually selected lines
+vnoremap <silent> <leader>S <esc>:call UnplaceJeremySigns(visualmode(), [])<cr>
