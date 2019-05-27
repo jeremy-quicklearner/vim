@@ -65,10 +65,9 @@ nnoremap <leader>n :set number!<cr>:set relativenumber!<cr>
 " Peek at entries in quickfix lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 
-" Peek at and jump to quickfix entries in new windows
-nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
+" Peek at and jump to quickfix entries in new windows nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
 nnoremap <expr> <leader><space> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L<c-w><c-p>" : "\<cr>"
 
-" Place and unplace the 'jeremy' sign on the current line
-nnoremap <leader>s :call sign_place(0, "", "jeremy", "%", {'priority':100,'lnum':'.'})<cr>
+" Place and unplace the 'interesting' sign on the current line
+nnoremap <leader>s :execute "sign place " . line('.') . " line=" . line('.') .  " name=interesting file=" . expand("%:p")<cr>
 nnoremap <leader>S :sign unplace<cr>

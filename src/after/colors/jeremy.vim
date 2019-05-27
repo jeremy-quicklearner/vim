@@ -34,8 +34,12 @@ highlight WildMenu         ctermfg=Black   ctermbg=Red
 highlight Visual           ctermfg=Red     ctermbg=Black
 
 " Except stuff that persists in inactive windows, which is yellow
-highlight CursorLine       ctermfg=Black   ctermbg=Yellow cterm=none
 highlight MatchParen       ctermfg=Black   ctermbg=Yellow
+
+" I enable the cursorline in inactive windows. Not colouring it makes the
+" screen less busy. The CursorLineNr is still highlighted, so you can tell at
+" a glance where the CursorLine is.
+highlight CursorLine       ctermfg=none    ctermbg=none cterm=none
 
 " Error-type stuff is red so it stands out
 highlight ErrorMsg         ctermfg=Red     ctermbg=Black
@@ -141,7 +145,7 @@ highlight User6            ctermbg=Black   ctermfg=Red
 highlight User7            ctermbg=Black   ctermfg=Green
 highlight User8            ctermbg=Black   ctermfg=Yellow
 
-highlight User9            ctermbg=Black   ctermfg=Green
+highlight User9            ctermbg=Red     ctermfg=Red
 
 " Anything I haven't seen yet is red, so I can find it easily and recolour it
 highlight Debug            ctermfg=Red     ctermbg=Red

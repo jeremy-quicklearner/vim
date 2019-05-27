@@ -20,4 +20,7 @@ autocmd QuickFixCmdPost [^Ll]* nested cwindow
 autocmd QuickFixCmdPost [Ll]* nested lwindow
 
 " A sign for marking interesting lines
-sign define jeremy text=() texthl=User3 linehl=User3
+sign define interesting text=() texthl=User3 linehl=User3
+
+" A sign for marking the cursor position
+sign define cursorflash text=-> texthl=User9 linehl=User9
