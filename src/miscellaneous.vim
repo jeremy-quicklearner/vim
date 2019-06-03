@@ -19,21 +19,14 @@ autocmd QuickFixCmdPost [^Ll]* nested cwindow
 " Automatically open the location window after populating the location list
 autocmd QuickFixCmdPost [Ll]* nested lwindow
 
-" Signs for colouring lines and highlight groups for each one
-sign define jeremyred text=() texthl=SignJeremyRed linehl=SignJeremyRed
-highlight SignJeremyRed ctermfg=Black ctermbg=Red
-sign define jeremygreen text=() texthl=SignJeremyGreen linehl=SignJeremyGreen
-highlight SignJeremyGreen ctermfg=Black ctermbg=Green
-sign define jeremyyellow text=() texthl=SignJeremyYellow linehl=SignJeremyYellow
-highlight SignJeremyYellow ctermfg=Black ctermbg=Yellow
-sign define jeremyblue text=() texthl=SignJeremyBlue linehl=SignJeremyBlue
-highlight SignJeremyBlue ctermfg=Black ctermbg=Blue
+" Signs for colouring lines
+sign define jeremyred     text=() texthl=SignJeremyRed     linehl=SignJeremyRed
+sign define jeremygreen   text=() texthl=SignJeremyGreen   linehl=SignJeremyGreen
+sign define jeremyyellow  text=() texthl=SignJeremyYellow  linehl=SignJeremyYellow
+sign define jeremyblue    text=() texthl=SignJeremyBlue    linehl=SignJeremyBlue
 sign define jeremymagenta text=() texthl=SignJeremyMagenta linehl=SignJeremyMagenta
-highlight SignJeremyMagenta ctermfg=Black ctermbg=Magenta
-sign define jeremycyan text=() texthl=SignJeremyCyan linehl=SignJeremyCyan
-highlight SignJeremyCyan ctermfg=Black ctermbg=Cyan
-sign define jeremywhite text=() texthl=SignJeremyWhite linehl=SignJeremyWhite
-highlight SignJeremyWhite ctermfg=Black ctermbg=White
+sign define jeremycyan    text=() texthl=SignJeremyCyan    linehl=SignJeremyCyan
+sign define jeremywhite   text=() texthl=SignJeremyWhite   linehl=SignJeremyWhite
 
 " Place one of the above signs on a set of lines
 function! PlaceJeremySigns(type, color, rawlines)
