@@ -19,6 +19,8 @@ nnoremap <leader>vs :source $MYVIMRC<cr>
 " Window maximizing (like in tmux)
 nnoremap <c-w>z <c-w>_<c-w>\|
 vnoremap <c-w>z <c-w>_<c-w>\|
+tnoremap <c-w>z <c-w>_<c-w>\|
+
 
 nnoremap <leader>= <c-w>+
 vnoremap <leader>= <c-w>+

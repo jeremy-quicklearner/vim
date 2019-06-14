@@ -74,3 +74,6 @@ endfunction
 
 " A sign for marking the cursor position
 sign define cursorflash text=-> texthl=Cursor linehl=Cursor
+
+" There's a security vulnerability in the modelines feature, so disable it
+set nomodeline
