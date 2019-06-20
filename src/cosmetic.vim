@@ -63,6 +63,7 @@ augroup ActiveWindow
 augroup END
 
 " Line numbers
+set number
 augroup LineNumbers
     autocmd!
     autocmd BufWinEnter * set number

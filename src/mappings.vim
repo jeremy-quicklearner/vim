@@ -21,12 +21,18 @@ nnoremap <c-w>z <c-w>_<c-w>\|
 vnoremap <c-w>z <c-w>_<c-w>\|
 tnoremap <c-w>z <c-w>_<c-w>\|
 
-
+" Window resizing
 nnoremap <leader>= <c-w>+
 vnoremap <leader>= <c-w>+
 
 nnoremap <leader>- <c-w>-
 vnoremap <leader>- <c-w>-
+
+nnoremap <leader>o <c-w>>
+vnoremap <leader>o <c-w>>
+
+nnoremap <leader>p <c-w><
+vnoremap <leader>p <c-w><
 
 " Source current file
 nnoremap <leader>% :w<cr>:source %<cr>
@@ -67,7 +73,8 @@ nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
 " Peek at entries in quickfix lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 
-" Peek at and jump to quickfix entries in new windows nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
+" Peek at and jump to quickfix entries in new windows
+nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
 nnoremap <expr> <leader><space> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L<c-w><c-p>" : "\<cr>"
 
 " Place signs from src/miscellaneous on the current line
