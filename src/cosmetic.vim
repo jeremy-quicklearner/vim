@@ -15,7 +15,7 @@ function! SetStatusLine(c1,c2,c3,c4)
    setlocal laststatus=2
    set statusline=""
    " Buffer type
-   execute('setlocal statusline+=%' . a:c3 . '*\ %y')
+   execute('setlocal statusline+=%' . a:c3 . '*\%y')
    " Buffer state
    execute('setlocal statusline+=%' . a:c4 . '*%r')
    execute('setlocal statusline+=%' . a:c4 . '*%m%<')
@@ -44,7 +44,10 @@ endfunction
 augroup StatusLine
    autocmd!
    " Use different colours for terminal windows
-   autocmd BufWinEnter * call SetStatusLineGeneral()
+   autocmd VimEnter,BufWinEnter * call SetStatusLineGeneral()
+
+   " Also use the statusline for netrw windows
+   autocmd FileType netrw call SetStatusLineGeneral()
 augroup END
 
 " Indicate the active window
@@ -69,9 +72,6 @@ augroup LineNumbers
     autocmd BufWinEnter * set number
     autocmd BufWinEnter * set numberwidth=4
 augroup END
-
-" Fold column
-set foldcolumn=1
 
 " Show the sign column only if there are signs
 set signcolumn=auto

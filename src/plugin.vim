@@ -22,4 +22,16 @@ autocmd VimEnter *
 " Load plugins
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
+Plug 'benknoble/vim-auto-origami'
 call plug#end()
+
+" Netrw stuff
+let g:netrw_altv=1
+let g:netrw_bufsettings="noma nomod nu rnu nobl nowrap ro"
+
+" Auto Origami stuff
+let g:auto_origami_foldcolumn=1
+augroup auto_origami
+   autocmd!
+   autocmd CursorHold,BufWinEnter,WinEnter * AutoOrigamiFoldColumn
+augroup END
