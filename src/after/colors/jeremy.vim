@@ -132,6 +132,7 @@ highlight Statement         ctermfg=Cyan    ctermbg=Black
 highlight StorageClass      ctermfg=Cyan    ctermbg=Black
 highlight Structure         ctermfg=Cyan    ctermbg=Black
 highlight Typedef           ctermfg=Cyan    ctermbg=Black
+highlight Keyword           ctermfg=Cyan    ctermbg=Black
 
 " Meaningful single characters are magenta
 highlight Delimiter         ctermfg=Magenta ctermbg=Black
@@ -158,7 +159,6 @@ highlight User9             ctermbg=Red     ctermfg=Red
 
 " Anything I haven't seen yet is red, so I can find it easily and recolour it
 highlight Debug             ctermfg=Red     ctermbg=Red
-highlight Keyword           ctermfg=Red     ctermbg=Red
 highlight SpecialComment    ctermfg=Red     ctermbg=Red
 highlight Tag               ctermfg=Red     ctermbg=Red
 highlight Underlined        ctermfg=Red     ctermbg=Red
