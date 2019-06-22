@@ -44,6 +44,7 @@ function! FlashCursorLine(command)
 
    " Place a cursorflash sign
    execute "sign place " . line('.') . " line=" . line('.') . " name=cursorflash buffer=" . bufnr("%")
+   redraw
 
    " Flash twice more
    for i in range(1, 2)
@@ -52,12 +53,14 @@ function! FlashCursorLine(command)
 
       " Unplace the cursorflash sign
       execute unplaceCmd
+      redraw
 
       " Delay so the cursorflash sign sticks around for a bit
       sleep 150m
 
       " Place a cursorflash sign
       execute "sign place " . line('.') . " line=" . line('.') .  " name=cursorflash buffer=" . bufnr("%")
+      redraw
    endfor
 
    " Delay so the cursorflash sign sticks around for a bit
@@ -65,6 +68,7 @@ function! FlashCursorLine(command)
 
    " Unplace the cursorflash sign
    execute unplaceCmd
+   redraw
  
    " If we stopped the signcolumn from appearing, stop... stopping it.
    if len(split(execute("sign place buffer=" . bufnr('%')))) < 4

@@ -44,7 +44,7 @@ endfunction
 augroup StatusLine
    autocmd!
    " Use different colours for terminal windows
-   autocmd VimEnter,BufWinEnter * call SetStatusLineGeneral()
+   autocmd VimEnter,BufWinEnter,TerminalOpen * call SetStatusLineGeneral()
 
    " Also use the statusline for netrw windows
    autocmd FileType netrw call SetStatusLineGeneral()
