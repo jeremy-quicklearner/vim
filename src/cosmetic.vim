@@ -1,53 +1,40 @@
 " Cosmetic adjustments
 
-" For code, colour columns 80 and 81
-" TODO: Clean this up
-" TODO: Don't colour the columns in quickfix windows
+" For code, colour columns
 augroup ColumnLimit
     autocmd!
-    autocmd BufReadPost,BufNewFile,BufWinEnter *.vim,*.h,*.c,*.cpp,*.py,*.sh
-        \ let &colorcolumn="81,82"
+    autocmd FileType vim,h,c,cpp,python,sh execute "setlocal colorcolumn=" .
+        \ g:jeremyColouredColumns
 augroup END
 
-" Setup the status line, parametrized by colour
-function! SetStatusLine(c1,c2,c3,c4)
-   " Always show the status line
-   setlocal laststatus=2
-   set statusline=""
-   " Buffer type
-   execute('setlocal statusline+=%' . a:c3 . '*\%y')
-   " Buffer state
-   execute('setlocal statusline+=%' . a:c4 . '*%r')
-   execute('setlocal statusline+=%' . a:c4 . '*%m%<')
-   " Filename
-   execute('setlocal statusline+=%' . a:c1 . '*\ %f\ ')
-   " Argument status
-   execute('setlocal statusline+=%' . a:c4 . '*%a%' . a:c1 . '*')
-   " Long space
-   setlocal statusline+=%=
-   " Current line / Total lines (% of file)
-   execute('setlocal statusline+=%' . a:c3 . '*[%c]')
-   setlocal statusline+=[%l/%L][%p%%]
+" Setup the status line
+function! SetStatusLine()
+    " Always show the status line
+    setlocal laststatus=2
+    set statusline=""
+    " Buffer type
+    execute('setlocal statusline+=%' . 3 . '*\%y')
+    " Buffer state
+    execute('setlocal statusline+=%' . 4 . '*%r')
+    execute('setlocal statusline+=%' . 4 . '*%m%<')
+    " Filename
+    execute('setlocal statusline+=%' . 1 . '*\ %f\ ')
+    " Argument status
+    execute('setlocal statusline+=%' . 4 . '*%a%' . 1 . '*')
+    " Long space
+    setlocal statusline+=%=
+    " Current line / Total lines (% of file)
+    execute('setlocal statusline+=%' . 3 . '*[%c]')
+    setlocal statusline+=[%l/%L][%p%%]
 endfunction
 
 " Setup the status line
-function! SetStatusLineGeneral()
-   " For some reason, the statusline for terminal windows inverts all the
-   " colours. My colour scheme defines User[5-8] as inverses of User[1-4].
-   if &buftype ==# 'terminal'
-       call SetStatusLine(5,6,7,8)
-   else
-       call SetStatusLine(1,2,3,4)
-   endif
-endfunction
-
 augroup StatusLine
-   autocmd!
-   " Use different colours for terminal windows
-   autocmd VimEnter,BufWinEnter * call SetStatusLineGeneral()
+    autocmd!
+    autocmd VimEnter,BufWinEnter,TerminalOpen * call SetStatusLine()
 
-   " Also use the statusline for netrw windows
-   autocmd FileType netrw call SetStatusLineGeneral()
+    " Also use the statusline for netrw windows
+    autocmd FileType netrw call SetStatusLine()
 augroup END
 
 " Indicate the active window
@@ -55,23 +42,18 @@ augroup ActiveWindow
     autocmd!
 
     " Relative numbers
-    autocmd BufWinEnter * set relativenumber
     autocmd WinEnter * set relativenumber
     autocmd WinLeave * set norelativenumber
 
     " No cursor line
-    autocmd BufWinEnter * set nocursorline
     autocmd WinEnter * set nocursorline
     autocmd WinLeave * set cursorline
 augroup END
 
 " Line numbers
-set number
 augroup LineNumbers
-    autocmd!
     autocmd BufWinEnter * set number
-    autocmd BufWinEnter * set numberwidth=4
-augroup END
+    autocmd BufWinEnter * set numberwidth=1
 
 " Show the sign column only if there are signs
 set signcolumn=auto
