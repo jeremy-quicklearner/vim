@@ -3,7 +3,8 @@
 " For code, colour columns
 augroup ColumnLimit
     autocmd!
-    autocmd FileType vim,h,c,cpp,python,sh execute "setlocal colorcolumn=" .
+    execute "autocmd FileType " . g:jeremyColouredColumnFileTypes .
+        \ " setlocal colorcolumn=" .
         \ g:jeremyColouredColumns
 augroup END
 
