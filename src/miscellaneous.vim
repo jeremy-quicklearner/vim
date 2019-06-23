@@ -30,46 +30,46 @@ sign define jeremywhite   text=() texthl=SignJeremyWhite   linehl=SignJeremyWhit
 
 " Place one of the above signs on a set of lines
 function! PlaceJeremySigns(type, color, rawlines)
-   if a:type == 'V' || a:type == "v" || a:type == ""
-      let [lStart, cStart] = getpos("'<")[1:2]
-      let [lEnd, cEnd] = getpos("'>")[1:2]
-      let lines = range(lStart, lEnd)
-   elseif a:type == 'explicit'
-      let lines = a:rawlines
-   else
-      echom "PLACEJEREMYSIGNS BROKE"
-   endif
+    if a:type == 'V' || a:type == "v" || a:type == ""
+        let [lStart, cStart] = getpos("'<")[1:2]
+        let [lEnd, cEnd] = getpos("'>")[1:2]
+        let lines = range(lStart, lEnd)
+    elseif a:type == 'explicit'
+        let lines = a:rawlines
+    else
+        echom "PLACEJEREMYSIGNS BROKE"
+    endif
 
-   for line in lines
-      execute "sign place " . line . " line=" . line .  " name=jeremy" . a:color . " buffer=" . bufnr("%")
-   endfor
+    for line in lines
+        execute "sign place " . line . " line=" . line .  " name=jeremy" . a:color . " buffer=" . bufnr("%")
+    endfor
 endfunction
 
 " Unplace one of the above signs on a set of lines
 function! UnplaceJeremySigns(type, rawlines)
-   if a:type == 'V' || a:type == "v" || a:type == ""
-      let [lStart, cStart] = getpos("'<")[1:2]
-      let [lEnd, cEnd] = getpos("'>")[1:2]
-      let lines = range(lStart, lEnd)
-   elseif a:type == 'explicit'
-      let lines = a:rawlines
-   else
-      echom "UNPLACEJEREMYSIGNS BROKE"
-   endif
+    if a:type == 'V' || a:type == "v" || a:type == ""
+        let [lStart, cStart] = getpos("'<")[1:2]
+        let [lEnd, cEnd] = getpos("'>")[1:2]
+        let lines = range(lStart, lEnd)
+    elseif a:type == 'explicit'
+        let lines = a:rawlines
+    else
+        echom "UNPLACEJEREMYSIGNS BROKE"
+    endif
 
-   " Get a list of the signs in the current buffer
-   let signs = execute("sign place buffer=" . bufnr('%'))
+    " Get a list of the signs in the current buffer
+    let signs = execute("sign place buffer=" . bufnr('%'))
 
-   for line in lines
-      " If there's a sign on the current line whose name starts with jeremy,
-      " unplace it
-      let unplaceCmd = "sign unplace " . line('.') . " buffer=" . bufnr("%")
-      for signline in split(signs, '\n')
-         if signline =~# '^\s*line=\d*\s*id=\S*\s*name=jeremy.*$'
-            execute "sign unplace " . line . " buffer=" . bufnr("%")
-         endif
-      endfor
-   endfor
+    for line in lines
+        " If there's a sign on the current line whose name starts with jeremy,
+        " unplace it
+        let unplaceCmd = "sign unplace " . line('.') . " buffer=" . bufnr("%")
+        for signline in split(signs, '\n')
+            if signline =~# '^\s*line=\d*\s*id=\S*\s*name=jeremy.*$'
+                execute "sign unplace " . line . " buffer=" . bufnr("%")
+            endif
+        endfor
+    endfor
 endfunction
 
 " A sign for marking the cursor position
