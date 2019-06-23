@@ -51,8 +51,9 @@ augroup ActiveWindow
 augroup END
 
 " Line numbers
-set number
-set numberwidth=1
+augroup LineNumbers
+    autocmd BufWinEnter * set number
+    autocmd BufWinEnter * set numberwidth=1
 
 " Show the sign column only if there are signs
 set signcolumn=auto
