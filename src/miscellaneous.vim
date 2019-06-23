@@ -78,5 +78,8 @@ sign define cursorflash text=-> texthl=Cursor linehl=Cursor
 " The default updatetime of 4000 is too slow for me
 set updatetime=100
 
+" Don't show the welcome message
+set shortmess=I
+
 " There's a security vulnerability in the modelines feature, so disable it
 set nomodeline

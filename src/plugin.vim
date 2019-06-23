@@ -26,8 +26,13 @@ Plug 'benknoble/vim-auto-origami'
 call plug#end()
 
 " Netrw stuff
+" Vertically open windows on the right
 let g:netrw_altv=1
+let g:netrw_preview=1
+" Buffer settings: nu and rnu mean numbers and relative numbers
 let g:netrw_bufsettings="noma nomod nu rnu nobl nowrap ro"
+" Tree view
+let g:netrw_liststyle=3
 
 " Auto Origami stuff
 let g:auto_origami_foldcolumn=1
