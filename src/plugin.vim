@@ -36,7 +36,10 @@ let g:netrw_liststyle=3
 
 " Auto Origami stuff
 let g:auto_origami_foldcolumn=1
-augroup auto_origami
+augroup AutoOrigami
     autocmd!
-    autocmd CursorHold,BufWinEnter,WinEnter * AutoOrigamiFoldColumn
+    autocmd CursorHold,BufWinEnter,WinEnter *
+                \  if &buftype !=# 'terminal'
+                \|     execute('AutoOrigamiFoldColumn')
+                \| endif
 augroup END

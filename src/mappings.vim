@@ -12,6 +12,12 @@ noremap <right> <nop>
 noremap <up> <nop>
 noremap <down> <nop>
 
+" Faster scrolling
+vnoremap <c-e> 2<c-e>
+vnoremap <c-y> 2<c-y>
+nnoremap <c-e> 2<c-e>
+nnoremap <c-y> 2<c-y>
+
 " Editing and Sourcing .vimrc
 nnoremap <leader>ve :vsplit $MYVIMRC<cr>
 nnoremap <leader>vs :source $MYVIMRC<cr>
@@ -65,7 +71,8 @@ vnoremap <leader>} <esc>`>a{<esc>`<i}<esc>
 vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 
 " Flash the cursor line
-nnoremap <silent> <leader>f :Flash<cr>
+nnoremap <silent> <c-f> :Flash<cr>
+tnoremap <silent> <c-f> <c-\><c-n>:Flash<cr>i
 
 " Switch line numbers on and off
 nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
