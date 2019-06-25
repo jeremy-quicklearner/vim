@@ -45,6 +45,7 @@ augroup ActiveWindow
     " Relative numbers
     autocmd WinEnter * set relativenumber
     autocmd WinLeave * set norelativenumber
+    autocmd VimEnter * setlocal relativenumber
 
     " No cursor line
     autocmd WinEnter * set nocursorline
