@@ -103,7 +103,14 @@ vnoremap <silent> <leader>sc <esc>:call PlaceJeremySigns(visualmode(), "cyan", [
 vnoremap <silent> <leader>sw <esc>:call PlaceJeremySigns(visualmode(), "white", [])<cr>
 
 " Unplace the signs from src/miscellaneous on the current line
-nnoremap <leader>S :call UnplaceJeremySigns("explicit", [line(".")]) <cr>
+nnoremap <silent> <leader>S :call UnplaceJeremySigns("explicit", [line(".")]) <cr>
 
 " Place signs from src/miscellaneous on visually selected lines
 vnoremap <silent> <leader>S <esc>:call UnplaceJeremySigns(visualmode(), [])<cr>
+
+" Set the foldmethod to indent, then manual
+nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
+
+" Colour and uncolour the column under the cursor
+nnoremap <silent> <leader>c :execute("set colorcolumn=" . &colorcolumn . "," . col("."))<cr>
+nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>

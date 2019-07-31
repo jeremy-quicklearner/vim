@@ -90,8 +90,8 @@ highlight MoreMsg           ctermfg=White   ctermbg=Black   cterm=none
 highlight NonText           ctermfg=Magenta ctermbg=Black   cterm=none
 highlight Normal            ctermfg=White   ctermbg=Black   cterm=none
 
-" Off-limits columns to the right are green
-highlight ColorColumn       ctermfg=Black   ctermbg=Green   cterm=none
+" Coloured columns are yellow
+highlight ColorColumn       ctermfg=Black   ctermbg=Yellow cterm=none
 
 " I don't know what these are so they're red until I find them
 highlight Conceal           ctermfg=Red     ctermbg=Red     cterm=none

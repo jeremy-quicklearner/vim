@@ -34,16 +34,22 @@ function! FlashCursorLine(command)
 
     " We will use the current line number as our sign ID. If it is taken,
     " remember what sign it is
-    let unplaceCmd = "sign unplace " . line('.') . " buffer=" . bufnr("%")
-    for signline in split(signs, '\n')
-        if signline =~# '^\s*line=\d*\s*id=' . line('.') . '\s*name=.*$'
-            let oldSign = split(split(signline)[2], '=')[1]
-            let unplaceCmd = "sign place " . line('.') . " line=" . line('.') . " name=" . oldSign . " buffer=" . bufnr('%')
-        endif
+    let lines = [line('.') - 1, line('.'), line('.')+1]
+    let unplaceCmds=['', '', '']
+    for idx in range(len(lines))
+        let unplaceCmds[idx] = "sign unplace " . lines[idx] . " buffer=" . bufnr("%")
+        for signline in split(signs, '\n')
+            if signline =~# '^\s*line=\d*\s*id=' . lines[idx] . '\s*name=.*$'
+                let oldSign = split(split(signline)[2], '=')[1]
+                let unplaceCmds[idx] = "sign place " . lines[idx] . " line=" . lines[idx] . " name=" . oldSign . " buffer=" . bufnr('%')
+            endif
+        endfor
     endfor
 
     " Place a cursorflash sign
-    execute "sign place " . line('.') . " line=" . line('.') . " name=cursorflash buffer=" . bufnr("%")
+    for idx in range(len(lines))
+        execute "sign place " . lines[idx] . " line=" . lines[idx] . " name=cursorflash buffer=" . bufnr("%")
+    endfor
     redraw
 
     " Flash twice more
@@ -52,14 +58,18 @@ function! FlashCursorLine(command)
         sleep 150m
 
         " Unplace the cursorflash sign
-        execute unplaceCmd
+        for idx in range(len(lines))
+            execute unplaceCmds[idx]
+        endfor
         redraw
 
         " Delay so the cursorflash sign sticks around for a bit
         sleep 150m
 
         " Place a cursorflash sign
-        execute "sign place " . line('.') . " line=" . line('.') .  " name=cursorflash buffer=" . bufnr("%")
+        for idx in range(len(lines))
+            execute "sign place " . lines[idx] . " line=" . lines[idx] .  " name=cursorflash buffer=" . bufnr("%")
+        endfor
         redraw
     endfor
 
@@ -67,7 +77,9 @@ function! FlashCursorLine(command)
     sleep 150m
 
     " Unplace the cursorflash sign
-    execute unplaceCmd
+    for idx in range(len(lines))
+        execute unplaceCmds[idx]
+    endfor
     redraw
 
     " If we stopped the signcolumn from appearing, stop... stopping it.
