@@ -19,6 +19,12 @@ autocmd QuickFixCmdPost [^Ll]* nested cwindow
 " Automatically open the location window after populating the location list
 autocmd QuickFixCmdPost [Ll]* nested lwindow
 
+" Always open the quickfix window across the whole width of the screen
+autocmd FileType qf
+            \  if !getwininfo(win_getid())[0]['loclist']
+            \|     wincmd J
+            \| endif
+
 " Signs for colouring lines
 sign define jeremyred     text=() texthl=SignJeremyRed     linehl=SignJeremyRed
 sign define jeremygreen   text=() texthl=SignJeremyGreen   linehl=SignJeremyGreen
