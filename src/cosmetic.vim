@@ -18,8 +18,10 @@ function! SetStatusLine()
     " Buffer state
     execute('setlocal statusline+=%4*%r')
     execute('setlocal statusline+=%4*%m%<')
+    " Buffer number
+    execute('setlocal statusline+=%1*[%n]')
     " Filename
-    execute('setlocal statusline+=%1*\ %f\ ')
+    execute('setlocal statusline+=%1*[%f]\ ')
     " Argument status
     execute('setlocal statusline+=%4*%a%1*')
     " Long space
