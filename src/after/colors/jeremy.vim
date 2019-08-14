@@ -146,12 +146,12 @@ highlight Type              ctermfg=White   ctermbg=Black   cterm=none
 
 " For the status line
 highlight User1             ctermbg=White   ctermfg=Black   cterm=none
-highlight User2             ctermbg=Red     ctermfg=Black   cterm=none
+highlight User2             ctermbg=Blue    ctermfg=Black   cterm=none
 highlight User3             ctermbg=Green   ctermfg=Black   cterm=none
 highlight User4             ctermbg=Yellow  ctermfg=Black   cterm=none
 
 highlight User5             ctermbg=Black   ctermfg=White   cterm=none
-highlight User6             ctermbg=Black   ctermfg=Red     cterm=none
+highlight User6             ctermbg=Black   ctermfg=Blue    cterm=none
 highlight User7             ctermbg=Black   ctermfg=Green   cterm=none
 highlight User8             ctermbg=Black   ctermfg=Yellow  cterm=none
 

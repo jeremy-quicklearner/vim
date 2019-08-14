@@ -32,9 +32,15 @@ function! FlashCursorLine(command)
         setlocal signcolumn=no
     endif
 
+    " If the current line is folded, flash multiple lines
+    if foldclosed(line('.')) >= 0
+        let lines = [line('.') - 1, line('.'), line('.')+1]
+    else
+        let lines = [line('.')]
+    endif
+
     " We will use the current line number as our sign ID. If it is taken,
     " remember what sign it is
-    let lines = [line('.') - 1, line('.'), line('.')+1]
     let unplaceCmds=['', '', '']
     for idx in range(len(lines))
         let unplaceCmds[idx] = "sign unplace " . lines[idx] . " buffer=" . bufnr("%")
@@ -88,3 +94,61 @@ function! FlashCursorLine(command)
     endif
 endfunction
 command! -nargs=0 -complete=command Flash call FlashCursorLine("")
+
+let s:refLocIsRunning = 0
+" Close all location windows that aren't in focus. Open the location window
+" for the current window
+function! RefreshLocationLists(command)
+    " This function will be called from a nested autocmd. Guard against
+    " recursion.
+    if s:refLocIsRunning
+        return
+    endif
+    let s:refLocIsRunning = 1
+    " By default, no window is immune
+    let immuneWinid = -1
+
+    " If the current window isn't a location window but has a location window open,
+    " that location window is immune
+    if !getwininfo(win_getid())[0]['loclist'] && get(getloclist(0, {'winid':0}), 'winid', 0)
+        let immuneWinid = getloclist(0, {'winid':0})['winid']
+    endif
+
+    " If the current window is a location window with a parent window open
+    " it's immune
+    if getwininfo(win_getid())[0]['loclist']
+        let currentWinid = win_getid()
+        for winnum in range(1, winnr('$'))
+            echom winnum
+            if winnum != winnr() && get(getloclist(winnum, {'winid':0}), 'winid', 0) == currentWinid
+                echom "HELLO"
+                let immuneWinid = currentWinid
+            endif
+        endfor
+    endif
+
+    " Get a list of all location windows' winids, except the immune one
+    let locWinids = []
+    for winnum in range(1, winnr('$'))
+        let winid = win_getid(winnum)
+        if getwininfo(winid)[0]['loclist'] && winid != immuneWinid
+            call add(locWinids, winid)
+        endif
+    endfor
+
+    " Close all those location windows
+    for locWinid in locWinids
+        execute win_id2win(locWinid) . 'wincmd q'
+    endfor
+
+    " If the current window isn't a location window but has a location list,
+    " open its location window and then jump back
+    if len(getloclist(0)) && &ft !=# 'qf'
+        lopen
+        wincmd p
+    endif
+    
+    let s:refLocIsRunning = 0
+
+endfunction
+command! -nargs=0 -complete=command Refloc call RefreshLocationLists("")

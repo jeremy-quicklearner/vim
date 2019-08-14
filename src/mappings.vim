@@ -80,9 +80,8 @@ nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
 " Peek at entries in quickfix lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 
-" Peek at and jump to quickfix entries in new windows
-nnoremap <expr> <leader><cr> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L" : "\<cr>"
-nnoremap <expr> <leader><space> &buftype==# 'quickfix' ? "\<c-w>\<cr>\<c-w>L<c-w><c-p>" : "\<cr>"
+" Clear location lists
+nnoremap <silent> <leader>lc :lexpr []<cr>
 
 " Place signs from src/miscellaneous on the current line
 nnoremap <silent> <leader>sr :call PlaceJeremySigns("explicit", "red", [line(".")]) <cr>

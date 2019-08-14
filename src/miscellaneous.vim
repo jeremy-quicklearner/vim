@@ -14,16 +14,32 @@ set wildmenu
 " Keep 50 lines of ex command history
 set history=50
 
-" Automatically open the quickfix window after populating the quickfix list
-autocmd QuickFixCmdPost [^Ll]* nested cwindow
-" Automatically open the location window after populating the location list
-autocmd QuickFixCmdPost [Ll]* nested lwindow
+" Refresh the location lists if we need to
+function! MaybeRefloc()
+    if t:refloc
+        let t:refloc = 0
+        Refloc
+    endif
+endfunction
 
-" Always open the quickfix window across the whole width of the screen
-autocmd FileType qf
-            \  if !getwininfo(win_getid())[0]['loclist']
-            \|     wincmd J
-            \| endif
+augroup QuickFix
+    " Automatically open the quickfix window after populating the quickfix list
+    autocmd QuickFixCmdPost [^Ll]* nested cwindow
+    " Automatically open the location window after populating the location list
+    autocmd QuickFixCmdPost [Ll]* nested lwindow
+
+    " Refresh the location lists after leaving a window
+    autocmd VimEnter * let t:refloc = 1
+    autocmd TabNew * let t:refloc = 1
+    autocmd WinLeave * let t:refloc = 1
+    autocmd CursorHold * nested call MaybeRefloc()
+
+    " Always open the quickfix window across the whole width of the screen
+    autocmd FileType qf
+                \  if !getwininfo(win_getid())[0]['loclist']
+                \|     wincmd J
+                \| endif
+augroup END
 
 " Signs for colouring lines
 sign define jeremyred     text=() texthl=SignJeremyRed     linehl=SignJeremyRed
