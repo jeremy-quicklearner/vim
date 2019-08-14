@@ -80,6 +80,9 @@ nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
 " Peek at entries in quickfix lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 
+" Clear the quickfix list
+nnoremap <silent> <leader>cc :cexpr []<cr>
+
 " Clear location lists
 nnoremap <silent> <leader>lc :lexpr []<cr>
 
