@@ -23,6 +23,7 @@ function! MaybeRefloc()
 endfunction
 
 augroup QuickFix
+    autocmd!
     " Automatically open the quickfix window after populating the quickfix list
     autocmd QuickFixCmdPost [^Ll]* nested cwindow
     " Automatically open the location window after populating the location list

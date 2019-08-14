@@ -60,6 +60,7 @@ augroup END
 
 " Line numbers
 augroup LineNumbers
+    autocmd!
     autocmd BufWinEnter * set number
     autocmd BufWinEnter * set numberwidth=1
 
