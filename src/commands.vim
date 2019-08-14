@@ -119,9 +119,7 @@ function! RefreshLocationLists(command)
     if getwininfo(win_getid())[0]['loclist']
         let currentWinid = win_getid()
         for winnum in range(1, winnr('$'))
-            echom winnum
             if winnum != winnr() && get(getloclist(winnum, {'winid':0}), 'winid', 0) == currentWinid
-                echom "HELLO"
                 let immuneWinid = currentWinid
             endif
         endfor
