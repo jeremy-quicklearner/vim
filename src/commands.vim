@@ -34,7 +34,14 @@ function! FlashCursorLine(command)
 
     " If the current line is folded, flash multiple lines
     if foldclosed(line('.')) >= 0
-        let lines = [line('.') - 1, line('.'), line('.')+1]
+        let lines = []
+        if line('.') !=# 1
+            call add(lines, foldclosed(line('.')) - 1)
+        endif
+        call add(lines, line('.'))
+        if line('.') !=# line('$')
+            call add(lines, foldclosedend(line('.')) + 1)
+        endif
     else
         let lines = [line('.')]
     endif
