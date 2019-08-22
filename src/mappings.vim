@@ -86,6 +86,9 @@ nnoremap <silent> <leader>cc :cexpr []<cr>
 " Clear location lists
 nnoremap <silent> <leader>lc :lexpr []<cr>
 
+" Invoke the :Tops command
+nnoremap <silent> <leader>t :Tops<cr>
+
 " Place signs from src/miscellaneous on the current line
 nnoremap <silent> <leader>sr :call PlaceJeremySigns("explicit", "red", [line(".")]) <cr>
 nnoremap <silent> <leader>sg :call PlaceJeremySigns("explicit", "green", [line(".")]) <cr>

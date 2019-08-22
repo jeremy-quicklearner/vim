@@ -157,3 +157,69 @@ function! RefreshLocationLists(command)
 
 endfunction
 command! -nargs=0 -complete=command Refloc call RefreshLocationLists("")
+
+" Show the block heirarchy surrounding the current line
+function! EchomBlockTops(command)
+    " Start at the current line
+    let l = line('.')
+    let blocklines = []
+
+    " Go up until a non-whitespace line is found
+    while l > 0 && match(getline(l), "^\s*$") !=# -1
+        let l -= 1
+    endwhile
+    let startl = l
+
+    " If we moved up, record the line we started at
+    if l !=# line('.')
+        call add(blocklines, [line('.'), getline(line('.'))])
+    endif
+
+    " Examine each line going up from the current line until we reach one with
+    " 0 indent or the top of the file. If this is the least indented line so
+    " far, record it and its line number
+    let minindent = indent(l)
+    call add(blocklines, [l, getline(l)])
+    while l > 0 
+        if match(getline(l), "^\s*$") !=# -1
+            let l -= 1
+            continue
+        endif
+        if indent(l) ==# 0
+            break
+        endif
+        if indent(l) < indent(l + 1) && indent(l) < minindent
+           call add(blocklines, [l, getline(l)])
+           let minindent = indent(l)
+        endif
+        let l -= 1
+    endwhile
+
+    " If we recorded lines, also record the top line
+    if l !=# startl
+       call add(blocklines, [l, getline(l)])
+    endif
+
+    " Figure out the length of the highest line number we recorded
+    let maxnumlen = 3
+    if len(string(blocklines[0][0])) > maxnumlen
+        let maxnumlen = len(string(blocklines[0][0]))
+    endif
+
+    " Print the recorded lines
+    let llprev = [-1, 'NOT A REAL LINE']
+    for ll in reverse(blocklines)
+        " If this line isn't right under the last one we printed, print dots
+        " to indicate the skip
+        if llprev[0] >= 0 && llprev[0] < ll[0] - 1
+            execute 'let toprint = printf("%' . string(maxnumlen) . 'S|%' . string(indent(ll[0]) + 3) . 'S", "...", "...")'
+            echom toprint
+        endif
+
+        " Print the line and its line number
+        execute 'let toprint = printf("%' . maxnumlen . 'd|%s", ll[0], ll[1])'
+        echom toprint
+        let llprev = ll
+    endfor
+endfunction
+command! -nargs=0 -complete=command Tops call EchomBlockTops("")
