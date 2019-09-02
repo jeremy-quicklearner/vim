@@ -27,6 +27,12 @@ nnoremap <c-w>z <c-w>_<c-w>\|
 vnoremap <c-w>z <c-w>_<c-w>\|
 tnoremap <c-w>z <c-w>_<c-w>\|
 
+" Window navigation with Ctrl
+nnoremap <c-h> <c-w>h
+nnoremap <c-j> <c-w>j
+nnoremap <c-k> <c-w>k
+nnoremap <c-l> <c-w>l
+
 " Window resizing
 nnoremap <leader>= <c-w>+
 vnoremap <leader>= <c-w>+
@@ -117,5 +123,5 @@ vnoremap <silent> <leader>S <esc>:call UnplaceJeremySigns(visualmode(), [])<cr>
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
 " Colour and uncolour the column under the cursor
-nnoremap <silent> <leader>c :execute("set colorcolumn=" . &colorcolumn . "," . col("."))<cr>
+nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
 nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>
