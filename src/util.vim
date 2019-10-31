@@ -42,6 +42,7 @@ function! RunCursorHoldCallbacks()
 endfunction
 
 augroup CursorHoldCallbacks
+    autocmd!
     " Every tab gets its own set of callbacks
     autocmd VimEnter,TabNew * let t:cursorHoldCallbacks = []
     
