@@ -10,8 +10,9 @@ source <sfile>:p:h/plugin.vim
 source <sfile>:p:h/util.vim
 
 " Specific categories of functionality get their own files
-source <sfile>:p:h/quickfix.vim
 source <sfile>:p:h/signs.vim
+source <sfile>:p:h/loclist.vim
+source <sfile>:p:h/quickfix.vim
 " Statusline is last because it may display information from the others
 source <sfile>:p:h/statusline.vim
 

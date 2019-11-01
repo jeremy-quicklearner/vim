@@ -74,12 +74,15 @@ vnoremap <leader>] <esc>`>a[<esc>`<i]<esc>
 vnoremap <leader>} <esc>`>a{<esc>`<i}<esc>
 vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 
-" Switch line numbers on and off
-nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
-
 " Set the foldmethod to indent, then manual
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
+
+" Peek at entries in quickfix and location lists
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
 
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
 nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>
+
+" Switch line numbers on and off
+nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
