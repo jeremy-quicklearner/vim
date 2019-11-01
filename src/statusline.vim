@@ -55,7 +55,7 @@ endfunction
 
 " Register the above function to be called on the next CursorHold event
 function! RegisterSetLine()
-    call RegisterCursorHoldCallback(function('SetStatusLine'), "", 0, 0)
+    call RegisterCursorHoldCallback(function('SetStatusLine'), "", 0, 0, 0)
 endfunction
 
 augroup StatusLine

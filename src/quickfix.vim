@@ -21,40 +21,51 @@ function! RefreshQuickfixList(arg)
         return
     endif
 
+    " If the quickfix window is open and the cursor is in it, move it to the
+    " bottom of the screen
+    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+    if win_getid() == qfwinid
+        wincmd J
+        let s:refQfIsRunning = 0
+        return
+    endif
+
+    " If the quickfix window is open and the cursor is not in it, move it to
+    " the bottom of the screen
+    if qfwinid
+        copen
+        wincmd J
+        wincmd p
+        let s:refQfIsRunning = 0
+        return
+    endif
+
+    " At this point, the quickfix window is not open
+
     " If the quickfix list is populated, open the quickfix window and make
     " sure it's at the bottom of the screen
     if len(getqflist())
         copen
         wincmd J
-        wincmd p
-        
-    " If the quickfix list is not popuated, close the quickfix window
-    else
-        cclose
     endif
+        
     let s:refQfIsRunning = 0
 endfunction
 
-" Register the above function to be called on the next CursorHold event
-function! RegisterRefQf()
-    " RefreshQuickfixList should never register itself with autocommands
-    if s:refQfIsRunning
-        return
-    endif
-    call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -10)
- endfunction
-
-augroup QuickFix
-    autocmd!
-    " Refresh the quickfix window after populating the quickfix list
-    autocmd QuickFixCmdPost [^Ll]* call RegisterRefQf()
-augroup END
+" Refresh the quickfix window on every CursorHold event. I would have
+" liked to use a callback for this but since Vim doesn't have a WinMoved
+" event, the only way to call it every time any window moves is... to also
+" call it many times when a window doesn't move.
+" I don't do this for location lists because RefreshLocationLists is
+" linear in the number of windows. RefreshQuickfixList takes constant
+" time.
+call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -10, 1)
 
 " Mappings
 " Hide the quickfix window
-nnoremap <silent> <leader>qh :let g:qfwinHidden = 1<cr>:call RegisterRefQf()<cr>
+nnoremap <silent> <leader>qh :let g:qfwinHidden = 1<cr>
 " Show the quickfix window
-nnoremap <silent> <leader>qs :let g:qfwinHidden = 0<cr>:call RegisterRefQf()<cr>
+nnoremap <silent> <leader>qs :let g:qfwinHidden = 0<cr>
 
 " Clear the quickfix list
-nnoremap <silent> <leader>qc :cexpr []<cr>:cclose<cr>:call RegisterRefQf()<cr>
+nnoremap <silent> <leader>qc :cexpr []<cr>:cclose<cr>

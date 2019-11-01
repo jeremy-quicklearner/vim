@@ -87,7 +87,7 @@ function! RegisterRefLoc()
     if s:refLocIsRunning
         return
     endif
-    call RegisterCursorHoldCallback(function('RefreshLocationLists'), "", 1, -20)
+    call RegisterCursorHoldCallback(function('RefreshLocationLists'), "", 1, -20, 0)
 endfunction
 
 augroup Loclist

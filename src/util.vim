@@ -64,21 +64,26 @@ endfunction
 " autocommands can execute as side effects of the function.
 " This effect cascades to side effects of those autocommands and so on.
 " Callbacks with lower priority value go first
-function! RegisterCursorHoldCallback(callback, data, cascade, priority)
+" The callback will only called once, on the next CursorHold event, unless
+" permanent is true. In that case, the callback will be called for every
+" CursorHold event from now on
+function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent)
     "TODO: Validate params
     call EnsureCallbackListsExist()
     if a:cascade
         call add(t:cursorHoldCascadingCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
-       \    'priority': a:priority
+       \    'priority': a:priority,
+       \    'permanent': a:permanent
        \})
         call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     else
         call add(t:cursorHoldCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
-       \    'priority': a:priority
+       \    'priority': a:priority,
+       \    'permanent': a:permanent
        \})
         call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     endif
@@ -88,21 +93,29 @@ endfunction
 function! RunCursorHoldCallbacks()
     call EnsureCallbackListsExist()
 
+    let newCallbacks = []
     for callback in t:cursorHoldCallbacks
         call callback.callback(callback.data)
+        if callback.permanent
+            call add(newCallbacks, callback)
+        endif
     endfor
 
-    let t:cursorHoldCallbacks = []
+    let t:cursorHoldCallbacks = newCallbacks
 endfunction
 
 function! RunCursorHoldCascadingCallbacks()
     call EnsureCallbackListsExist()
 
+    let newCallbacks = []
     for callback in t:cursorHoldCascadingCallbacks
         call callback.callback(callback.data)
+        if callback.permanent
+            call add(newCallbacks, callback)
+        endif
     endfor
 
-    let t:cursorHoldCascadingCallbacks = []
+    let t:cursorHoldCascadingCallbacks = newCallbacks
 endfunction
 
 function! HandleTerminalEnter()
@@ -116,7 +129,7 @@ function! HandleTerminalEnter()
     call feedkeys("\<c-\>\<c-n>")
 
     " Register a callback that goes back to terminal-job mode
-    call RegisterCursorHoldCallback(function('feedkeys'), 'i', 0, 100)
+    call RegisterCursorHoldCallback(function('feedkeys'), 'i', 0, 100, 0)
 endfunction
 
 augroup CursorHoldCallbacks
