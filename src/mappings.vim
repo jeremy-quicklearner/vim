@@ -1,6 +1,4 @@
 " mappings
-let mapleader = "-"
-let maplocalleader = "-"
 
 " Biting the bullet
 inoremap <left> <nop>
