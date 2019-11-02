@@ -1,7 +1,7 @@
 " Statusline definition
 
 " Convert a window-local variable to a string based on a map lookup
-" If the variable doesn't exist in the window, dne is returned
+" If the variable doesn't exist in the window, return dne
 " If the value of the variable isn't in the map, return the value directly
 function! WinVarAsFlag(name, dne, map)
     if !exists('w:' . a:name)

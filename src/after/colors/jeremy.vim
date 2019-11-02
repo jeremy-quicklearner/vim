@@ -12,8 +12,8 @@ let g:colors_name="jeremy"
 
 " The tab line
 highlight TabLine           ctermfg=Black   ctermbg=White   cterm=none
-highlight TabLineFill       ctermfg=White   ctermbg=Black   cterm=none
-highlight TabLineSel        ctermfg=Black   ctermbg=Green   cterm=none
+highlight TabLineFill       ctermfg=Black   ctermbg=Green   cterm=none
+highlight TabLineSel        ctermfg=Black   ctermbg=Yellow  cterm=none
 highlight Title             ctermfg=White   ctermbg=Black   cterm=none
 
 " Status line colour for windows
@@ -149,8 +149,8 @@ highlight User1             ctermbg=White   ctermfg=Black   cterm=none
 highlight User2             ctermbg=Blue    ctermfg=Black   cterm=none
 highlight User3             ctermbg=Green   ctermfg=Black   cterm=none
 highlight User4             ctermbg=Yellow  ctermfg=Black   cterm=none
+highlight User5             ctermbg=Magenta ctermfg=Black   cterm=none
 
-highlight User5             ctermbg=Black   ctermfg=White   cterm=none
 highlight User6             ctermbg=Black   ctermfg=Blue    cterm=none
 highlight User7             ctermbg=Black   ctermfg=Green   cterm=none
 highlight User8             ctermbg=Black   ctermfg=Yellow  cterm=none

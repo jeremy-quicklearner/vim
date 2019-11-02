@@ -1,8 +1,5 @@
 " Quickfix list and quickfix window manipulation
 
-" The quickfix window is non-hidden by default
-let g:qfwinHidden = 0
-
 " Make sure the quickfix window is only displayed if it is populated and
 " non-empty. Always display it at the bottom of the screen.
 let s:refQfIsRunning = 0
@@ -15,7 +12,7 @@ function! RefreshQuickfixList(arg)
     let s:refQfIsRunning = 1
 
     " If the quickfix window is hidden, make sure it's closed
-    if g:qfwinHidden
+    if t:qfwinHidden
         cclose
         let s:refQfIsRunning = 0
         return
@@ -52,20 +49,26 @@ function! RefreshQuickfixList(arg)
     let s:refQfIsRunning = 0
 endfunction
 
-" Refresh the quickfix window on every CursorHold event. I would have
-" liked to use a callback for this but since Vim doesn't have a WinMoved
-" event, the only way to call it every time any window moves is... to also
-" call it many times when a window doesn't move.
-" I don't do this for location lists because RefreshLocationLists is
-" linear in the number of windows. RefreshQuickfixList takes constant
-" time.
-call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -10, 1)
+augroup Quickfix
+    autocmd!
+    " The quickfix window is non-hidden by default
+    autocmd VimEnter,TabNew * let t:qfwinHidden = 0
+
+    " Refresh the quickfix window on every CursorHold event. I would have
+    " liked to use a callback for this but since Vim doesn't have a WinMoved
+    " event, the only way to call it every time any window moves is... to also
+    " call it many times when a window doesn't move.
+    " I don't do this for location lists because RefreshLocationLists is
+    " linear in the number of windows. RefreshQuickfixList takes constant
+    " time.
+    autocmd VimEnter,TabNew * call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -10, 1)
+augroup END
 
 " Mappings
 " Hide the quickfix window
-nnoremap <silent> <leader>qh :let g:qfwinHidden = 1<cr>
+nnoremap <silent> <leader>qh :let t:qfwinHidden = 1<cr>
 " Show the quickfix window
-nnoremap <silent> <leader>qs :let g:qfwinHidden = 0<cr>
+nnoremap <silent> <leader>qs :let t:qfwinHidden = 0<cr>
 
 " Clear the quickfix list
 nnoremap <silent> <leader>qc :cexpr []<cr>:cclose<cr>
