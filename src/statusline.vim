@@ -37,7 +37,7 @@ function! SetStatusLine(arg)
     " Buffer state
     set statusline+=%4*%r
     set statusline+=%4*%m
-    
+
     " Start truncating
     set statusline+=%<
 

@@ -63,7 +63,7 @@ function! RefreshQuickfixList(arg)
         copen
         wincmd J
     endif
-        
+
     let s:refQfIsRunning = 0
 endfunction
 

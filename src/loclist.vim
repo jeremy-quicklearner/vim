@@ -22,7 +22,7 @@ function! RefreshLocationLists(command)
             call setwinvar(winnum, 'locwinHidden', 2)
         endif
     endfor
-    
+
     " If a non-terminal window has a location list that is hidden because it
     " was previously the location window for a terminal window, unhide that
     " location window
@@ -77,7 +77,7 @@ function! RefreshLocationLists(command)
         lopen
         wincmd p
     endif
-    
+
     let s:refLocIsRunning = 0
 endfunction
 
@@ -98,7 +98,7 @@ augroup Loclist
 
     " Refresh location windows after populating the location list
     autocmd QuickFixCmdPost [Ll]* call RegisterRefLoc()
-    
+
     " Refresh the location lists whenever the user switches windows or a
     " window's buffer changes
     autocmd WinLeave,BufWinEnter * call RegisterRefLoc()

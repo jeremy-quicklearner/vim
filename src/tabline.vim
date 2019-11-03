@@ -65,7 +65,7 @@ function! GetTabString(tabnum, tabcols)
         let bufname = '[Location List]'
     elseif len(wininfo) && wininfo[0]['quickfix']
         let bufname = '[Quickfix List]'
-    
+
     " Otherwise use the file name. No absolute paths unless they're needed
     else
         let bufname = fnamemodify(bufname(buflist[winnr - 1]), ':~:.')
@@ -115,13 +115,13 @@ function! GetTabString(tabnum, tabcols)
             break
         endif
     endwhile
-    
+
     " Try to make it fit by showing only the filename
     if lenrv > a:tabcols
         let rv = substitute(rv, '\.\.\./', '', '')
         let lenrv = len(rv)
     endif
-    
+
     " Try to make it fit by removing the window count
     if lenrv > a:tabcols
         let rv = substitute(rv, ' (+\d*)', '', '')
@@ -147,13 +147,13 @@ function! GetTabString(tabnum, tabcols)
         let rv = '[' . a:tabnum . ']'
         let lenrv = len(rv)
     endif
-    
+
     " Try just the tab number in hex
     if lenrv > a:tabcols
         let rv = printf('[%X]', a:tabnum)
         let lenrv = len(rv)
     endif
-    
+
     " Try displaying only trailing digits of the tab number
     let radix = printf('%X', a:tabnum)
     while lenrv > a:tabcols
@@ -166,7 +166,7 @@ function! GetTabString(tabnum, tabcols)
     if lenrv < a:tabcols
         let rv = substitute(rv, '\]', repeat('-', (a:tabcols - lenrv)) . ']', '')
     endif
-    
+
     " If just one digit in square brackets doesn't fit, the special cases at
     " the start will have caught it
     return rv
@@ -198,7 +198,7 @@ function! GetTabsString(cols)
             else
                 let rv .= '%#TabLine#'
             endif
-            
+
             " Call GetTabString() dynamically
             let rv .= '%{GetTabString(' . (i + 1) . ',' . (tabcols - 1) . ')}'
 
@@ -273,7 +273,7 @@ function! GetTabLine()
     let vimVersionString = GetVimVersionString()
     let regListString = GetRegListString()
     let qfWinFlag = GetQfWinFlag()
-    
+
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()
     " on each one is that len() doesn't interpret the tabline's substitution
