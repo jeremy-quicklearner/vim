@@ -30,21 +30,32 @@ function! SetStatusLine(arg)
     set laststatus=2
 
     set statusline=""
+
     " Buffer type
     set statusline+=%3*\%y
+
     " Buffer state
     set statusline+=%4*%r
-    set statusline+=%4*%m%<
+    set statusline+=%4*%m
+    
+    " Start truncating
+    set statusline+=%<
+
     " Buffer number
     set statusline+=%1*[%n]
+
     " Filename
-    set statusline+=%1*[%f]\ 
+    set statusline+=%1*[%f]
+
     " Argument status
-    set statusline+=%4*%a%1*
-    " Long space
-    set statusline+=%=
+    set statusline+=%5*%a\ %1*
+
+    " Right-justify from now on
+    set statusline+=%=%<
+
     " Location window flag
     set statusline+=%2*%{LocWinFlag()}
+
     " [Column][Current line/Total lines][% of file]
     set statusline+=%3*[%c][%l/%L][%p%%]
 
