@@ -21,9 +21,9 @@ nnoremap <leader>ve :vsplit $MYVIMRC<cr>
 nnoremap <leader>vs :source $MYVIMRC<cr>
 
 " Window maximizing (like in tmux)
-nnoremap <c-w>z <c-w>_<c-w>\|
-vnoremap <c-w>z <c-w>_<c-w>\|
-tnoremap <c-w>z <c-w>_<c-w>\|
+nnoremap <c-w>z <c-w>\|<c-w>_
+vnoremap <c-w>z <c-w>\|<c-w>_
+tnoremap <c-w>z <c-w>\|<c-w>_
 
 " Window navigation with Ctrl
 nnoremap <c-h> <c-w>h

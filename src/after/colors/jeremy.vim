@@ -13,8 +13,7 @@ let g:colors_name="jeremy"
 " The tab line
 highlight TabLine           ctermfg=Black   ctermbg=White   cterm=none
 highlight TabLineFill       ctermfg=Black   ctermbg=Green   cterm=none
-highlight TabLineSel        ctermfg=Black   ctermbg=Yellow  cterm=none
-highlight Title             ctermfg=White   ctermbg=Black   cterm=none
+highlight TabLineSel        ctermfg=Black   ctermbg=Green   cterm=none
 
 " Status line colour for windows
 highlight StatusLine        ctermfg=White   ctermbg=Black   cterm=none
@@ -100,6 +99,7 @@ highlight Conceal           ctermfg=Red     ctermbg=Red     cterm=none
 
 " Comments are green because green doesn't call out for attention
 highlight Comment           ctermfg=Green   ctermbg=Black   cterm=none
+highlight Title             ctermfg=Green   ctermbg=Black   cterm=none
 
 " Errors and Todos are red because red calls out for attention
 highlight Error             ctermfg=Black   ctermbg=Red     cterm=none

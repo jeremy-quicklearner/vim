@@ -11,28 +11,46 @@ function! RefreshQuickfixList(arg)
     endif
     let s:refQfIsRunning = 1
 
-    " If the quickfix window is hidden, make sure it's closed
-    if t:qfwinHidden
-        cclose
+    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+
+    " If the quickfix list is empty or the quickfix window is hidden, make
+    " sure it's closed
+    if t:qfwinHidden || !len(getqflist())
+        " If the quickfix window is open and is the last window, quit the tab
+        if qfwinid && winnr('$') == 1
+            quit
+        " Otherwise we can use cclose
+        else
+            cclose
+        endif
         let s:refQfIsRunning = 0
         return
     endif
 
     " If the quickfix window is open and the cursor is in it, move it to the
-    " bottom of the screen
+    " bottom of the screen and make sure it's ten rows tall
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if win_getid() == qfwinid
         wincmd J
+        resize 10
         let s:refQfIsRunning = 0
         return
     endif
 
     " If the quickfix window is open and the cursor is not in it, move it to
-    " the bottom of the screen
+    " the bottom of the screen and make sure it's ten rows tall
     if qfwinid
-        copen
-        wincmd J
-        wincmd p
+        " If the quickfix window is already at the bottom of the screen and
+        " has the correct dimensions, do nothing
+        let qfwinnr = win_id2win(qfwinid)
+        if winwidth(qfwinnr) != &columns ||
+          \winheight(qfwinnr) != 10 ||
+          \qfwinnr != winnr('$') 
+            copen
+            wincmd J
+            resize 10
+            wincmd p
+        endif
         let s:refQfIsRunning = 0
         return
     endif
@@ -71,4 +89,4 @@ nnoremap <silent> <leader>qh :let t:qfwinHidden = 1<cr>
 nnoremap <silent> <leader>qs :let t:qfwinHidden = 0<cr>
 
 " Clear the quickfix list
-nnoremap <silent> <leader>qc :cexpr []<cr>:cclose<cr>
+nnoremap <silent> <leader>qc :cexpr []<cr>
