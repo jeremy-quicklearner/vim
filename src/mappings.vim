@@ -11,10 +11,12 @@ noremap <up> <nop>
 noremap <down> <nop>
 
 " Faster scrolling
-vnoremap <c-e> 2<c-e>
-vnoremap <c-y> 2<c-y>
 nnoremap <c-e> 2<c-e>
 nnoremap <c-y> 2<c-y>
+vnoremap <c-e> 2<c-e>
+vnoremap <c-y> 2<c-y>
+inoremap <c-e> <esc>2<c-e>a
+inoremap <c-y> <esc>2<c-y>a
 
 " Editing and Sourcing .vimrc
 nnoremap <leader>ve :vsplit $MYVIMRC<cr>

@@ -178,7 +178,11 @@ function! GetTabsString(cols)
 
     " Each tab gets an equal number of columns to work with
     let tabcount = tabpagenr('$')
-    let tabcols = a:cols / tabcount
+    if tabcount < 16
+        let tabcols = (a:cols + 1) / tabcount
+    else
+        let tabcols = a:cols / tabcount
+    endif
 
     " Start truncating at the start of the tabs
     let rv .= '%<'

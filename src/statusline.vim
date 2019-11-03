@@ -25,6 +25,14 @@ function! LocWinFlag()
     endif
 endfunction
 
+function! SpaceIfArgs()
+    if argc()
+        return ' '
+    else
+        return ''
+    endif
+endfunction
+
 function! SetStatusLine(arg)
     " Always show the status line
     set laststatus=2
@@ -48,7 +56,7 @@ function! SetStatusLine(arg)
     set statusline+=%1*[%f]
 
     " Argument status
-    set statusline+=%5*%a\ %1*
+    set statusline+=%5*%a%{SpaceIfArgs()}%1*
 
     " Right-justify from now on
     set statusline+=%=%<

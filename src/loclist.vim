@@ -90,6 +90,23 @@ function! RegisterRefLoc()
     call RegisterCursorHoldCallback(function('RefreshLocationLists'), "", 1, -20, 0)
 endfunction
 
+" Just setting w:locwinHidden to 0 while in the location window does nothing.
+" So if we're in a location window, first jump to the window whose location
+" window it is
+function! HideLocList()
+    if getwininfo(win_getid())[0]['loclist']
+        let currentWinid = win_getid()
+        for winnum in range(1, winnr('$'))
+            if winnum != winnr() &&
+              \get(getloclist(winnum, {'winid':0}), 'winid', 0) == currentWinid
+                execute winnum . 'wincmd w'
+                break
+            endif
+        endfor
+    endif
+    let w:locwinHidden = 1
+endfunction
+
 augroup Loclist
     autocmd!
     " Make sure all new windows have their location window non-hidden by
@@ -106,7 +123,7 @@ augroup END
 
 " Mappings
 " Hide the current window's location window
-nnoremap <silent> <leader>lh :let w:locwinHidden = 1<cr>:call RegisterRefLoc()<cr>
+nnoremap <silent> <leader>lh :call HideLocList()<cr>:call RegisterRefLoc()<cr>
 " Show the current window's location window
 nnoremap <silent> <leader>ls :let w:locwinHidden = 0<cr>:call RegisterRefLoc()<cr>
 
