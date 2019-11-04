@@ -37,7 +37,7 @@ function! GetArgcString()
     elseif  argc() > 0
         let rv = '%5*[' . argc() . ' Args]'
     else
-        let rv=''
+        return ['', 0]
     endif
     return [rv, len(rv) - 3]
 endfunction
