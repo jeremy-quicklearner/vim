@@ -26,7 +26,7 @@ function! LocWinFlag()
 endfunction
 
 function! SpaceIfArgs()
-    if argc()
+    if argc() > 1
         return ' '
     else
         return ''

@@ -30,6 +30,18 @@ function! GetVimVersionString()
     return [rv, len(rv) - 14]
 endfunction
 
+" Get the argument count as a tabline-friendly string
+function! GetArgcString()
+    if argc() == 1
+        let rv = '%5*[Arg]'
+    elseif  argc() > 0
+        let rv = '%5*[' . argc() . ' Args]'
+    else
+        let rv=''
+    endif
+    return [rv, len(rv) - 3]
+endfunction
+
 " If a register is populated, return its letter. Else a hyphen
 function! HyphenIfEmpty(letter)
     if len(getreg(a:letter))
@@ -275,6 +287,7 @@ endfunction
 function! GetTabLine()
     " Compute everything except the tabs first
     let vimVersionString = GetVimVersionString()
+    let argcString = GetArgcString()
     let regListString = GetRegListString()
     let qfWinFlag = GetQfWinFlag()
 
@@ -284,6 +297,7 @@ function! GetTabLine()
     " items
     let colsForTabs = &columns
     let colsForTabs -= vimVersionString[1]
+    let colsForTabs -= argcString[1]
     let colsForTabs -= regListString[1]
     let colsForTabs -= qfWinFlag[1]
 
@@ -293,6 +307,7 @@ function! GetTabLine()
     " Construct the tabline using all the items
     let tabline = ""
     let tabline .= vimVersionString[0]
+    let tabline .= argcString[0]
     let tabline .= tabsString
     let tabline .= regListString[0]
     let tabline .= qfWinFlag[0]
