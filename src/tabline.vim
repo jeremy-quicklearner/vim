@@ -44,7 +44,11 @@ endfunction
 
 " If a register is populated, return its letter. Else a hyphen
 function! HyphenIfEmpty(letter)
-    if len(getreg(a:letter))
+    " If an upper-case letter is passed to getreg() here, then for reasons
+    " unknown to me, the default register gets populated with the contents
+    " of whichever register is indexed by the character that HypenIsEmpty
+    " returns.
+    if len(getreg(tolower(a:letter)))
         return a:letter
     else
         return '-'
@@ -262,7 +266,7 @@ function! GetRegListString()
              \'K', 'L', 'M', 'N', 'O',
              \'P', 'Q', 'R', 'S', 'T',
              \'U', 'V', 'W', 'X', 'Y',
-             \'X']
+             \'Z']
         " Call HyphenIfEmpty() dynamically so that the register list will
         " update without messy autocmds
         let rv .= '%{HyphenIfEmpty("' . i . '")}'

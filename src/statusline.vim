@@ -25,6 +25,15 @@ function! LocWinFlag()
     endif
 endfunction
 
+" Get the diff flag for the current window
+function! DiffFlag()
+    if &diff
+        return '[DIF]'
+    else
+        return ''
+    endif
+endfunction
+
 function! SpaceIfArgs()
     if argc() > 1
         return ' '
@@ -63,6 +72,9 @@ function! SetStatusLine(arg)
 
     " Location window flag
     set statusline+=%2*%{LocWinFlag()}
+
+    " Diff flag
+    set statusline+=%6*%{DiffFlag()}
 
     " [Column][Current line/Total lines][% of file]
     set statusline+=%3*[%c][%l/%L][%p%%]

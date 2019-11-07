@@ -77,9 +77,9 @@ highlight PmenuThumb        ctermfg=Red     ctermbg=White   cterm=none
 
 " Diff stuff - self-explanatory
 highlight DiffAdd           ctermfg=Green   ctermbg=Black   cterm=none
-highlight DiffChange        ctermfg=Yellow  ctermbg=Black   cterm=none
+highlight DiffChange        ctermfg=White   ctermbg=Black   cterm=none
 highlight DiffDelete        ctermfg=Red     ctermbg=Black   cterm=none
-highlight DiffText          ctermfg=White   ctermbg=Black   cterm=none
+highlight DiffText          ctermfg=Yellow  ctermbg=Black   cterm=none
 
 highlight Directory         ctermfg=Blue    ctermbg=Black   cterm=none
 highlight ModeMsg           ctermfg=White   ctermbg=Black   cterm=none
@@ -150,8 +150,8 @@ highlight User2             ctermbg=Blue    ctermfg=Black   cterm=none
 highlight User3             ctermbg=Green   ctermfg=Black   cterm=none
 highlight User4             ctermbg=Yellow  ctermfg=Black   cterm=none
 highlight User5             ctermbg=Magenta ctermfg=Black   cterm=none
+highlight User6             ctermbg=Cyan    ctermfg=Black   cterm=none
 
-highlight User6             ctermbg=Black   ctermfg=Blue    cterm=none
 highlight User7             ctermbg=Black   ctermfg=Green   cterm=none
 highlight User8             ctermbg=Black   ctermfg=Yellow  cterm=none
 

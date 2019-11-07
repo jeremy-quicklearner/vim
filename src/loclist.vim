@@ -62,7 +62,7 @@ function! RefreshLocationLists(command)
         let winid = win_getid(winnum)
         if getwininfo(winid)[0]['loclist'] && winid != immuneWinid
             call add(locWinids, winid)
-        endif
+      endif
     endfor
 
     " Close all those location windows
@@ -87,7 +87,7 @@ function! RegisterRefLoc()
     if s:refLocIsRunning
         return
     endif
-    call RegisterCursorHoldCallback(function('RefreshLocationLists'), "", 1, -20, 0)
+    call RegisterCursorHoldCallback(function('RefreshLocationLists'), "", 1, -10, 0)
 endfunction
 
 " Just setting w:locwinHidden to 0 while in the location window does nothing.
@@ -107,6 +107,39 @@ function! HideLocList()
     let w:locwinHidden = 1
 endfunction
 
+" This function is intended to be called from mappings and autocommands which
+" do something else immediately after calling it. If the user invokes this
+" function directly, then the CursorHold callback it registers will just open
+" the location lists again
+function! CloseAllLocWins()
+    " If the cursor is currently in a location window, go to the window whose
+    " location list is in the current window
+    if getwininfo(win_getid())[0]['loclist']
+        let currentWinid = win_getid()
+        for winnum in range(1, winnr('$'))
+            if winnum != winnr() &&
+              \get(getloclist(winnum, {'winid':0}), 'winid', 0) == currentWinid
+                execute winnum . 'wincmd w'
+            endif
+        endfor
+    endif
+
+    " Make a list of all location windows' window IDs
+    let locwinids = []
+    for winnum in range(1, winnr('$'))
+        if getwininfo(win_getid(winnum))[0]['loclist']
+            call add(locwinids, win_getid(winnum))
+        endif
+    endfor
+
+    " Close each one
+    for winid in locwinids
+        execute win_id2win(winid) . 'wincmd q'
+    endfor
+
+    call RegisterRefLoc()
+endfunction
+
 augroup Loclist
     autocmd!
     " Make sure all new windows have their location window non-hidden by
@@ -122,6 +155,7 @@ augroup Loclist
 augroup END
 
 " Mappings
+
 " Hide the current window's location window
 nnoremap <silent> <leader>lh :call HideLocList()<cr>:call RegisterRefLoc()<cr>
 " Show the current window's location window
@@ -130,3 +164,7 @@ nnoremap <silent> <leader>ls :let w:locwinHidden = 0<cr>:call RegisterRefLoc()<c
 " Clear the current window's location list
 nnoremap <silent> <leader>lc :lexpr []<cr>:lclose<cr>:call RegisterRefLoc()<cr>
 
+" When equalizing windows, location windows are at risk of being unpredictable
+" resized. So close them while equalizing.
+nnoremap <silent> <c-w>= :call CloseAllLocWins()<cr><c-w>=
+vnoremap <silent> <c-w>= :call CloseAllLocWins()<cr><c-w>=

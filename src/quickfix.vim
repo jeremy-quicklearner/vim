@@ -46,6 +46,8 @@ function! RefreshQuickfixList(arg)
         if winwidth(qfwinnr) != &columns ||
           \winheight(qfwinnr) != 10 ||
           \qfwinnr != winnr('$') 
+            call CloseAllLocWins()
+            call RegisterRefLoc()
             copen
             wincmd J
             resize 10
@@ -60,6 +62,8 @@ function! RefreshQuickfixList(arg)
     " If the quickfix list is populated, open the quickfix window and make
     " sure it's at the bottom of the screen
     if len(getqflist())
+        call CloseAllLocWins()
+        call RegisterRefLoc()
         copen
         wincmd J
     endif
@@ -79,7 +83,7 @@ augroup Quickfix
     " I don't do this for location lists because RefreshLocationLists is
     " linear in the number of windows. RefreshQuickfixList takes constant
     " time.
-    autocmd VimEnter,TabNew * call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -10, 1)
+    autocmd VimEnter,TabNew * call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -20, 1)
 augroup END
 
 " Mappings

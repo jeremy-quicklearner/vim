@@ -1,0 +1,15 @@
+Easy
+- Install vim-surround
+
+Hard but I know how
+- Command that populates location/quickfix list from backtraces
+- Fix the problem with signs 
+
+I don't know how
+- Figure out why terminal windows keep spontaneously changing statuslines
+- Figure out some way to set formatting options dynamically, maybe based on file path
+
+I don't know if I know how
+- Add an undotree visualization plugin
+- Automatically jump to location/quickfix window after commands that change its content
+- Automatically resize the location list after jumping to it if it is too small

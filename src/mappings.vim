@@ -23,9 +23,9 @@ nnoremap <leader>ve :vsplit $MYVIMRC<cr>
 nnoremap <leader>vs :source $MYVIMRC<cr>
 
 " Window maximizing (like in tmux)
-nnoremap <c-w>z <c-w>\|<c-w>_
-vnoremap <c-w>z <c-w>\|<c-w>_
-tnoremap <c-w>z <c-w>\|<c-w>_
+nnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
+vnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
+tnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
 
 " Window navigation with Ctrl
 nnoremap <c-h> <c-w>h
@@ -84,7 +84,7 @@ vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
 " Peek at entries in quickfix and location lists
-nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>\<c-p>" : "\<cr>"
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>zz\<c-p>" : "\<cr>"
 
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>

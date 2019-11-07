@@ -10,6 +10,10 @@ set wildmenu
 " Keep 50 lines of ex command history
 set history=50
 
+" Allow windows to be arbitratily small
+set winheight=1
+set winwidth=1
+
 " The default updatetime of 4000 is too slow for me. CursorHold callbacks need
 " to happen quickly
 set updatetime=100
