@@ -84,7 +84,7 @@ vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
 " Peek at entries in quickfix and location lists
-nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>\<c-w>zz\<c-p>" : "\<cr>"
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>zz\<c-w>\<c-p>" : "\<cr>"
 
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
