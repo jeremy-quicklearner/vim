@@ -23,6 +23,7 @@ autocmd VimEnter *
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami'
+Plug 'mbbill/undotree'
 call plug#end()
 
 " Netrw stuff

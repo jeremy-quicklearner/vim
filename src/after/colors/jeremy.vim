@@ -42,8 +42,8 @@ highlight CursorLine        ctermfg=none    ctermbg=none    cterm=none
 
 " Error-type stuff is red so it stands out
 highlight ErrorMsg          ctermfg=Red     ctermbg=Black   cterm=none
-highlight WarningMsg        ctermfg=Black   ctermbg=Red     cterm=none
-highlight Question          ctermfg=Black   ctermbg=Red     cterm=none
+highlight WarningMsg        ctermfg=Magenta ctermbg=Black   cterm=none
+highlight Question          ctermfg=Magenta ctermbg=Black   cterm=none
 highlight SpellBad          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellCap          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellLocal        ctermfg=Red     ctermbg=Black   cterm=none

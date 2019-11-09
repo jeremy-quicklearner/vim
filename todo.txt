@@ -1,5 +1,7 @@
 Easy
 - Install vim-surround
+- Allow specifying extra plugins in .vimrc
+- Persistent undo
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
