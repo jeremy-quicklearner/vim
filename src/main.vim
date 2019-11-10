@@ -3,14 +3,13 @@
 " scripts
 source <sfile>:p:h/paths.vim
 
-" Anything I do should take precedence over anything a plugin does
-source <sfile>:p:h/plugin.vim
-
 " Util must be available to all of my code
 source <sfile>:p:h/util.vim
 
+" Anything I do should take precedence over anything a plugin does
+source <sfile>:p:h/plugin.vim
+
 " Specific categories of functionality get their own files
-source <sfile>:p:h/signs.vim
 source <sfile>:p:h/quickfix.vim
 source <sfile>:p:h/loclist.vim
 " Statusline and tabline are last because they may display information from

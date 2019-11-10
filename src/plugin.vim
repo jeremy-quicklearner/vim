@@ -24,6 +24,7 @@ call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami'
 Plug 'mbbill/undotree'
+Plug 'jeremy-quicklearner/vim-sign-utils'
 call plug#end()
 
 " Netrw stuff
@@ -44,3 +45,25 @@ augroup AutoOrigami
                 \|     execute('AutoOrigamiFoldColumn')
                 \| endif
 augroup END
+
+" Vim Sign Utils stuff
+" Place a sign on the current line
+nnoremap <silent> <leader>sr :PlaceUtilSigns Red<cr>
+nnoremap <silent> <leader>sg :PlaceUtilSigns Green<cr>
+nnoremap <silent> <leader>sy :PlaceUtilSigns Yellow<cr>
+nnoremap <silent> <leader>sb :PlaceUtilSigns Blue<cr>
+nnoremap <silent> <leader>sm :PlaceUtilSigns Magenta<cr>
+nnoremap <silent> <leader>sc :PlaceUtilSigns Cyan<cr>
+nnoremap <silent> <leader>sw :PlaceUtilSigns White<cr>
+" Place signs on highlighted lines
+vnoremap <silent> <leader>sr :PlaceUtilSigns Red<cr>
+vnoremap <silent> <leader>sg :PlaceUtilSigns Green<cr>
+vnoremap <silent> <leader>sy :PlaceUtilSigns Yellow<cr>
+vnoremap <silent> <leader>sb :PlaceUtilSigns Blue<cr>
+vnoremap <silent> <leader>sm :PlaceUtilSigns Magenta<cr>
+vnoremap <silent> <leader>sc :PlaceUtilSigns Cyan<cr>
+vnoremap <silent> <leader>sw :PlaceUtilSigns White<cr>
+" Remove signs from the current line
+nnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
+" Remove signs from highlighted lines
+vnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
