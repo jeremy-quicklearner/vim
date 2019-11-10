@@ -58,16 +58,9 @@ highlight QuickFixLine      ctermfg=Yellow  ctermbg=Black   cterm=none
 highlight Folded            ctermfg=Yellow  ctermbg=Black   cterm=none
 highlight FoldColumn        ctermfg=Yellow  ctermbg=Black   cterm=none
 
-" Sign-related stuff is all case-by-case
+" Sign-related stuff should all be overridden nayway by individual signs
 highlight SignColumn        ctermfg=Red     ctermbg=Black   cterm=none
 highlight Sign              ctermfg=Red     ctermbg=Red     cterm=none
-highlight SignJeremyRed     ctermfg=Black   ctermbg=Red     cterm=none
-highlight SignJeremyGreen   ctermfg=Black   ctermbg=Green   cterm=none
-highlight SignJeremyYellow  ctermfg=Black   ctermbg=Yellow  cterm=none
-highlight SignJeremyBlue    ctermfg=Black   ctermbg=Blue    cterm=none
-highlight SignJeremyMagenta ctermfg=Black   ctermbg=Magenta cterm=none
-highlight SignJeremyCyan    ctermfg=Black   ctermbg=Cyan    cterm=none
-highlight SignJeremyWhite   ctermfg=Black   ctermbg=White   cterm=none
 
 " The Pmenu (Autocompletion menu) is Cyan
 highlight Pmenu             ctermfg=Black   ctermbg=Cyan    cterm=none

@@ -3,7 +3,8 @@ Easy
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
-- Fix the problem with signs 
+- Split cursor flashing into its own plugin
+- Split :Tops into its own plugin
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
