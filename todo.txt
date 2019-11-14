@@ -5,8 +5,9 @@ Easy
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
-- Split cursor flashing into its own plugin
+- Split :Flash into its own plugin
 - Split :Tops into its own plugin
+- Put the line number refreshing into a cursorhold callback to avoid churn
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
