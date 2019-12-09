@@ -92,7 +92,7 @@ endfunction
 command! -nargs=0 -complete=command Flash call FlashCursorLine("")
 nnoremap <silent> <c-f> :Flash<cr>
 vnoremap <silent> <c-f> <esc>:Flash<cr>gv
-inoremap <silent> <c-f> <esc>:Flash<cr>i
+inoremap <silent> <c-f> <esc>:Flash<cr>a
 tnoremap <silent> <c-f> <c-\><c-n>:Flash<cr>i
 
 

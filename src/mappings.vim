@@ -27,16 +27,6 @@ nnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWin
 vnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
 tnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
 
-" Window navigation with Ctrl
-nnoremap <c-h> <c-w>h
-nnoremap <c-j> <c-w>j
-nnoremap <c-k> <c-w>k
-nnoremap <c-l> <c-w>l
-tnoremap <c-h> <c-w>h
-tnoremap <c-j> <c-w>j
-tnoremap <c-k> <c-w>k
-tnoremap <c-l> <c-w>l
-
 " Window resizing
 nnoremap <leader>= <c-w>+
 vnoremap <leader>= <c-w>+
@@ -84,7 +74,7 @@ vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
 " Peek at entries in quickfix and location lists
-nnoremap <expr> <space> &buftype ==# 'quickfix' ? "\<cr>zz\<c-w>\<c-p>" : "\<cr>"
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<cr>"
 
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>

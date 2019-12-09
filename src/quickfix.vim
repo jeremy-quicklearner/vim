@@ -94,3 +94,7 @@ nnoremap <silent> <leader>qs :let t:qfwinHidden = 0<cr>
 
 " Clear the quickfix list
 nnoremap <silent> <leader>qc :cexpr []<cr>
+
+"=================================================================================
+augroup QuickfixNew
+augroup END

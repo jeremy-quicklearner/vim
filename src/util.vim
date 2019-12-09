@@ -90,32 +90,29 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
 endfunction
 
 " Run the registered callbacks
-function! RunCursorHoldCallbacks()
+function! RunCursorHoldCallbacks(cascading)
     call EnsureCallbackListsExist()
-
     let newCallbacks = []
-    for callback in t:cursorHoldCallbacks
+
+    if a:cascading
+        let callbacks = t:cursorHoldCascadingCallbacks
+    else
+        let callbacks = t:cursorHoldCallbacks
+    endif
+
+    for callback in callbacks
         call callback.callback(callback.data)
         if callback.permanent
             call add(newCallbacks, callback)
         endif
     endfor
 
-    let t:cursorHoldCallbacks = newCallbacks
-endfunction
+    if a:cascading
+        let t:cursorHoldCascadingCallbacks = newCallbacks
+    else
+        let t:cursorHoldCallbacks = newCallbacks
+    endif
 
-function! RunCursorHoldCascadingCallbacks()
-    call EnsureCallbackListsExist()
-
-    let newCallbacks = []
-    for callback in t:cursorHoldCascadingCallbacks
-        call callback.callback(callback.data)
-        if callback.permanent
-            call add(newCallbacks, callback)
-        endif
-    endfor
-
-    let t:cursorHoldCascadingCallbacks = newCallbacks
 endfunction
 
 function! HandleTerminalEnter()
@@ -135,8 +132,8 @@ endfunction
 augroup CursorHoldCallbacks
     autocmd!
     " The callbacks run on the CursorHold event
-    autocmd CursorHold * nested call RunCursorHoldCascadingCallbacks()
-    autocmd CursorHold * call RunCursorHoldCallbacks()
+    autocmd CursorHold * nested call RunCursorHoldCallbacks(1)
+    autocmd CursorHold * call RunCursorHoldCallbacks(0)
 
     " The CursorHold autocmd doesn't run in active terminal windows. When a
     " terminal is opened or entered go to terminal-normal mode so the event

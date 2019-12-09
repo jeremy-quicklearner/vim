@@ -168,3 +168,7 @@ nnoremap <silent> <leader>lc :lexpr []<cr>:lclose<cr>:call RegisterRefLoc()<cr>
 " resized. So close them while equalizing.
 nnoremap <silent> <c-w>= :call CloseAllLocWins()<cr><c-w>=
 vnoremap <silent> <c-w>= :call CloseAllLocWins()<cr><c-w>=
+
+"=================================================================================
+augroup LoclistNew
+augroup END
