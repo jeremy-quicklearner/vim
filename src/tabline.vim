@@ -260,7 +260,7 @@ endfunction
 
 " Get a list of registers in use as a tabline-friendly string
 function! GetRegListString()
-    let rv = '%5*[Reg '
+    let rv = '%3*[Reg '
     for i in ['A', 'B', 'C', 'D', 'E',
              \'F', 'G', 'H', 'I', 'J',
              \'K', 'L', 'M', 'N', 'O',

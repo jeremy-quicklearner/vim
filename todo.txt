@@ -2,12 +2,14 @@ Easy
 - Install vim-surround
 - Allow specifying extra plugins in .vimrc
 - Persistent undo
+- Add l: to all variables in functions
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
 - Split :Flash into its own plugin
 - Split :Tops into its own plugin
 - Put the line number refreshing into a cursorhold callback to avoid churn
+- Pre-8.1 version compatibility
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
@@ -18,3 +20,7 @@ I don't know how
 I don't know if I know how
 - Add an undotree visualization plugin
 - Automatically jump to location/quickfix window after commands that change its content
+- Subwin/Uberwin engine
+- Make locwins into subwins
+- Make qfwins into uberwins
+- Make Help into uberwin
