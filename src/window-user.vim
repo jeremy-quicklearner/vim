@@ -26,7 +26,10 @@ function! WinAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
 endfunction
 
 function! WinAddUberwinGroup(grouptypename)
-    " TODO: stub
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+    call WinStateOpenWindowsByGroupType
+    call WinModelAddUberwinGroup(a:grouptypename)
 endfunction
 
 function! WinRemoveUberwinGroup(grouptypename)

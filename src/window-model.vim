@@ -98,7 +98,7 @@ function! s:UberwinGroupTypeExists(grouptypename)
     call s:AssertWinModelExists()
     return has_key(g:uberwingrouptype, a:grouptypename )
 endfunction
-function! s:AssertUberwinGroupTypeExists(grouptypename)
+function! WinModelAssertUberwinGroupTypeExists(grouptypename)
     if !s:UberwinGroupTypeExists(a:grouptypename)
         throw 'nonexistent uberwin group type ' . a:grouptypename
     endif
@@ -390,7 +390,7 @@ endfunction
 " Uberwin group manipulation
 function! s:UberwinGroupExists(grouptypename)
     call s:AssertWinModelExists()
-    call s:AssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     return has_key(t:uberwin, a:grouptypename )
 endfunction
 function! s:AssertUberwinGroupExists(grouptypename)
@@ -400,7 +400,7 @@ function! s:AssertUberwinGroupExists(grouptypename)
 endfunction
 function! WinModelAddUberwins(winids, grouptypename)
     call s:AssertWinModelExists()
-    call s:AssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     if s:UberwinGroupExists(a:grouptypename)
         throw 'uberwin group ' . a:grouptypename . ' already exists'
     endif
@@ -432,14 +432,14 @@ endfunction
 
 function! WinModelRemoveUberwins(grouptypename)
     call s:AssertWinModelExists()
-    call s:AssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     call s:AssertUberwinGroupExists(a:grouptypename)
     call remove(t:uberwin, a:grouptypename)
 endfunction
 
 function! WinModelHideUberwins(grouptypename)
     call s:AssertWinModelExists()
-    call s:AssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     call s:AssertUberwinGroupExists(a:grouptypename)
     if t:uberwin[a:grouptypename].hidden
         throw 'uberwin group ' . a:grouptypename . ' is already hidden'
@@ -451,7 +451,7 @@ endfunction
 
 function! WinModelShowUberwins(grouptypename, winids)
     call s:AssertWinModelExists()
-    call s:AssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     call s:AssertUberwinGroupExists(a:grouptypename)
     call s:ValidateNewWinids(a:winids, len(g:uberwingrouptype[a:grouptypename].typenames))
     if !t:uberwin[a:grouptypename].hidden
