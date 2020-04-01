@@ -74,6 +74,16 @@ highlight DiffChange        ctermfg=White   ctermbg=Black   cterm=none
 highlight DiffDelete        ctermfg=Red     ctermbg=Black   cterm=none
 highlight DiffText          ctermfg=Yellow  ctermbg=Black   cterm=none
 
+" vim/runtime/syntax/diff.vim has some weird choices at the bottom.
+" Overwrite them.
+highlight link diffOldFile NonText
+highlight link diffNewFile NonText
+highlight link diffFile NonText
+highlight link diffAdded DiffAdd
+highlight link diffIdentical DiffChange
+highlight link diffRemoved DiffDelete
+highlight link diffChanged DiffText
+
 highlight Directory         ctermfg=Blue    ctermbg=Black   cterm=none
 highlight ModeMsg           ctermfg=White   ctermbg=Black   cterm=none
 highlight MoreMsg           ctermfg=White   ctermbg=Black   cterm=none

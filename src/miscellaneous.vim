@@ -18,6 +18,11 @@ set winwidth=1
 " to happen quickly
 set updatetime=100
 
+" Use a small ttimeoutlen to return to normal mode faster
+" Keep timeoutlen at 1000 so that mappings still work when using escape
+" sequences
+set timeoutlen=1000 ttimeoutlen=10
+
 " Don't show the welcome message
 set shortmess=I
 

@@ -35,11 +35,15 @@
 "     - The User Operations - Commands and Mappings to manipulate the model
 "       and state while preserving their consistency. May reuse portions of
 "       the Resolve function
+" There is also a place for helpers common to the resolve function and user
+" operations.
 
 " Model
 source <sfile>:p:h/window-model.vim
 " State
 source <sfile>:p:h/window-state.vim
+" Common code
+source <sfile>:p:h/window-common.vim
 " Resolve function
 source <sfile>:p:h/window-resolve.vim
 " User Operations
@@ -51,7 +55,7 @@ function! s:InitTab()
     call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1)
 endfunction
 
-augroup Subwindow
+augroup Window
     autocmd!
     " Every tab must be initialized
     autocmd VimEnter,TabNew * call s:InitTab()

@@ -3,6 +3,7 @@ Easy
 - Allow specifying extra plugins in .vimrc
 - Persistent undo
 - Add l: to all variables in functions
+- Add command that accepts range of lines and executes them as vimscript
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
@@ -10,12 +11,16 @@ Hard but I know how
 - Split :Tops into its own plugin
 - Put the line number refreshing into a cursorhold callback to avoid churn
 - Pre-8.1 version compatibility
+- Replace common big motions like H M L Ctrl-D and Ctrl-U with more animated versions
+- Add mapping to change instances of "false" to "true" and vice versa
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
 - Figure out some way to set formatting options dynamically, maybe based on file path
 - Figure out Tags
 - Add a way to switch off line wrapping per window
+- Figure out some convenient way to store sessions
+- Write a command that calls a ws make and puts errors in the quickfix list
 
 I don't know if I know how
 - Add an undotree visualization plugin

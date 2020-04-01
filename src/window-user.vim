@@ -25,23 +25,78 @@ function! WinAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \a:toOpen, a:toClose)
 endfunction
 
-function! WinAddUberwinGroup(grouptypename)
+function! WinAddUberwinGroup(grouptypename, hidden)
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
+
+    " If we're adding the uberwin group as hidden, add it only to the model
+    if a:hidden
+        call WinModelAddUberwins(a:grouptypename, [])
+        return
+    endif
+
     let grouptype = g:uberwingrouptype[a:grouptypename]
-    call WinStateOpenWindowsByGroupType
-    call WinModelAddUberwinGroup(a:grouptypename)
+    let info = WinCommonGetCursorWinInfo()
+
+        let winids = WinStateOpenUberwinsByGroupType(grouptype)
+
+        call WinModelAddUberwins(a:grouptypename, winids)
+
+        " After adding the new uberwin group, some uberwin groups may need to be
+        " closed and reopened so that they reappear in their correct places
+        call WinCommonCloseAndReopenUberwinsWithHigherPriority(grouptype.priority)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
 function! WinRemoveUberwinGroup(grouptypename)
-    " TODO: stub
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+
+    let info = WinCommonGetCursorWinInfo()
+
+        if !WinModelUberwinGroupIsHidden(a:grouptypename)
+            let grouptype = g:uberwingrouptype[a:grouptypename]
+            call WinStateCloseUberwinsByGroupType(grouptype)
+        endif
+
+        call WinModelRemoveUberwins(a:grouptypename)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
 function! WinHideUberwinGroup(grouptypename)
-    " TODO: stub
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorWinInfo()
+
+        call WinStateCloseUberwinsByGroupType(grouptype)
+        call WinModelHideUberwins(a:grouptypename)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
 function! WinShowUberwinGroup(grouptypename)
-    " TODO: stub
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+    call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
+
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorWinInfo()
+
+        let winids = WinStateOpenUberwinsByGroupType(grouptype)
+        call WinModelShowUberwins(a:grouptypename, winids)
+
+        " After showing the uberwin group, some uberwin groups may need to be
+        " closed and reopened so that they reappear in their correct places
+        call WinCommonCloseAndReopenUberwinsWithHigherPriority(grouptype.priority)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
 " Add a subwin group type. One subwin group type represents the types of one or more
@@ -57,8 +112,8 @@ endfunction
 "               to use for the statusline flag
 " priority:     Subwins for a supwin will be opened in order of ascending
 "               priority
-" afterimaging: If true, afterimage all subwins of types in this group type when
-"               they and their supwin lose focus
+" afterimaging: List of flags for each subwin type i nthe group. If true, afterimage
+"               subwins of that type when they and their supwin lose focus
 " widths:       Widths of subwins. -1 means variable width.
 " heights:      Heights of subwins. -1 means variable height.
 " toOpen:       Function that, when called from the supwin, opens subwins of these
@@ -75,22 +130,76 @@ function! WinAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                    \a:widths, a:heights, a:toOpen, a:toClose)
 endfunction
 
-function! WinAddSubwinGroup(supwinid, grouptype)
-    " TODO: stub
+function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
+
+    " If we're adding the subwin group as hidden, add it only to the model
+    if a:hidden
+        call WinModelAddSubwins(a:supwinid, a:grouptypename, [])
+        return
+    endif
+
+    let grouptype = g:subwingrouptype[a:grouptypename]
+    let info = WinCommonGetCursorWinInfo()
+
+        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+        call WinModelAddSubwins(a:supwinid, a:grouptypename, winids)
+
+        " After adding the new subwin group, some subwin groups may need to be
+        " closed and reopened so that they reappear in their correct places
+        call WinCommonCloseAndReopenSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
-function! WinRemoveSubwinGroup(supwinid, grouptype)
-    " TODO: stub
+function! WinRemoveSubwinGroup(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
+
+    let info = WinCommonGetCursorWinInfo()
+
+        if !WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+            let grouptype = g:subwingrouptype[a:grouptypename]
+            call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+        endif
+
+        call WinModelRemoveSubwins(a:supwinid, a:grouptypename)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
-function! WinHideSubwinGroup(supwinid, grouptype)
-    " TODO: stub
+function! WinHideSubwinGroup(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+
+    let grouptype = g:subwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorWinInfo()
+
+        call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+        call WinModelHideSubwins(a:supwinid, a:grouptypename)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
-function! WinShowSubwinGroup(supwinid, grouptype)
-    " TODO: stub
+function! WinShowSubwinGroup(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
+    call WinModelAssertSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+
+    let grouptype = g:subwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorWinInfo()
+
+        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+        call WinModelShowSubwins(a:supwinid, a:grouptypename, winids)
+
+        " After showing the uberwin group, some uberwin groups may need to be
+        " closed and reopened so that they reappear in their correct places
+        call WinCommonCloseAndReopenSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+
+    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
-function! WinHideAllSubwins()
-    " TODO: stub
-endfunction
