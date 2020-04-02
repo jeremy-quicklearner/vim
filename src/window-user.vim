@@ -2,6 +2,40 @@
 " See window.vim
 
 " The User Operations
+
+" Register a callback to run after the resolver initializes a tab
+function! WinAddTabInitPreResolveCallback(callback)
+    call WinModelAddTabInitPreResolveCallback(a:callback)
+endfunction
+
+" Register a callback to run at the beginning of the resolver, when the
+" resolver runs for the first time after entering a tab
+function! WinAddTabEnterPreResolveCallback(callback)
+    call WinModelAddTabEnterPreResolveCallback(a:callback)
+endfunction
+
+" Register a callback to run at the beginning of the resolver
+function! WinAddPreResolveCallback(callback)
+    call WinModelAddPreResolveCallback(a:callback)
+endfunction
+
+" Register a callback to run partway through the resolver if new supwins have
+" been added to the model
+function! WinAddSupwinsAddedResolveCallback(callback)
+    call WinModelAddSupwinsAddedResolveCallback(a:callback)
+endfunction
+
+" Register a callback to run partway through the resolver, when the model has
+" been adapted to the state
+function! WinAddResolveCallback(callback)
+    call WinModelAddResolveCallback(a:callback)
+endfunction
+
+" Register a callback to run at the end of the resolver
+function! WinAddPostResolveCallback(callback)
+    call WinModelAddPostResolveCallback(a:callback)
+endfunction
+
 " Add an uberwin group type. One uberwin group type represents one or more uberwins
 " which are opened together
 " one window
@@ -100,7 +134,10 @@ endfunction
 
 function! WinGotoUberwin(grouptypename, typename)
     call WinModelAssertUberwinTypeExists(a:grouptypename, a:typename)
-    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+    if WinModelUberwinGroupIsHidden(a:grouptypename)
+        call WinShowUberwinGroup(a:grouptypename)
+    endif
+
     let winid = WinModelIdByInfo({
    \    'category': 'uberwin',
    \    'grouptype': a:grouptypename,
@@ -213,7 +250,8 @@ endfunction
 
 function! WinGotoSubwin(supwinid, grouptypename, typename)
     call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
-    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    if WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+        call WinShowSubwinGroup(supwinid, a:grouptypename)
     let winid = WinModelIdByInfo({
    \    'category': 'subwin',
    \    'supwin': a:supwinid,
@@ -223,3 +261,5 @@ function! WinGotoSubwin(supwinid, grouptypename, typename)
     call WinStateMoveCursorToWinid(winid)
 endfunction
 
+" TODO: Move Between Supwins
+" TODO: Zoom on supwins

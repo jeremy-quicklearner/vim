@@ -9,7 +9,7 @@ function! ToOpenQuickfix()
     endif
 
     " Open the quickfix window
-    copen
+    botright copen
 
     " copen also moves the cursor to the quickfix window, so return the
     " current window ID
@@ -18,6 +18,12 @@ endfunction
 
 " Callback that closes the quickfix window
 function! ToCloseQuickfix()
+    " Fail if the quickfix window is already closed
+    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+    if !qfwinid
+        throw 'Cannot close quickfix window that is not open'
+    endif
+
     " cclose fails if the quickfix window is the last window, so use :quit
     " instead
     if winnr('$') ==# 1 && tabpagenr('$') ==# 1
@@ -28,9 +34,16 @@ function! ToCloseQuickfix()
     cclose
 endfunction
 
+" The quickfix window is an uberwin
+call WinAddUberwinGroupType('quickfix', ['quickfix'],
+                           \'Qfx', 'Hid', 2, 0,
+                           \[-1], [10],
+                           \function('ToOpenQuickfix'),
+                           \function('ToCloseQuickfix'))
+
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list
-function! UpdateQuickfixUberwin()
+function! UpdateQuickfixUberwin(hide)
     let qfwinexists = WinModelUberwinGroupExists('quickfix')
     let qflistexists = len(getqflist())
     
@@ -40,31 +53,32 @@ function! UpdateQuickfixUberwin()
     endif
 
     if !qfwinexists && qflistexists
-        call WinAddUberwinGroup('quickfix', 0)
+        call WinAddUberwinGroup('quickfix', a:hide)
         return
     endif
 endfunction
+function! UpdateQuickfixUberwinShow()
+    call UpdateQuickfixUberwin(0)
+endfunction
+function! UpdateQuickfixUberwinHide()
+    call UpdateQuickfixUberwin(1)
+endfunction
 
-" The quickfix window is an uberwin
-call WinAddUberwinGroupType('quickfix', ['quickfix'],
-                           \'Qfx', 'Hid', 2, 0, [-1], [10],
-                           \function('ToOpenQuickfix'),
-                           \function('ToCloseQuickfix'))
+" Update the quickfix uberwin after entering a tab
+" If the uberwin needs to be added, make it hidden
+call WinAddTabEnterPreResolveCallback(function('UpdateQuickfixUberwinHide'))
 
-" Update the Quickfix uberwin when the quickfix list changes
+" Update the quickfix uberwin whenever the quickfix list is changed
+" If the uberwin needs to be added don't hide it
 augroup Quickfix
     autocmd!
-    autocmd QuickFixCmdPost [^Ll]* call UpdateQuickfixUberwin()
+    autocmd QuickFixCmdPost * call UpdateQuickfixUberwinShow()
 augroup END
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
-" UpdateQfUberwin.
+" UpdateQuickfixUberwin.
 nnoremap <silent> <leader>qc :cexpr []<cr>
 nnoremap <silent> <leader>qs :call WinShowUberwinGroup('quickfix')<cr>
 nnoremap <silent> <leader>qh :call WinHideUberwinGroup('quickfix')<cr>
 nnoremap <silent> <leader>qq :call WinGotoUberwin('quickfix', 'quickfix')<cr>
-
-"=================================================================================
-augroup QuickfixNew
-augroup END

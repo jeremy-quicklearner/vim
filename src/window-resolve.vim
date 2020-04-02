@@ -1,39 +1,39 @@
 " Window infrastructure Resolve function
 " See window.vim
 
+let s:supwinsaddedcond = 0
+let t:winresolvetabenteredcond = 1
 function! s:WinResolveStateToModel()
-    " Terminal windows get special handling because the CursorHold event
-    " doesn't execute when the cursor is inside them
-
+    " STEP 1.1: Terminal windows get special handling because the CursorHold event
+    "           doesn't execute when the cursor is inside them
     " TODO: If any terminal window is listed in the model as an uberwin, mark that
     "       uberwin group hidden in the model and relist the window as a supwin
-
     " TODO: If any terminal window is listed in the model as a subwin, mark that
     "       subwin group hidden in the model and relist the window as a supwin
-
     " TODO: If any terminal window has non-hidden subwins, mark them as
     "       terminal-hidden in the model
-
     " TODO: If any non-terminal window has terminal-hidden subwins, mark those
     "       subwins as shown in the model
-
     " TODO: If any window is listed in the model as an uberwin but doesn't
     "       satisfy its type's constraints, mark the uberwin group hidden
     "       in the model and relist the window as a supwin
-
     " TODO: If any window is listed in the model as a subwin but doesn't
-    "       satisfy its type's constraints, mark the uberwin group hidden
-    "       in the model and relist the window as a supwin
+    "       satisfy its type's constraints, mark the subwin group hidden
+    "       in the model and relist the window as a supwin. Remember to set
+    "       s:supwinsaddedcond = 1
 
-    " If any window in the state isn't in the model, add it to the model
+    " STEP 1.2: If any window in the state isn't in the model, add it to the model
     let statewinids = WinStateGetWinidsByCurrentTab()
     for statewinid in statewinids
         if !WinModelWinExists(statewinid)
             " TODO: Add as appropriate subwin/uberwin
             call WinModelAddSupwin(statewinid)
+            let s:supwinsaddedcond = 1
         endif
     endfor
 
+    " STEP 1.3: If any window in the model isn't in the state, remove it from
+    "           the model
     " If any uberwin group in the model isn't fully represented in the state,
     " mark it hidden in the model
     let modeluberwinids = WinModelUberwinIds()
@@ -88,11 +88,7 @@ function! s:WinResolveStateToModel()
 endfunction
 
 function! s:WinResolveModelToState()
-    " TODO: If any uberwin's dimensions have changed, remove that uberwin's group
-    "       and all groups with lower priorities from the state
-    " TODO: If any subwin's dimensions have changed, remove that subwin's group
-    "       and all groups with lower priorities from the state
-
+    " STEP 2.1: Purge the state of windows that isn't in the model
     " TODO: If any supwin in the state isn't in the model, remove it from the
     "       state.
     " TODO: If any uberwin in the state isn't shown in the model, remove it
@@ -100,18 +96,23 @@ function! s:WinResolveModelToState()
     " TODO: If any subwin in the state isn't shown in the model, remove it
     "       from the state
 
+    " STEP 2.2: Temporarily close any windows that may have moved, so that
+    "           they can later be reopened in their correct places
+    " TODO: If any uberwin's dimensions or position have changed, remove that
+    "       uberwin's group and all groups with lower priorities from the state
+    " TODO: If any supwin's dimensions or position has changed, remove all of
+    "       that supwin's subwins from the state
+    " TODO: If any subwin's dimensions or positions have changed, remove that
+    "       subwin's group and all groups with lower priorities from the state
+
+    " STEP 2.3: Add any missing windows to the state, including those that
+    "           were temporarily removed, in the correct places
     " TODO: If any non-hidden uberwin in the model isn't in the state,
     "       add it to the state
     " TODO: If any non-hidden subwin in the model isn't in the state,
     "       add it to the state
 endfunction
 
-" Third, record all open windows' dimensions in the model so that changes can be
-" detected
-function! s:WinResolveRecordDimensions()
-    " TODO: stub
-endfunction
-    
 " The resolve function
 let s:resolveIsRunning = 0
 function! WinResolve(arg)
@@ -120,20 +121,62 @@ function! WinResolve(arg)
     endif
     let s:resolveIsRunning = 1
 
-    " Make sure the tab-specific model elements exist
+    " STEP 0: Make sure the tab-specific model elements exist
     if !WinModelExists()
         call WinModelInit()
+        " A tab has been initialized. Run the tab-init pre-resolve callbacks
+        for TabInitCallback in WinModelTabInitPreResolveCallbacks()
+            call TabInitCallback()
+        endfor
     endif
 
-    " The state may have changed since the last WinResolve() call. Adapt the
-    " model to fit it.
+    " If this is the first time running the resolver after entering a tab, run
+    " the appropriate callbacks
+    if t:winresolvetabenteredcond
+        for TabEnterCallback in WinModelTabEnterPreResolveCallbacks()
+            call TabEnterCallback()
+        endfor
+        let t:winresolvetabenteredcond = 0
+    endif
+
+    " Run the pre-resolve callbacks
+    for PreResolveCallback in WinModelPreResolveCallbacks()
+        call PreResolveCallback()
+    endfor
+
+    " STEP 1: The state may have changed since the last WinResolve() call. Adapt the
+    "         model to fit it.
     call s:WinResolveStateToModel()
 
-    " Now the model is the way it should be, so adjust the state to fit it.
+    " Run the conditional callbacks
+    if s:supwinsaddedcond
+        for SupwinsAddedCallback in WinModelSupwinsAddedResolveCallbacks()
+            call SupwinsAddedCallback()
+        endfor
+        let s:supwinsaddedcond = 0
+    endif
+
+    " Run the resolve callbacks
+    for ResolveCallback in WinModelResolveCallbacks()
+        call ResolveCallback()
+    endfor
+
+    " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
 
-    " Window dimensions may have changed. Record them in the model.
-    call s:WinResolveRecordDimensions()
+    " Run the post-resolve callbacks
+    for PostResolveCallback in WinModelPostResolveCallbacks()
+        call PostResolveCallback()
+    endfor
 
     let s:resolveIsRunning = 0
 endfunction
+
+" Since the resolve function runs as a CursorHold callback, autocmd events
+" need to be explicitly signalled to it
+augroup WinResolve
+    autocmd!
+    
+    " Use the TabEnter event to detect when a tab has been entered
+    autocmd TabEnter * let t:winresolvetabenteredcond = 1
+augroup END

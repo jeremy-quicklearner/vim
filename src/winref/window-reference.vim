@@ -18,7 +18,7 @@ let s:subwintypes = {}
 " height:   Height of subwindows of this type. -1 means variable height.
 " toOpen:   Function that, when called from the superwindow, opens a subwindow
 "           of this type and leaves the cursor inside it. This function is
-"           always called with auautocmd
+"           always called with autocmd
 " toClose:  Function that, when called from a subwindow of this type, closes
 "           the subwindow
 function! AddSubwinType(name, flag, hidflag, priority, afterimg, width, height, toOpen, toClose)

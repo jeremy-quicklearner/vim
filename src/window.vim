@@ -51,7 +51,6 @@ source <sfile>:p:h/window-user.vim
 
 " Bootstrap code
 function! s:InitTab()
-    call WinModelInit()
     call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1)
 endfunction
 
