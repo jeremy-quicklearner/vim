@@ -36,7 +36,7 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
         throw 'Given group type has nonfunc toOpen member'
     endif
 
-    noautocmd let winids = call(ToOpen, [])
+    let winids = call(ToOpen, [])
     return winids
 endfunction
 
@@ -52,8 +52,7 @@ function! WinStateCloseUberwinsByGroupType(grouptype)
         throw 'Given group type has nonfunc toClose member'
     endif
 
-    noautocmd let winids = call(ToClose, [])
-    return winids
+    call call(ToClose, [])
 endfunction
 
 " From a given window, open windows using the toOpen function from a group type and
@@ -73,7 +72,7 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
     endif
 
     call win_gotoid(a:supwinid)
-    noautocmd let winids = call(ToOpen, [])
+    let winids = call(ToOpen, [])
     return winids
 endfunction
 
@@ -94,7 +93,6 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     endif
 
     call win_gotoid(a:supwinid)
-    noautocmd let winids = call(ToClose, [])
-    return winids
+    call call(ToClose, [])
 endfunction
 

@@ -28,7 +28,7 @@ function! WinCommonCloseAndReopenUberwinsWithHigherPriority(priority)
     endfor
 endfunction
 
-" CLoses and reopens all subwins with priority higher than a given
+" Closes and reopens all subwins with priority higher than a given
 function! WinCommonCloseAndReopenSubwinsWithHigherPriority(supwinid, priority)
     let grouptypenames = WinModelSubwinGroupTypeNamesByMinPriority(a:supwinid, a:priority)
     for grouptypename in grouptypenames

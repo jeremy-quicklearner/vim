@@ -15,9 +15,8 @@
 " widths:    Widths of uberwins. -1 means variable width.
 " heights:   Heights of uberwins. -1 means variable height.
 " toOpen:    Function that opens uberwins of these types and returns their window
-"            IDs. This function is always called with noautocmd
-" toClose:   Function that, closes the the uberwins of this group type. This
-"            function is always called with noautocmd
+"            IDs.
+" toClose:   Function that, closes the the uberwins of this group type.
 function! WinAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
                                 \priority, widths, heights, toOpen, toClose)
     call WinModelAddUberwinGroupType(a:name, a:typenames, a:flag, a:hidflag,
@@ -99,6 +98,17 @@ function! WinShowUberwinGroup(grouptypename)
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
+function! WinGotoUberwin(grouptypename, typename)
+    call WinModelAssertUberwinTypeExists(a:grouptypename, a:typename)
+    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+    let winid = WinModelIdByInfo({
+   \    'category': 'uberwin',
+   \    'grouptype': a:grouptypename,
+   \    'typename': a:typename
+   \})
+    call WinStateMoveCursorToWinid(winid)
+endfunction
+
 " Add a subwin group type. One subwin group type represents the types of one or more
 " subwins which are opened together
 " one window
@@ -117,11 +127,9 @@ endfunction
 " widths:       Widths of subwins. -1 means variable width.
 " heights:      Heights of subwins. -1 means variable height.
 " toOpen:       Function that, when called from the supwin, opens subwins of these
-"               types and returns their window IDs. This function is always called
-"               with noautocmd
+"               types and returns their window IDs.
 " toClose:      Function that, when called from a supwin, closes the the subwins of
 "               this group type for the supwin.
-"               This function is always called with noautocmd
 function! WinAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \priority, afterimaging, widths, heights,
                                     \toOpen, toClose)
@@ -201,5 +209,17 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
         call WinCommonCloseAndReopenSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
 
     call WinCommonRestoreCursorWinInfo(info)
+endfunction
+
+function! WinGotoSubwin(supwinid, grouptypename, typename)
+    call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    let winid = WinModelIdByInfo({
+   \    'category': 'subwin',
+   \    'supwin': a:supwinid,
+   \    'grouptype': a:grouptypename,
+   \    'typename': a:typename
+   \})
+    call WinStateMoveCursorToWinid(winid)
 endfunction
 

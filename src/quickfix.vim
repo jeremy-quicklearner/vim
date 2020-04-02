@@ -1,99 +1,69 @@
 " Quickfix list and quickfix window manipulation
 
-" Make sure the quickfix window is only displayed if it is populated and
-" non-empty. Always display it at the bottom of the screen.
-let s:refQfIsRunning = 0
-function! RefreshQuickfixList(arg)
-    " This function will be called from a nested autocmd. Guard against
-    " recursion.
-    if s:refQfIsRunning
-        return
-    endif
-    let s:refQfIsRunning = 1
-
+" Callback that opens the quickfix window
+function! ToOpenQuickfix()
+    " Fail if the quickfix window is already open
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
-
-    " If the quickfix list is empty or the quickfix window is hidden, make
-    " sure it's closed
-    if t:qfwinHidden || !len(getqflist())
-        " If the quickfix window is open and is the last window, quit the tab
-        if qfwinid && winnr('$') == 1
-            quit
-        " Otherwise we can use cclose
-        else
-            cclose
-        endif
-        let s:refQfIsRunning = 0
-        return
-    endif
-
-    " If the quickfix window is open and the cursor is in it, move it to the
-    " bottom of the screen and make sure it's ten rows tall
-    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
-    if win_getid() == qfwinid
-        wincmd J
-        resize 10
-        let s:refQfIsRunning = 0
-        return
-    endif
-
-    " If the quickfix window is open and the cursor is not in it, move it to
-    " the bottom of the screen and make sure it's ten rows tall
     if qfwinid
-        " If the quickfix window is already at the bottom of the screen and
-        " has the correct dimensions, do nothing
-        let qfwinnr = win_id2win(qfwinid)
-        if winwidth(qfwinnr) != &columns ||
-          \winheight(qfwinnr) != 10 ||
-          \qfwinnr != winnr('$') 
-            call CloseAllLocWins()
-            call RegisterRefLoc()
-            copen
-            wincmd J
-            resize 10
-            wincmd p
-        endif
-        let s:refQfIsRunning = 0
-        return
+        throw 'Quickfix window already exists with ID ' . qfwinid
     endif
 
-    " At this point, the quickfix window is not open
+    " Open the quickfix window
+    copen
 
-    " If the quickfix list is populated, open the quickfix window and make
-    " sure it's at the bottom of the screen
-    if len(getqflist())
-        call CloseAllLocWins()
-        call RegisterRefLoc()
-        copen
-        wincmd J
-    endif
-
-    let s:refQfIsRunning = 0
+    " copen also moves the cursor to the quickfix window, so return the
+    " current window ID
+    return [win_getid()]
 endfunction
 
+" Callback that closes the quickfix window
+function! ToCloseQuickfix()
+    " cclose fails if the quickfix window is the last window, so use :quit
+    " instead
+    if winnr('$') ==# 1 && tabpagenr('$') ==# 1
+        quit
+        return
+    endif
+
+    cclose
+endfunction
+
+" Make sure the quickfix uberwin exists if and only if there is a quickfix
+" list
+function! UpdateQuickfixUberwin()
+    let qfwinexists = WinModelUberwinGroupExists('quickfix')
+    let qflistexists = len(getqflist())
+    
+    if qfwinexists && !qflistexists
+        call WinRemoveUberwinGroup('quickfix')
+        return
+    endif
+
+    if !qfwinexists && qflistexists
+        call WinAddUberwinGroup('quickfix', 0)
+        return
+    endif
+endfunction
+
+" The quickfix window is an uberwin
+call WinAddUberwinGroupType('quickfix', ['quickfix'],
+                           \'Qfx', 'Hid', 2, 0, [-1], [10],
+                           \function('ToOpenQuickfix'),
+                           \function('ToCloseQuickfix'))
+
+" Update the Quickfix uberwin when the quickfix list changes
 augroup Quickfix
     autocmd!
-    " The quickfix window is non-hidden by default
-    autocmd VimEnter,TabNew * let t:qfwinHidden = 0
-
-    " Refresh the quickfix window on every CursorHold event. I would have
-    " liked to use a callback for this but since Vim doesn't have a WinMoved
-    " event, the only way to call it every time any window moves is... to also
-    " call it many times when a window doesn't move.
-    " I don't do this for location lists because RefreshLocationLists is
-    " linear in the number of windows. RefreshQuickfixList takes constant
-    " time.
-    autocmd VimEnter,TabNew * call RegisterCursorHoldCallback(function('RefreshQuickfixList'), "", 1, -20, 1)
+    autocmd QuickFixCmdPost [^Ll]* call UpdateQuickfixUberwin()
 augroup END
 
 " Mappings
-" Hide the quickfix window
-nnoremap <silent> <leader>qh :let t:qfwinHidden = 1<cr>
-" Show the quickfix window
-nnoremap <silent> <leader>qs :let t:qfwinHidden = 0<cr>
-
-" Clear the quickfix list
+" No explicit mappings to add or remove. Those operations are done by
+" UpdateQfUberwin.
 nnoremap <silent> <leader>qc :cexpr []<cr>
+nnoremap <silent> <leader>qs :call WinShowUberwinGroup('quickfix')<cr>
+nnoremap <silent> <leader>qh :call WinHideUberwinGroup('quickfix')<cr>
+nnoremap <silent> <leader>qq :call WinGotoUberwin('quickfix', 'quickfix')<cr>
 
 "=================================================================================
 augroup QuickfixNew

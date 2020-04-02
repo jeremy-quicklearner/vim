@@ -94,7 +94,6 @@ endfunction
 
 " Uberwin group type manipulation
 function! s:UberwinGroupTypeExists(grouptypename)
-    call s:AssertWinModelExists()
     return has_key(g:uberwingrouptype, a:grouptypename )
 endfunction
 function! WinModelAssertUberwinGroupTypeExists(grouptypename)
@@ -102,11 +101,17 @@ function! WinModelAssertUberwinGroupTypeExists(grouptypename)
         throw 'nonexistent uberwin group type ' . a:grouptypename
     endif
 endfunction
+function! s:AssertUberwinTypeExists(grouptypename, typename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    if index(g:uberwingrouptype[a:grouptypename].typenames, a:typename) < 0
+        throw 'uberwin group type ' .
+       \      a:grouptypename .
+       \      ' has no uberwin type ' .
+       \      a:typename
+    endif
+endfunction
 function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \priority, widths, heights, toOpen, toClose)
-    " The model needs to exist
-    call s:AssertWinModelExists()
-
     " The group type must not already exist
     if s:UberwinGroupTypeExists(a:name)
         throw 'uberwin group type ' . a:name . ' already exists'
@@ -205,9 +210,6 @@ endfunction
 function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \priority, afterimaging, widths, heights,
                                     \toOpen, toClose)
-    " The model needs to exist
-    call s:AssertWinModelExists()
-
     " The group type must not already exist
     if s:SubwinGroupTypeExists(a:name)
         throw 'subwin group type ' . a:name . ' already exists'
@@ -495,18 +497,18 @@ function! s:ValidateNewWinids(winids, explen)
 endfunction
 
 " Uberwin group manipulation
-function! s:UberwinGroupExists(grouptypename)
+function! WinModelUberwinGroupExists(grouptypename)
     call s:AssertWinModelExists()
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     return has_key(t:uberwin, a:grouptypename )
 endfunction
 function! WinModelAssertUberwinGroupExists(grouptypename)
-    if !s:UberwinGroupExists(a:grouptypename)
+    if !WinModelUberwinGroupExists(a:grouptypename)
         throw 'nonexistent uberwin group ' . a:grouptypename
     endif
 endfunction
 function! WinModelAssertUberwinGroupDoesntExist(grouptypename)
-    if s:UberwinGroupExists(a:grouptypename)
+    if WinModelUberwinGroupExists(a:grouptypename)
         throw 'uberwin group ' . a:grouptypename . ' exists'
     endif
 endfunction
