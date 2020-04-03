@@ -51,7 +51,11 @@ source <sfile>:p:h/window-user.vim
 
 " Bootstrap code
 function! s:InitTab()
+    " The resolver should run after any changes to the state
     call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1)
+
+    " Also run the resolver immediately
+    call WinResolve([])
 endfunction
 
 augroup Window

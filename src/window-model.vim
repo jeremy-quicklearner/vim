@@ -657,7 +657,17 @@ function! WinModelAssertUberwinGroupIsNotHidden(grouptypename)
 endfunction
 function! WinModelUberwinGroupTypeNames()
     return keys(g:uberwingrouptype)
- endfunction
+endfunction
+function! WinModelShownUberwinGroupTypeNames()
+    call s:AssertWinModelExists()
+    let grouptypenames = []
+    for grouptypename in keys(t:uberwin)
+        if !WinModelUberwinGroupIsHidden(grouptypename)
+            call add(grouptypenames, grouptypename)
+        endif
+    endfor
+    return grouptypenames
+endfunction
 function! WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     return g:uberwingrouptype[a:grouptypename].typenames
@@ -939,7 +949,17 @@ function! s:AssertSubwinGroupIsConsistent(supwinid, grouptypename)
 endfunction
 function! WinModelSubwinGroupTypeNames()
     return keys(g:subwingrouptype)
- endfunction
+endfunction
+function! WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+    call WinModelAssertSupwinExists(a:supwinid)
+    let grouptypenames = []
+    for grouptypename in keys(t:supwin[a:supwinid])
+        if !WinModelSubwinGroupIsHidden(a:supwinid, grouptypename)
+            call add(grouptypenames, grouptypename)
+        endif
+    endfor
+    return grouptypenames
+endfunction
 function! WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     return g:subwingrouptype[a:grouptypename].typenames

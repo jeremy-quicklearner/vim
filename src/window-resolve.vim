@@ -1,10 +1,14 @@
 " Window infrastructure Resolve function
 " See window.vim
 
+" Internal conditions
 let s:uberwinsaddedcond = 0
 let s:supwinsaddedcond = 0
 let s:subwinsaddedcond = 0
+
+" Input conditions
 let t:winresolvetabenteredcond = 1
+
 function! s:WinResolveStateToModel()
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
     "           doesn't execute when the cursor is inside them
@@ -17,37 +21,77 @@ function! s:WinResolveStateToModel()
     " TODO: If any non-terminal window has terminal-hidden subwins, mark those
     "       subwins as shown in the model
 
-    " STEP 1.2: If any uberwin or subwin in the state doesn't look the way the model
-    "           says it should, then it becomes a supwin
-    " TODO: If any window is listed in the model as an uberwin but doesn't
-    "       satisfy its type's constraints, mark the uberwin group hidden
-    "       in the model and relist the window as a supwin
-    " TODO: If any window is listed in the model as a subwin but doesn't
-    "       satisfy its type's constraints, mark the subwin group hidden
-    "       in the model and relist the window as a supwin. Remember to set
-    "       s:supwinsaddedcond = 1
-
-    " STEP 1.3: If any window in the state isn't in the model, add it to the model
-    " All winids in the state
-    let statewinids = WinStateGetWinidsByCurrentTab()
-    " Winids in the state that aren't in the model
-    let missingwinids = []
-    for statewinid in statewinids
-        if !WinModelWinExists(statewinid)
-            call add(missingwinids, statewinid)
-        endif
-    endfor
-    " Model info for those winids
-    let missingwininfo = []
     let toIdentifyUberwins = WinModelToIdentifyUberwins()
     let toIdentifySubwins = WinModelToIdentifySubwins()
     let currentwininfo = WinCommonGetCursorWinInfo()
-       for missingwinid in missingwinids
-           call WinStateMoveCursorToWinid(missingwinid)
-           call add(missingwininfo,
-                   \WinCommonIdentifyCurrentWindow(toIdentifyUberwins,
-                                                  \toIdentifySubwins))
-       endfor
+
+        " STEP 1.2: If any uberwin or subwin in the state doesn't look the way the model
+        "           says it should, then it becomes a supwin
+        " If any window is listed in the model as an uberwin but doesn't
+        " satisfy its type's constraints, mark the uberwin group hidden
+        " in the model and relist the window as a supwin. 
+        for grouptypename in WinModelShownUberwinGroupTypeNames()
+            for typename in WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
+                let winid = WinModelIdByInfo({
+               \    'category': 'uberwin',
+               \    'grouptype': grouptypename,
+               \    'typename': typename
+               \})
+                call WinStateMoveCursorToWinid(winid)
+                if toIdentifyUberwins[grouptypename]() !=# typename
+                    call WinModelHideUberwins(grouptypename)
+                    call WinModelAddSupwin(winid)
+                    let s:supwinsaddedcond = 1
+                    break
+                endif
+            endfor
+        endfor
+
+        " If any window is listed in the model as a subwin but doesn't
+        " satisfy its type's constraints, mark the subwin group hidden
+        " in the model and relist the window as a supwin. Remember to set
+        " s:supwinsaddedcond = 1
+        for supwinid in WinModelSupwinIds()
+            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                for typename in WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
+                    let winid = WinModelIdByInfo({
+                   \    'category': 'subwin',
+                   \    'supwin': supwinid,
+                   \    'grouptype': grouptypename,
+                   \    'typename': typename
+                   \})
+                    call WinStateMoveCursorToWinid(winid)
+                    let identified = toIdentifySubwins[grouptypename]()
+                    if empty(identified) ||
+                      \identified.supwin !=# supwinid ||
+                      \identified.typename !=# typename
+                        call WinModelHideSubwins(supwinid, grouptypename)
+                        call WinModelAddSupwin(winid)
+                        let s:supwinsaddedcond = 1
+                        break
+                    endif
+                endfor
+            endfor
+        endfor
+
+        " STEP 1.3: If any window in the state isn't in the model, add it to the model
+        " All winids in the state
+        let statewinids = WinStateGetWinidsByCurrentTab()
+        " Winids in the state that aren't in the model
+        let missingwinids = []
+        for statewinid in statewinids
+            if !WinModelWinExists(statewinid)
+                call add(missingwinids, statewinid)
+            endif
+        endfor
+        " Model info for those winids
+        let missingwininfo = []
+        for missingwinid in missingwinids
+            call WinStateMoveCursorToWinid(missingwinid)
+            call add(missingwininfo,
+                    \WinCommonIdentifyCurrentWindow(toIdentifyUberwins,
+                                                   \toIdentifySubwins))
+        endfor
     call WinCommonRestoreCursorWinInfo(currentwininfo)
     " Model info for those winids, grouped by category, supwin id, group type,
     " and type
