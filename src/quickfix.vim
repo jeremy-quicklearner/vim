@@ -34,12 +34,22 @@ function! ToCloseQuickfix()
     cclose
 endfunction
 
+" Callback that returns 'quickfix' if called from the quickfix window
+function! ToIdentifyQuickfix()
+    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+    if win_getid() == qfwinid
+        return 'quickfix'
+    endif
+    return ''
+endfunction
+
 " The quickfix window is an uberwin
 call WinAddUberwinGroupType('quickfix', ['quickfix'],
                            \'Qfx', 'Hid', 2, 0,
                            \[-1], [10],
                            \function('ToOpenQuickfix'),
-                           \function('ToCloseQuickfix'))
+                           \function('ToCloseQuickfix'),
+                           \function('ToIdentifyQuickfix'))
 
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list

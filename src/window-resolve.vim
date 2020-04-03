@@ -1,7 +1,9 @@
 " Window infrastructure Resolve function
 " See window.vim
 
+let s:uberwinsaddedcond = 0
 let s:supwinsaddedcond = 0
+let s:subwinsaddedcond = 0
 let t:winresolvetabenteredcond = 1
 function! s:WinResolveStateToModel()
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
@@ -23,14 +25,52 @@ function! s:WinResolveStateToModel()
     "       s:supwinsaddedcond = 1
 
     " STEP 1.2: If any window in the state isn't in the model, add it to the model
+    " All winids in the state
     let statewinids = WinStateGetWinidsByCurrentTab()
+    " Winids in the state that aren't in the model
+    let missingwinids = []
     for statewinid in statewinids
         if !WinModelWinExists(statewinid)
-            " TODO: Add as appropriate subwin/uberwin
-            call WinModelAddSupwin(statewinid)
-            let s:supwinsaddedcond = 1
+            call add(missingwinids, statewinid)
         endif
     endfor
+    " Model info for those winids
+    let missingwininfo = []
+    let toIdentifyUberwins = WinModelToIdentifyUberwins()
+    let toIdentifySubwins = WinModelToIdentifySubwins()
+    let currentwininfo = WinCommonGetCursorWinInfo()
+       for missingwinid in missingwinids
+           call WinStateMoveCursorToWinid(missingwinid)
+           call add(missingwininfo,
+                   \WinCommonIdentifyCurrentWindow(toIdentifyUberwins,
+                                                  \toIdentifySubwins))
+       endfor
+    call WinCommonRestoreCursorWinInfo(currentwininfo)
+    " Model info for those winids, grouped by category, supwin id, group type,
+    " and type
+    let groupedmissingwininfo = WinCommonGroupInfo(missingwininfo)
+    for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
+        call WinModelAddOrShowUberwins(
+       \    uberwingrouptypename,
+       \    groupedmissingwininfo.uberwin[uberwingrouptypename].winids
+       \)
+    endfor
+    let s:uberwinsaddedcond = 1
+    for supwinid in groupedmissingwininfo.supwin
+        call WinModelAddSupwin(supwinid)
+        let s:supwinsaddedcond = 1
+    endfor
+    for supwinid in keys(groupedmissingwininfo.subwin)
+        for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
+            call WinModelAddOrShowSubwins(
+           \    supwinid,
+           \    subwingrouptypename,
+           \    groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
+           \)
+           let s:subwinsaddedcond = 1
+        endfor
+    endfor
+    " TODO: Figure out how to reopen higher-priority windows from here?
 
     " STEP 1.3: If any window in the model isn't in the state, remove it from
     "           the model
@@ -149,11 +189,23 @@ function! WinResolve(arg)
     call s:WinResolveStateToModel()
 
     " Run the conditional callbacks
+    if s:uberwinsaddedcond
+        for UberwinsAddedCallback in WinModelUberwinsAddedResolveCallbacks()
+            call UberwinsAddedCallback()
+        endfor
+        let s:uberwinsaddedcond = 0
+    endif
     if s:supwinsaddedcond
         for SupwinsAddedCallback in WinModelSupwinsAddedResolveCallbacks()
             call SupwinsAddedCallback()
         endfor
         let s:supwinsaddedcond = 0
+    endif
+    if s:subwinsaddedcond
+        for SubwinsAddedCallback in WinModelSubwinsAddedResolveCallbacks()
+            call SubwinsAddedCallback()
+        endfor
+        let s:subwinsaddedcond = 0
     endif
 
     " Run the resolve callbacks

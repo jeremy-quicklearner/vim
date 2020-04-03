@@ -2,27 +2,35 @@
 " See window.vim
 
 " g:tabinitpreresolvecallbacks = [
-"     <function>
+"     <funcref>
 "     ...
 " ]
 " g:tabenterpreresolvecallbacks = [
-"     <function>
+"     <funcref>
 "     ...
 " ]
 " g:preresolvecallbacks = [
-"     <function>
+"     <funcref>
+"     ...
+" ]
+" g:uberwinsaddedresolvecallbacks = [
+"     <funcref>
 "     ...
 " ]
 " g:supwinsaddedresolvecallbacks = [
-"     <function>
+"     <funcref>
+"     ...
+" ]
+" g:subwinsaddedresolvecallbacks = [
+"     <funcref>
 "     ...
 " ]
 " g:resolvecallbacks = [
-"     <function>
+"     <funcref>
 "     ...
 " ]
 " g:postresolvecallbacks = [
-"     <function>
+"     <funcref>
 "     ...
 " ]
 " g:uberwingrouptype = {
@@ -36,6 +44,7 @@
 "         heights: <num>
 "         toOpen: <funcref>
 "         toClose: <funcref>
+"         toIdentify: <funcref>
 "     }
 "     ...
 " }
@@ -51,6 +60,7 @@
 "         heights: <num>
 "         toOpen: <funcref>
 "         toClose: <funcref>
+"         toIdentify: <funcref>
 "     }
 "     ...
 " }
@@ -144,8 +154,14 @@ endfunction
 function! WinModelAddPreResolveCallback(callback)
     call s:AddTypedResolveCallback('pre', a:callback)
 endfunction
+function! WinModelAddUberwinsAddedResolveCallback(callback)
+    call s:AddTypedResolveCallback('uberwinsadded', a:callback)
+endfunction
 function! WinModelAddSupwinsAddedResolveCallback(callback)
     call s:AddTypedResolveCallback('supwinsadded', a:callback)
+endfunction
+function! WinModelAddSubwinsAddedResolveCallback(callback)
+    call s:AddTypedResolveCallback('subwinsadded', a:callback)
 endfunction
 function! WinModelAddResolveCallback(callback)
     call s:AddTypedResolveCallback('', a:callback)
@@ -161,8 +177,14 @@ function! WinModelTabEnterPreResolveCallbacks()
 endfunction
 function! WinModelPreResolveCallbacks()
     return g:preresolvecallbacks
+ endfunction
+function! WinModelUberwinsAddedResolveCallbacks()
+    return g:supwinsaddedresolvecallbacks
 endfunction
 function! WinModelSupwinsAddedResolveCallbacks()
+    return g:supwinsaddedresolvecallbacks
+endfunction
+function! WinModelSubwinsAddedResolveCallbacks()
     return g:supwinsaddedresolvecallbacks
 endfunction
 function! WinModelResolveCallbacks()
@@ -191,7 +213,8 @@ function! WinModelAssertUberwinTypeExists(grouptypename, typename)
     endif
 endfunction
 function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
-                                    \priority, widths, heights, toOpen, toClose)
+                                     \priority, widths, heights, toOpen, toClose,
+                                     \toIdentify)
     " The group type must not already exist
     if s:UberwinGroupTypeExists(a:name)
         throw 'uberwin group type ' . a:name . ' already exists'
@@ -243,6 +266,9 @@ function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
     if type(a:toClose) != v:t_func
         throw 'toClose must be a function'
     endif
+    if type(a:toIdentify) != v:t_func
+        throw 'toIdentify must be a function'
+    endif
 
     " All the lists must be the same length
     let numtypes = len(a:typenames)
@@ -264,7 +290,8 @@ function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
     \    'widths': a:widths,
     \    'heights': a:heights,
     \    'toOpen': a:toOpen,
-    \    'toClose': a:toClose
+    \    'toClose': a:toClose,
+    \    'toIdentify': a:toIdentify
     \}
 endfunction
 
@@ -277,7 +304,7 @@ function! WinModelAssertSubwinGroupTypeExists(grouptypename)
         throw 'nonexistent subwin group type ' . a:grouptypename
     endif
 endfunction
-function! s:AssertSubwinTypeExists(grouptypename, typename)
+function! WinModelAssertSubwinTypeExists(grouptypename, typename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     if index(g:subwingrouptype[a:grouptypename].typenames, a:typename) < 0
         throw 'subwin group type ' .
@@ -288,7 +315,7 @@ function! s:AssertSubwinTypeExists(grouptypename, typename)
 endfunction
 function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \priority, afterimaging, widths, heights,
-                                    \toOpen, toClose)
+                                    \toOpen, toClose, toIdentify)
     " The group type must not already exist
     if s:SubwinGroupTypeExists(a:name)
         throw 'subwin group type ' . a:name . ' already exists'
@@ -348,6 +375,9 @@ function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
     if type(a:toClose) != v:t_func
         throw 'toClose must be a function'
     endif
+    if type(a:toIdentify) != v:t_func
+        throw 'toIdentify must be a function'
+    endif
 
     " All the lists must be the same length
     let numtypes = len(a:typenames)
@@ -373,7 +403,8 @@ function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
     \    'widths': a:widths,
     \    'heights': a:heights,
     \    'toOpen': a:toOpen,
-    \    'toClose': a:toClose
+    \    'toClose': a:toClose,
+    \    'toIdentify': a:toIdentify
     \}
 endfunction
 
@@ -575,6 +606,24 @@ function! s:ValidateNewWinids(winids, explen)
     endfor
 endfunction
 
+" Get a dict of all uberwins' toIdentify functions keyed by their group type
+function! WinModelToIdentifyUberwins()
+    let retdict = {}
+    for grouptypename in keys(g:uberwingrouptype)
+        let retdict[grouptypename] = g:uberwingrouptype[grouptypename].toIdentify
+    endfor
+    return retdict
+endfunction
+
+" Get a dict of all subwins' toIdentify functions keyed by their group type
+function! WinModelToIdentifySubwins()
+    let retdict = {}
+    for grouptypename in keys(g:subwingrouptype)
+        let retdict[grouptypename] = g:subwingrouptype[grouptypename].toIdentify
+    endfor
+    return retdict
+endfunction
+
 " Uberwin group manipulation
 function! WinModelUberwinGroupExists(grouptypename)
     call s:AssertWinModelExists()
@@ -593,18 +642,25 @@ function! WinModelAssertUberwinGroupDoesntExist(grouptypename)
 endfunction
 
 function! WinModelUberwinGroupIsHidden(grouptypename)
-   call WinModelAssertUberwinGroupExists(a:grouptypename)
-   return t:uberwin[ a:grouptypename ].hidden
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+    return t:uberwin[ a:grouptypename ].hidden
 endfunction
 function! WinModelAssertUberwinGroupIsHidden(grouptypename)
-   if !WinModelUberwinGroupIsHidden(a:grouptypename)
-      throw 'uberwin group ' . a:grouptypename . ' is not hidden'
-   endif
+    if !WinModelUberwinGroupIsHidden(a:grouptypename)
+       throw 'uberwin group ' . a:grouptypename . ' is not hidden'
+    endif
 endfunction
 function! WinModelAssertUberwinGroupIsNotHidden(grouptypename)
-   if WinModelUberwinGroupIsHidden(a:grouptypename)
-      throw 'uberwin group ' . a:grouptypename . ' is hidden'
-   endif
+    if WinModelUberwinGroupIsHidden(a:grouptypename)
+        throw 'uberwin group ' . a:grouptypename . ' is hidden'
+    endif
+endfunction
+function! WinModelUberwinGroupTypeNames()
+    return keys(g:uberwingrouptype)
+ endfunction
+function! WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    return g:uberwingrouptype[a:grouptypename].typenames
 endfunction
 
 function! WinModelAddUberwins(grouptypename, winids)
@@ -671,6 +727,14 @@ function! WinModelShowUberwins(grouptypename, winids)
     let t:uberwin[a:grouptypename].uberwin = uberwindict
 endfunction
 
+function! WinModelAddOrShowUberwins(grouptypename, subwinids)
+    if !WinModelUberwinGroupExists(a:grouptypename)
+        call WinModelAddSubwins(a:grouptypename, a:subwinids)
+    else
+        call WinModelShowSubwins(a:grouptypename, a:subwinids)
+    endif
+endfunction
+
 function! WinModelChangeUberwinIds(grouptypename, winids)
    call WinModelAssertUberwinGroupExists(a:grouptypename)
    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
@@ -688,6 +752,7 @@ function! WinModelChangeUberwinIds(grouptypename, winids)
    let t:uberwin[a:grouptypename].uberwin = uberwindict
 endfunction
 
+" Supwin manipulation
 function! s:SupwinExists(winid)
     call s:AssertWinModelExists()
     return has_key(t:supwin, a:winid)
@@ -703,6 +768,7 @@ function! WinModelAssertSupwinDoesntExist(winid)
     endif
 endfunction
 
+" Subwin manipulation
 function! WinModelSubwinGroupExists(supwinid, grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     call WinModelAssertSupwinExists(a:supwinid)
@@ -747,7 +813,7 @@ function! WinModelAssertSubwinGroupIsNotHidden(supwinid, grouptypename)
     endif
 endfunction
 function! WinModelSubwinIsAfterimaged(supwinid, grouptypename, typename)
-    call s:AssertSubwinTypeExists(a:grouptypename, a:typename)
+    call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
     call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
     return t:supwin[a:supwinid][a:grouptypename].subwin[a:typename].afterimaged
 endfunction
@@ -871,6 +937,14 @@ function! s:AssertSubwinGroupIsConsistent(supwinid, grouptypename)
         endfor
     endif
 endfunction
+function! WinModelSubwinGroupTypeNames()
+    return keys(g:subwingrouptype)
+ endfunction
+function! WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    return g:subwingrouptype[a:grouptypename].typenames
+endfunction
+
 
 function! WinModelAddSupwin(winid)
     call s:AssertWinModelExists()
@@ -999,6 +1073,14 @@ function! WinModelShowSubwins(supwinid, grouptypename, subwinids)
     call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
 endfunction
 
+function! WinModelAddOrShowSubwins(supwinid, grouptypename, subwinids)
+    if !WinModelSubwinGroupExists(a:supwinid, a:grouptypename)
+        call WinModelAddSubwins(a:supwinid, a:grouptypename, a:subwinids)
+    else
+        call WinModelShowSubwins(a:supwinid, a:grouptypename, a:subwinids)
+    endif
+endfunction
+
 function! WinModelChangeSubwinIds(supwinid, grouptypename, subwinids)
     call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
     call s:ValidateNewWinids(
@@ -1039,9 +1121,6 @@ function! WinModelAfterimageSubwin(supwinid, grouptypename, typename, aibufnum)
     call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
 endfunction
 
-" TODO - group types will need callbacks for incorporating supwins and subwins
-" into the model when they spontaneously appear
-
-" TODO - Some individual types need an option for a non-default toClose callback
-" so that the resolver doesn't have to stomp them with :q! when their groups
+" TODO - Some individual types may need an option for a non-default toClose
+" callback so that the resolver doesn't have to stomp them with :q! when their groups
 " become incomplete

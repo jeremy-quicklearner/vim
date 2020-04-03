@@ -66,33 +66,44 @@ if !exists("g:pretest")
         noautocmd q!
     endfunction
 
+    function! TestToIdS()
+        return {}
+    endfunction
+    function! TestToIdU()
+        return ''
+    endfunction
+
     call WinAddSubwinGroupType('testSingleSubwin',
                               \['testS'],
                               \'[TST]', '[HID]', 1,
                               \0, [1], [-1], [5],
                               \function('TestToOpenSingleS'),
-                              \function('TestToCloseSingleS')) 
+                              \function('TestToCloseSingleS'),
+                              \function('TestToIdS')) 
 
     call WinAddSubwinGroupType('testDoubleSubwin',
                               \['testD1', 'testD2'],
                               \'[TDB]', '[HID]', 1,
                               \1, [1, 1], [-1, -1], [5, 5],
                               \function('TestToOpenDoubleS'),
-                              \function('TestToCloseDoubleS')) 
+                              \function('TestToCloseDoubleS'),
+                              \function('TestToIdS')) 
 
     call WinAddUberwinGroupType('testSingleUberwin',
                                \['testS'],
                                \'[TST]', '[HID]', 1,
                                \0, [-1], [5],
                                \function('TestToOpenSingleU'),
-                               \function('TestToCloseSingleU')) 
+                               \function('TestToCloseSingleU'),
+                               \function('TestToIdU')) 
 
     call WinAddUberwinGroupType('testDoubleUberwin',
                                \['testD1', 'testD2'],
                                \'[TDB]', '[HID]', 1,
                                \1, [-1, -1], [5, 5],
                                \function('TestToOpenDoubleU'),
-                               \function('TestToCloseDoubleU')) 
+                               \function('TestToCloseDoubleU'),
+                               \function('TestToIdU')) 
 
     nnoremap -so :call WinAddSubwinGroup(win_getid(), 'testSingleSubwin', 0)<cr>
     nnoremap -sc :call WinRemoveSubwinGroup(win_getid(), 'testSingleSubwin')<cr>

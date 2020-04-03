@@ -41,12 +41,28 @@ function! ToCloseLoclist()
     lclose
 endfunction
 
+" Callback that returns {'typename':'loclist','supwin':<id>} if called from
+" a location window
+function! ToIdentifyLoclist()
+    let winid = win_getid()
+    if getwininfo(winid)[0]['loclist']
+        for winnr in range(1,winnr('$'))
+            if winnr != winnr() &&
+              \get(getloclist(winnr, {'winid':0}), 'winid', -1) == winid
+                return {'typename':'loclist', 'supwin': win_getid(winnr)}
+            endif
+        endfor
+    endif
+    return {}
+endfunction
+
 " The location window is a subwin
 call WinAddSubwinGroupType('loclist', ['loclist'],
                           \'Loc', 'Hid', 2, 0, [0],
                           \[-1], [10],
                           \function('ToOpenLoclist'),
-                          \function('ToCloseLoclist'))
+                          \function('ToCloseLoclist'),
+                          \function('ToIdentifyLoclist'))
 
 " For each supwin, make sure the loclist subwin exists if and only if that
 " supwin has a location list
