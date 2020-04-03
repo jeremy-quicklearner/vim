@@ -270,5 +270,4 @@ function! WinGotoSubwin(supwinid, grouptypename, typename)
     call WinStateMoveCursorToWinid(winid)
 endfunction
 
-" TODO: Move Between Supwins
 " TODO: Zoom on supwins

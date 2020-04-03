@@ -16,6 +16,9 @@ function! s:WinResolveStateToModel()
     "       terminal-hidden in the model
     " TODO: If any non-terminal window has terminal-hidden subwins, mark those
     "       subwins as shown in the model
+
+    " STEP 1.2: If any uberwin or subwin in the state doesn't look the way the model
+    "           says it should, then it becomes a supwin
     " TODO: If any window is listed in the model as an uberwin but doesn't
     "       satisfy its type's constraints, mark the uberwin group hidden
     "       in the model and relist the window as a supwin
@@ -24,7 +27,7 @@ function! s:WinResolveStateToModel()
     "       in the model and relist the window as a supwin. Remember to set
     "       s:supwinsaddedcond = 1
 
-    " STEP 1.2: If any window in the state isn't in the model, add it to the model
+    " STEP 1.3: If any window in the state isn't in the model, add it to the model
     " All winids in the state
     let statewinids = WinStateGetWinidsByCurrentTab()
     " Winids in the state that aren't in the model
@@ -72,7 +75,7 @@ function! s:WinResolveStateToModel()
     endfor
     " TODO: Figure out how to reopen higher-priority windows from here?
 
-    " STEP 1.3: If any window in the model isn't in the state, remove it from
+    " STEP 1.4: If any window in the model isn't in the state, remove it from
     "           the model
     " If any uberwin group in the model isn't fully represented in the state,
     " mark it hidden in the model
