@@ -1,14 +1,119 @@
 " Window infrastructure Resolve function
 " See window.vim
 
-" Internal conditions
+" Internal conditions - flags used by different helpers to communicate with
+" each other
 let s:uberwinsaddedcond = 0
 let s:supwinsaddedcond = 0
 let s:subwinsaddedcond = 0
 
-" Input conditions
+" Input conditions - flags that influence the resolver's behaviour, set before
+" it runs
 let t:winresolvetabenteredcond = 1
 
+" Helpers
+" Run all the toIdentify callbacks against the current window until one of
+" them succeeds. Return the model info obtained.
+function! WinResolveIdentifyCurrentWindow(toIdentifyUberwins, toIdentifySubwins)
+    for uberwingrouptypename in keys(a:toIdentifyUberwins)
+        let uberwintypename = a:toIdentifyUberwins[uberwingrouptypename]()
+        if !empty(uberwintypename)
+            return {
+           \    'category': 'uberwin',
+           \    'grouptype': uberwingrouptypename,
+           \    'typename': uberwintypename,
+           \    'id': win_getid()
+           \}
+        endif
+    endfor
+    for subwingrouptypename in keys(a:toIdentifySubwins)
+        let subwindict = a:toIdentifySubwins[subwingrouptypename]()
+        if !empty(subwindict)
+            return {
+           \    'category': 'subwin',
+           \    'supwin': subwindict.supwin,
+           \    'grouptype': subwingrouptypename,
+           \    'typename': subwindict.typename,
+           \    'id': win_getid()
+           \}
+        endif
+    endfor
+    return {
+   \    'category': 'supwin',
+   \    'id': win_getid()
+   \}
+endfunction
+
+" Convert a list of window info dicts (as returned by
+" WinResolveIdentifyCurrentWindow) and group them by category, supwin id, group
+" type, and type. Any incomplete groups are dropped.
+function! WinResolveGroupInfo(wininfos)
+    let uberwingroupinfo = {}
+    let subwingroupinfo = {}
+    let supwininfo = []
+    " Group the window info
+    for wininfo in a:wininfos
+        if wininfo.category ==# 'uberwin'
+            if !has_key(uberwingroupinfo, wininfo.grouptype)
+                let uberwingroupinfo[wininfo.grouptype] = {}
+            endif
+            " TODO: Handle case where two uberwins of the same type are
+            "       present?
+            let uberwingroupinfo[wininfo.grouptype][wininfo.typename] = wininfo.id
+        elseif wininfo.category ==# 'subwin'
+            if !has_key(subwingroupinfo, wininfo.supwin)
+                let subwingroupinfo[wininfo.supwin] = {}
+            endif
+            if !has_key(subwingroupinfo[wininfo.supwin], wininfo.grouptype)
+                let subwingroupinfo[wininfo.supwin][wininfo.grouptype] = {}
+            endif
+            " TODO: Handle case where two subwins of the same type are present
+            "       for the same supwin?
+            let subwingroupinfo[wininfo.supwin]
+                              \[wininfo.grouptype]
+                              \[wininfo.typename] = wininfo.id
+        elseif wininfo.category ==# 'supwin'
+            call add(supwininfo, wininfo.id)
+        endif
+    endfor
+
+    " Validate groups. Prune any incomplete groups. Convert typename-keyed
+    " winid dicts to lists
+    for grouptypename in keys(uberwingroupinfo)
+        for typename in keys(uberwingroupinfo[grouptypename])
+            call WinModelAssertUberwinTypeExists(grouptypename, typename)
+        endfor
+        let uberwingroupinfo[grouptypename].winids = []
+        for typename in WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
+            if !has_key(uberwingroupinfo[grouptypename], typename)
+                unlet uberwingroupinfo[grouptypename]
+                break
+            endif
+            call add(uberwingroupinfo[grouptypename].winids,
+                    \uberwingroupinfo[grouptypename][typename])
+        endfor
+    endfor
+    for supwinid in keys(subwingroupinfo)
+        for grouptypename in keys(subwingroupinfo[supwinid])
+            for typename in keys(subwingroupinfo[supwinid][grouptypename])
+                call WinModelAssertSubwinTypeExists(grouptypename, typename)
+            endfor
+            let subwingroupinfo[supwinid][grouptypename].winids = []
+            for typename in WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
+                if !has_key(subwingroupinfo[supwinid][grouptypename], typename)
+                    unlet subwingroupinfo[supwinid][grouptypename]
+                    break
+                endif
+                call add(subwingroupinfo[supwinid][grouptypename].winids,
+                        \subwingroupinfo[supwinid][grouptypename][typename])
+            endfor
+        endfor
+    endfor
+    return {'uberwin':uberwingroupinfo,'supwin':supwininfo,'subwin':subwingroupinfo}
+endfunction
+
+" Resolver steps
+" STEP 1 - Adjust the model so it accounts for recent changes to the state
 function! s:WinResolveStateToModel()
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
     "           doesn't execute when the cursor is inside them
@@ -23,7 +128,7 @@ function! s:WinResolveStateToModel()
 
     let toIdentifyUberwins = WinModelToIdentifyUberwins()
     let toIdentifySubwins = WinModelToIdentifySubwins()
-    let currentwininfo = WinCommonGetCursorWinInfo()
+    let currentwininfo = WinResolveGetCursorWinInfo()
 
         " STEP 1.2: If any uberwin or subwin in the state doesn't look the way the model
         "           says it should, then it becomes a supwin
@@ -89,13 +194,13 @@ function! s:WinResolveStateToModel()
         for missingwinid in missingwinids
             call WinStateMoveCursorToWinid(missingwinid)
             call add(missingwininfo,
-                    \WinCommonIdentifyCurrentWindow(toIdentifyUberwins,
-                                                   \toIdentifySubwins))
+                    \WinResolveIdentifyCurrentWindow(toIdentifyUberwins,
+                                                    \toIdentifySubwins))
         endfor
-    call WinCommonRestoreCursorWinInfo(currentwininfo)
+    call WinResolveRestoreCursorWinInfo(currentwininfo)
     " Model info for those winids, grouped by category, supwin id, group type,
     " and type
-    let groupedmissingwininfo = WinCommonGroupInfo(missingwininfo)
+    let groupedmissingwininfo = WinResolveGroupInfo(missingwininfo)
     for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
         call WinModelAddOrShowUberwins(
        \    uberwingrouptypename,
@@ -174,6 +279,7 @@ function! s:WinResolveStateToModel()
     endfor
 endfunction
 
+" STEP 2 - Adjust the state so that it matches the model
 function! s:WinResolveModelToState()
     " STEP 2.1: Purge the state of windows that isn't in the model
     " TODO: If any supwin in the state isn't in the model, remove it from the
@@ -200,7 +306,7 @@ function! s:WinResolveModelToState()
     "       add it to the state
 endfunction
 
-" The resolve function
+" Resolver
 let s:resolveIsRunning = 0
 function! WinResolve(arg)
     if s:resolveIsRunning

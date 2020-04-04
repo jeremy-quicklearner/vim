@@ -1,9 +1,12 @@
-" Entry point
+" Entry point. setup.sh modifies ~/.vimrc by adding a direct invocation of this
+" script
+
 " Paths must come first because it influences where Vim will search for other
 " scripts
 source <sfile>:p:h/paths.vim
 
-" Util must be available to all of my code
+" Util must be available to all of my code (except paths.vim which should do
+" nothing besides changing settings)
 source <sfile>:p:h/util.vim
 
 " Subwindow/Uberwindow infrastructure should be available to plugins
