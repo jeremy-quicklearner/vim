@@ -16,23 +16,42 @@ function! WinCommonRestoreCursorWinInfo(info)
     endif
 endfunction
 
-" Closes and reopens all uberwins with priority higher than a given
-function! WinCommonCloseAndReopenUberwinsWithHigherPriority(priority)
+" Closes all uberwins with priority higher than a given, and returns a list of
+" group types closed. The model is unchanged.
+function! WinCommonCloseUberwinsWithHigherPriority(priority)
     let grouptypenames = WinModelUberwinGroupTypeNamesByMinPriority(a:priority)
     for grouptypename in grouptypenames
         call WinStateCloseUberwinsByGroupType(g:uberwingrouptype[grouptypename])
+    endfor
+    return grouptypenames
+endfunction
+
+" Reopens uberwins that were closed by WinCommonCloseUberwinsWithHigherPriority
+" and updates the model with the new winids
+function! WinCommonReopenUberwins(grouptypenames)
+    for grouptypename in a:grouptypenames
         let winids = WinStateOpenUberwinsByGroupType(
-       \    g:uberwingrouptype[grouptypename]
+       \    g:uberwingrouptype[a:grouptypename]
        \)
         call WinModelChangeUberwinIds(grouptypename, winids)
     endfor
 endfunction
 
-" Closes and reopens all subwins with priority higher than a given
-function! WinCommonCloseAndReopenSubwinsWithHigherPriority(supwinid, priority)
+" Closes all subwins for a given supwin with priority higher than a given, and
+" returns a list of group types closed. The model is unchanged.
+function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
     let grouptypenames = WinModelSubwinGroupTypeNamesByMinPriority(a:supwinid, a:priority)
     for grouptypename in grouptypenames
         call WinStateCloseSubwinsByGroupType(a:supwinid, g:subwingrouptype[grouptypename])
+    endfor
+    return grouptypenames
+endfunction
+
+
+" Reopens subwins that were closed by WinCommonCloseSubwinsWithHigherPriority
+" and updates the model with the new winids
+function! WinCommonReopenSubwins(supwinid, grouptypenames)
+    for grouptypename in a:grouptypenames
         let winids = WinStateOpenSubwinsByGroupType(
        \    a:supwinid,
        \    g:subwingrouptype[grouptypename]

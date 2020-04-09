@@ -23,7 +23,7 @@ autocmd VimEnter *
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami'
-Plug 'mbbill/undotree', {'on': 'UndotreeToggle'}
+Plug 'mbbill/undotree', {'on': 'UndotreeShow'}
 Plug 'jeremy-quicklearner/vim-sign-utils', {'on': ['PlaceUtilSigns', 'UnplaceUtilSigns']}
 call plug#end()
 

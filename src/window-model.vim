@@ -574,6 +574,11 @@ endfunction
 
 " Validate a list of winids to be added to the model someplace
 function! s:ValidateNewWinids(winids, explen)
+    " Validate that winids is a list
+    if type(a:winids) != v:t_list
+        throw 'expected list of winids but got param of type ' . type(a:winids)
+    endif
+
     " Validate the number of winids
     if a:explen > -1
         if len(a:winids) != a:explen

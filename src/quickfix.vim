@@ -34,10 +34,11 @@ function! ToCloseQuickfix()
     cclose
 endfunction
 
-" Callback that returns 'quickfix' if called from the quickfix window
-function! ToIdentifyQuickfix()
+" Callback that returns 'quickfix' if the supplied winid is for the quickfix
+" window
+function! ToIdentifyQuickfix(winid)
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
-    if win_getid() == qfwinid
+    if a:winid == qfwinid
         return 'quickfix'
     endif
     return ''

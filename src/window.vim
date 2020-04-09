@@ -49,17 +49,21 @@ source <sfile>:p:h/window-resolve.vim
 " User Operations
 source <sfile>:p:h/window-user.vim
 
-" Bootstrap code
+" Set up the window engine for a tab
 function! s:InitTab()
     " The resolver should run after any changes to the state
     call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1)
 
     " Also run the resolver immediately
+    let t:winresolvetabenteredcond = 1
     call WinResolve([])
 endfunction
 
+" Every tab must be initialized
 augroup Window
     autocmd!
-    " Every tab must be initialized
     autocmd VimEnter,TabNew * call s:InitTab()
 augroup END
+
+" Don't equalize window sizes when windows are closed
+set noequalalways

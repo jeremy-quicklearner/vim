@@ -75,13 +75,16 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     let grouptype = g:uberwingrouptype[a:grouptypename]
     let info = WinCommonGetCursorWinInfo()
 
-        let winids = WinStateOpenUberwinsByGroupType(grouptype)
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
 
-        call WinModelAddUberwins(a:grouptypename, winids)
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
+ 
+            call WinModelAddUberwins(a:grouptypename, winids)
 
-        " After adding the new uberwin group, some uberwin groups may need to be
-        " closed and reopened so that they reappear in their correct places
-        call WinCommonCloseAndReopenUberwinsWithHigherPriority(grouptype.priority)
+        " Reopen the uberwins we closed
+        call WinCommonReopenUberwins(highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -126,12 +129,16 @@ function! WinShowUberwinGroup(grouptypename)
 
     let info = WinCommonGetCursorWinInfo()
 
-        let winids = WinStateOpenUberwinsByGroupType(grouptype)
-        call WinModelShowUberwins(a:grouptypename, winids)
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
 
-        " After showing the uberwin group, some uberwin groups may need to be
-        " closed and reopened so that they reappear in their correct places
-        call WinCommonCloseAndReopenUberwinsWithHigherPriority(grouptype.priority)
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
+ 
+            call WinModelShowUberwins(a:grouptypename, winids)
+
+        " Reopen the uberwins we closed
+        call WinCommonReopenUberwins(highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -197,12 +204,16 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     let grouptype = g:subwingrouptype[a:grouptypename]
     let info = WinCommonGetCursorWinInfo()
 
-        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
-        call WinModelAddSubwins(a:supwinid, a:grouptypename, winids)
+        " Each subwin must be, at the time it is opened, the one with the
+        " highest priority for its supwin. So close all supwins with higher priority.
+        let highertypes = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
 
-        " After adding the new subwin group, some subwin groups may need to be
-        " closed and reopened so that they reappear in their correct places
-        call WinCommonCloseAndReopenSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+            let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+ 
+            call WinModelAddSubwins(a:supwinid, a:grouptypename, winids)
+
+        " Reopen the subwins we closed
+        call WinCommonReopenSubwins(a:supwinid, highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -247,12 +258,16 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
 
     let info = WinCommonGetCursorWinInfo()
 
-        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
-        call WinModelShowSubwins(a:supwinid, a:grouptypename, winids)
+        " Each subwin must be, at the time it is opened, the one with the
+        " highest priority for its supwin. So close all supwins with higher priority.
+        let highertypes = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
 
-        " After showing the uberwin group, some uberwin groups may need to be
-        " closed and reopened so that they reappear in their correct places
-        call WinCommonCloseAndReopenSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+            let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+ 
+            call WinModelShowSubwins(a:supwinid, a:grouptypename, winids)
+
+        " Reopen the subwins we closed
+        call WinCommonReopenSubwins(a:supwinid, highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -260,7 +275,8 @@ endfunction
 function! WinGotoSubwin(supwinid, grouptypename, typename)
     call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
     if WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
-        call WinShowSubwinGroup(supwinid, a:grouptypename)
+        call WinShowSubwinGroup(a:supwinid, a:grouptypename)
+    endif
     let winid = WinModelIdByInfo({
    \    'category': 'subwin',
    \    'supwin': a:supwinid,
