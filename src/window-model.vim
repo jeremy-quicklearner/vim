@@ -66,7 +66,7 @@
 " }
 " t:uberwin = {
 "     <grouptypename>: {
-"         hidden: <0|1|2>
+"         hidden: <0|1>
 "         uberwin: {
 "             <typename>: {
 "                 id: <uberwinid>
@@ -106,7 +106,9 @@
 let g:tabinitpreresolvecallbacks = []
 let g:tabenterpreresolvecallbacks = []
 let g:preresolvecallbacks = []
+let g:uberwinsaddedresolvecallbacks = []
 let g:supwinsaddedresolvecallbacks = []
+let g:subwinsaddedresolvecallbacks = []
 let g:resolvecallbacks = []
 let g:postresolvecallbacks = []
 let g:uberwingrouptype = {}
@@ -179,13 +181,13 @@ function! WinModelPreResolveCallbacks()
     return g:preresolvecallbacks
  endfunction
 function! WinModelUberwinsAddedResolveCallbacks()
-    return g:supwinsaddedresolvecallbacks
+    return g:uberwinsaddedresolvecallbacks
 endfunction
 function! WinModelSupwinsAddedResolveCallbacks()
     return g:supwinsaddedresolvecallbacks
 endfunction
 function! WinModelSubwinsAddedResolveCallbacks()
-    return g:supwinsaddedresolvecallbacks
+    return g:subwinsaddedresolvecallbacks
 endfunction
 function! WinModelResolveCallbacks()
     return g:resolvecallbacks
@@ -809,7 +811,6 @@ endfunction
 function! WinModelSubwinGroupIsHidden(supwinid, grouptypename)
     call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
     return t:supwin[a:supwinid][a:grouptypename].hidden
-endif
 endfunction
 function! WinModelAssertSubwinGroupIsHidden(supwinid, grouptypename)
     if !WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)

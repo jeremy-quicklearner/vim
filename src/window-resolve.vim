@@ -15,6 +15,7 @@ let t:winresolvetabenteredcond = 1
 " Run all the toIdentify callbacks against a window until one of
 " them succeeds. Return the model info obtained.
 function! WinResolveIdentifyWindow(toIdentifyUberwins, toIdentifySubwins, winid)
+    " TODO: Special case: The window is an afterimaged subwin
     for uberwingrouptypename in keys(a:toIdentifyUberwins)
         let uberwintypename = a:toIdentifyUberwins[uberwingrouptypename](a:winid)
         if !empty(uberwintypename)
@@ -125,14 +126,54 @@ endfunction
 function! s:WinResolveStateToModel()
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
     "           doesn't execute when the cursor is inside them
-    " TODO: If any terminal window is listed in the model as an uberwin, mark that
-    "       uberwin group hidden in the model and relist the window as a supwin
-    " TODO: If any terminal window is listed in the model as a subwin, mark that
-    "       subwin group hidden in the model and relist the window as a supwin
-    " TODO: If any terminal window has non-hidden subwins, mark them as
-    "       terminal-hidden in the model
-    " TODO: If any non-terminal window has terminal-hidden subwins, mark those
-    "       subwins as shown in the model
+    " If any terminal window is listed in the model as an uberwin, mark that
+    " uberwin group hidden in the model and relist the window as a supwin
+    for grouptypename in WinModelShownUberwinGroupTypeNames()
+        for typename in WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
+            let winid = WinModelIdByInfo({
+           \    'category': 'uberwin',
+           \    'grouptype': grouptypename,
+           \    'typename': typename
+           \})
+            if winid && WinStateWinIsTerminal(winid)
+                call WinModelHideUberwins(grouptypename)
+                call WinModelAddSupwin(winid)
+                let s:supwinsaddedcond = 1
+                break
+            endif
+        endfor
+    endfor
+    
+    " If any terminal window is listed in the model as a subwin, mark that
+    " subwin group hidden in the model and relist the window as a supwin
+    for supwinid in WinModelSupwinIds()
+        for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+            for typename in WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
+                let winid = WinModelIdByInfo({
+               \    'category': 'subwin',
+               \    'supwin': supwinid,
+               \    'grouptype': grouptypename,
+               \    'typename': typename
+               \})
+                if winid && WinStateWinIsTerminal(winid)
+                    call WinModelHideSubwins(supwinid, grouptypename)
+                    call WinModelAddSupwin(winid)
+                    let s:supwinsaddedcond = 1
+                    break
+                endif
+            endfor
+        endfor
+    endfor
+    
+    " If any supwin is terminal window with non-hidden subwins, mark them as
+    " hidden in the model
+    for supwinid in WinModelSupwinIds()
+        if WinStateWinExists(supwinid)&& WinStateWinIsTerminal(supwinid)
+            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                call WinModelHideSubwins(supwinid, grouptypename)
+            endfor
+        endif
+    endfor
 
     let toIdentifyUberwins = WinModelToIdentifyUberwins()
     let toIdentifySubwins = WinModelToIdentifySubwins()
@@ -218,8 +259,7 @@ function! s:WinResolveStateToModel()
 
     " If any window is listed in the model as a subwin but doesn't
     " satisfy its type's constraints, mark the subwin group hidden
-    " in the model and relist the window as a supwin. Remember to set
-    " s:supwinsaddedcond = 1
+    " in the model and relist the window as a supwin.
     for supwinid in WinModelSupwinIds()
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             for typename in WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
@@ -319,6 +359,17 @@ function! s:WinResolveModelToState()
     "       add it to the state
 endfunction
 
+" STEP 3 - Afterimage any subwins that need it
+function! s:WinResolveAfterimage()
+    " TODO STEP 3.1: If the cursor is in a subwin, afterimage all non-hidden
+    "           afterimaging subwin groups of its supwin except the one
+    "           containing the current window
+    " TODO STEP 3.2: If the cursor is in a supwin, afterimage all non-hidden
+    "           afterimaging subwin groups of all supwins
+    " TODO STEP 3.3: If the cursor is in an uberwin, afterimage all non-hidden
+    "           afterimaging subwin groups
+endfunction
+
 " Resolver
 let s:resolveIsRunning = 0
 function! WinResolve(arg)
@@ -381,6 +432,9 @@ function! WinResolve(arg)
 
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
+
+    " STEP 3: The model and state are now consistent. Afterimage any subwins
+    "         that need it
 
     " Run the post-resolve callbacks
     for PostResolveCallback in WinModelPostResolveCallbacks()

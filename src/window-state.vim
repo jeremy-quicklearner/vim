@@ -13,6 +13,14 @@ function! WinStateWinExists(winid)
     return win_id2win(a:winid) != 0
 endfunction
 
+function! WinStateWinIsTerminal(winid)
+    if !WinStateWinExists(a:winid)
+        throw 'Nonexistent winid ' . a:winid
+    endif
+
+    return getwinvar(a:winid, '&buftype') ==# 'terminal'
+endfunction
+
 function! WinStateGetCursorWinId()
     return win_getid()
 endfunction!
@@ -137,3 +145,37 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     call call(ToClose, [])
 endfunction
 
+function! WinStateAfterimageWindow(winid)
+   " noautocmd is used here because undotree has autocmds that fire on
+   " WinLeave and close the diff window
+    noautocmd call WinStateMoveCursorToWinid(a:winid)
+
+    " Preserve buffer contents
+    let bufcontents = getline(0, '$')
+
+    " Preserve some window options
+    let bufft = &ft
+    let bufwrap = &wrap
+    let bufpos = getpos('.')
+
+    " Switch to a new hidden scratch buffer. This will be the afterimage buffer
+    " noautocmd is used here because undotree has autocmds that fire when you
+    " enew from the tree window and close the diff window
+    noautocmd enew!
+    setlocal buftype=nofile
+    setlocal bufhidden=hide
+    setlocal noswapfile
+    setlocal nobuflisted
+
+    " Restore buffer contents
+    call append(0, bufcontents)
+    normal Gdd
+
+    " Restore buffer options
+    let &ft = bufft
+    let &wrap = bufwrap
+    call cursor(bufpos[1], bufpos[2], bufpos[3])
+
+    " Return afterimage buffer ID
+    return winbufnr('')
+endfunction

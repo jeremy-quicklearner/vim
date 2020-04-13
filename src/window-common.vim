@@ -59,3 +59,47 @@ function! WinCommonReopenSubwins(supwinid, grouptypenames)
         call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
     endfor
 endfunction
+
+" Afterimages all afterimaging non-afterimaged subwins of a non-hidden subwin group
+function! WinCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+
+    " Each subwin type can be individually afterimaging, so deal with them one
+    " by one
+    for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
+        " Don't afterimage non-afterimaging subwins
+        if !g:subwingrouptype[a:grouptypename].afterimaging[typeidx]
+            continue
+        endif
+
+        " Don't afterimage subwins that are already afterimaged
+        let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
+        if WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
+            continue
+        endif
+
+        " To make sure the subwins are in a good state, start from their supwin
+        " noautocmd is used here because undotree has autocmds that fire on
+        " WinLeave and close the diff window
+        noautocmd call WinStateMoveCursorToWinid(a:supwinid)
+
+        " Get the subwin ID
+        let subwinid = WinModelIdByInfo({
+       \    'category': 'subwin',
+       \    'supwin': a:supwinid,
+       \    'grouptype': a:grouptypename,
+       \    'typename': typename
+       \})
+
+        " Afterimage the subwin in the state
+        let aibuf = WinStateAfterimageWindow(subwinid)
+
+        " Afterimage the subwin in the model
+        call WinModelAfterimageSubwin(a:supwinid, a:grouptypename, typename, aibuf)
+    endfor
+endfunction
+
+" Close and reopen all subwins in a group if any of them are afterimaged
+function! WinCommonDeafterimageSubwinsByInfo(supwinid, grouptypename)
+    " TODO: stub
+endfunction

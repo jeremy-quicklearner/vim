@@ -117,7 +117,7 @@ endfunction
 call WinModelAddSupwinsAddedResolveCallback(function('UpdateUndotreeSubwins'))
 
 " Update the undotree subwins after any changes
-augroup Undotree
+augroup UndotreeWin
     autocmd!
     autocmd TextChanged * call UpdateUndotreeSubwins()
 augroup END
