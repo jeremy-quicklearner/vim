@@ -47,10 +47,11 @@ function! ToIdentifyLoclist(winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != win_id2win(a:winid) &&
-              \get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
-                return {'typename':'loclist', 'supwin': win_getid(winnr)}
+           \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
+                return {'typename':'loclist','supwin':win_getid(winnr)}
             endif
         endfor
+        return {'typename':'loclist','supwin':-1}
     endif
     return {}
 endfunction

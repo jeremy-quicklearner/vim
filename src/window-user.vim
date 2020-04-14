@@ -287,3 +287,4 @@ function! WinGotoSubwin(supwinid, grouptypename, typename)
 endfunction
 
 " TODO: Zoom on supwins
+" TODO: Move from one supwin to another, in a direction

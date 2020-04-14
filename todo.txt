@@ -14,6 +14,8 @@ Hard but I know how
 - Pre-8.1 version compatibility
 - Replace common big motions like H M L Ctrl-D and Ctrl-U with more animated versions
 - Add mapping to change instances of "false" to "true" and vice versa
+- Add a new subwin on the left that shows marks. Jump to each mark with <enter> and <space>
+- Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines

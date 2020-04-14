@@ -14,10 +14,10 @@ let t:winresolvetabenteredcond = 1
 " Helpers
 " Run all the toIdentify callbacks against a window until one of
 " them succeeds. Return the model info obtained.
-function! WinResolveIdentifyWindow(toIdentifyUberwins, toIdentifySubwins, winid)
+function! WinResolveIdentifyWindow(winid)
     " TODO: Special case: The window is an afterimaged subwin
-    for uberwingrouptypename in keys(a:toIdentifyUberwins)
-        let uberwintypename = a:toIdentifyUberwins[uberwingrouptypename](a:winid)
+    for uberwingrouptypename in keys(s:toIdentifyUberwins)
+        let uberwintypename = s:toIdentifyUberwins[uberwingrouptypename](a:winid)
         if !empty(uberwintypename)
             return {
            \    'category': 'uberwin',
@@ -29,14 +29,15 @@ function! WinResolveIdentifyWindow(toIdentifyUberwins, toIdentifySubwins, winid)
     endfor
     let uberwinids = WinModelUberwinIds()
     let subwinids = WinModelSubwinIds()
-    for subwingrouptypename in keys(a:toIdentifySubwins)
-        let subwindict = a:toIdentifySubwins[subwingrouptypename](a:winid)
+    for subwingrouptypename in keys(s:toIdentifySubwins)
+        let subwindict = s:toIdentifySubwins[subwingrouptypename](a:winid)
         if !empty(subwindict)
-            " If the identified 'supwin' isn't a supwin, the window we
-            " are identifying has no place in the model
-            if index(uberwinids, subwindict.supwin) ||
-           \   index(subwinids, subwindict.supwin)
-                return {}
+            " If there is no supwin, or if the identified 'supwin' isn't a
+            " supwin, the window we are identifying has no place in the model
+            if subwindict.supwin ==# -1 ||
+           \   index(uberwinids, subwindict.supwin) >=# 0 ||
+           \   index(subwinids, subwindict.supwin) >=# 0
+                return {'category':'none','id':a:winid}
             endif
             return {
            \    'category': 'subwin',
@@ -175,9 +176,6 @@ function! s:WinResolveStateToModel()
         endif
     endfor
 
-    let toIdentifyUberwins = WinModelToIdentifyUberwins()
-    let toIdentifySubwins = WinModelToIdentifySubwins()
-
     " STEP 1.2: If any window in the model isn't in the state, remove it from
     "           the model
     " If any uberwin group in the model isn't fully represented in the state,
@@ -248,7 +246,7 @@ function! s:WinResolveStateToModel()
            \})
             " TODO: toIdentify() consistency isn't required if the subwin is
             " afterimaged
-            if toIdentifyUberwins[grouptypename](winid) !=# typename
+            if s:toIdentifyUberwins[grouptypename](winid) !=# typename
                 call WinModelHideUberwins(grouptypename)
                 call WinModelAddSupwin(winid)
                 let s:supwinsaddedcond = 1
@@ -269,7 +267,7 @@ function! s:WinResolveStateToModel()
                \    'grouptype': grouptypename,
                \    'typename': typename
                \})
-                let identified = toIdentifySubwins[grouptypename](winid)
+                let identified = s:toIdentifySubwins[grouptypename](winid)
                 if empty(identified) ||
                   \identified.supwin !=# supwinid ||
                   \identified.typename !=# typename
@@ -295,9 +293,7 @@ function! s:WinResolveStateToModel()
     " Model info for those winids
     let missingwininfos = []
     for missingwinid in missingwinids
-        let missingwininfo = WinResolveIdentifyWindow(toIdentifyUberwins,
-                                                     \toIdentifySubwins,
-                                                     \missingwinid)
+        let missingwininfo = WinResolveIdentifyWindow(missingwinid)
         if len(missingwininfo)
             call add(missingwininfos, missingwininfo)
         endif
@@ -317,6 +313,9 @@ function! s:WinResolveStateToModel()
         let s:supwinsaddedcond = 1
     endfor
     for supwinid in keys(groupedmissingwininfo.subwin)
+        if !WinModelSupwinExists(supwinid)
+            continue
+        endif
         for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
             call WinModelAddOrShowSubwins(
            \    supwinid,
@@ -332,12 +331,51 @@ endfunction
 " STEP 2 - Adjust the state so that it matches the model
 function! s:WinResolveModelToState()
     " STEP 2.1: Purge the state of window that isn't in the model
-    " TODO: If any supwin in the state isn't in the model, remove it from the
-    "       state.
-    " TODO: If any uberwin in the state isn't shown in the model, remove its
-    "       group from the state.
-    " TODO: If any subwin in the state isn't shown in the model, remove its group
-    "       from the state
+    " TODO: Do something more civilized than stomping each window
+    "       individually? So far it's ok but some other group type
+    "       may require it in the future
+    for winid in WinStateGetWinidsByCurrentTab()
+        if !WinStateWinExists(winid)
+            continue
+        endif
+
+        let wininfo = WinResolveIdentifyWindow(winid)
+
+        " If any window in the state isn't categorizable, remove it from the
+        " state
+        if wininfo.category ==# 'none'
+            call WinStateCloseWindow(winid)
+            continue
+        endif
+
+        " If any supwin in the state isn't in the model, remove it from the
+        " state.
+        if wininfo.category ==# 'supwin' && !WinModelSupwinExists(wininfo.id)
+            call WinStateCloseWindow(winid)
+            continue
+        endif
+
+        " If any uberwin in the state isn't shown in the model, remove it
+        " from the state.
+        if wininfo.category ==# 'uberwin' && (
+       \    !WinModelUberwinGroupExists(wininfo.grouptype) ||
+       \    WinModelUberwinGroupIsHidden(wininfo.grouptype)
+       \)
+            call WinStateCloseWindow(winid)
+            continue
+        endif
+
+        " If any subwin in the state isn't shown in the model, remove it from
+        " the state
+        if wininfo.category ==# 'subwin' && (
+       \    !WinModelSupwinExists(wininfo.supwin) ||
+       \    !WinModelSubwinGroupExists(wininfo.supwin, wininfo.grouptype) ||
+       \    WinModelSubwinGroupIsHidden(wininfo.supwin, wininfo.grouptype)
+       \)
+           call WinStateCloseWindow(winid)
+           continue
+        endif
+    endfor
 
     " STEP 2.2: Temporarily close any windows that may be in the wrong place
     " TODO: If any uberwins were added by STEP 1, remove all uberwins from the
@@ -346,7 +384,7 @@ function! s:WinResolveModelToState()
     "       uberwin's group and all groups with lower priorities from the state
     " TODO: If any subwins were added by STEP 1, remove all subwins from the
     "       state
-    " TODO: If any supwin's dimensions or position has changed, remove all of
+    " TODO: Else if any supwin's dimensions or position has changed, remove all of
     "       that supwin's subwins from the state
     " TODO: Else If any subwin's dimensions or positions have changed, remove that
     "       subwin's group and all groups with lower priorities from the state
@@ -377,6 +415,10 @@ function! WinResolve(arg)
         return
     endif
     let s:resolveIsRunning = 1
+
+    " Retrieve the toIdentify functions
+    let s:toIdentifyUberwins = WinModelToIdentifyUberwins()
+    let s:toIdentifySubwins = WinModelToIdentifySubwins()
 
     " STEP 0: Make sure the tab-specific model elements exist
     if !WinModelExists()

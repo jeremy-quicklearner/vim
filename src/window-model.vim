@@ -494,7 +494,7 @@ endfunction
 " Given an info dict from WinModelInfoById, return the window ID
 function! WinModelIdByInfo(info)
     if a:info.category ==# 'supwin' || a:info.category ==# 'none'
-        if s:SupwinExists(a:info.id)
+        if WinModelSupwinExists(a:info.id)
             return a:info.id
         endif
     elseif a:info.category ==# 'uberwin'
@@ -770,17 +770,17 @@ function! WinModelChangeUberwinIds(grouptypename, winids)
 endfunction
 
 " Supwin manipulation
-function! s:SupwinExists(winid)
+function! WinModelSupwinExists(winid)
     call s:AssertWinModelExists()
     return has_key(t:supwin, a:winid)
 endfunction
 function! WinModelAssertSupwinExists(winid)
-    if !s:SupwinExists(a:winid)
+    if !WinModelSupwinExists(a:winid)
         throw 'nonexistent supwin ' . a:winid
     endif
 endfunction
 function! WinModelAssertSupwinDoesntExist(winid)
-    if s:SupwinExists(a:winid)
+    if WinModelSupwinExists(a:winid)
         throw 'supwin ' . a:winid . ' exists'
     endif
 endfunction
@@ -906,7 +906,7 @@ function! s:AssertSubwinListHas(subwinid, supwinid, grouptypename, typename)
 endfunction
 function! s:AssertSubwinGroupIsConsistent(supwinid, grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
-    if !s:SupwinExists(a:supwinid)
+    if !WinModelSupwinExists(a:supwinid)
         return
     elseif WinModelSubwinGroupExists(a:supwinid, a:grouptypename) &&
    \       !WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)

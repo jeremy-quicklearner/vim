@@ -20,6 +20,8 @@ function! ToOpenUndotree()
         throw 'Undotree window is already open'
     endif
 
+    let jtarget = win_getid()
+
     UndotreeShow
 
     let treeid = -1
@@ -42,6 +44,9 @@ function! ToOpenUndotree()
 
     call setwinvar(treeid, '&number', 1)
     call setwinvar(diffid, '&number', 1)
+
+    call setwinvar(treeid, 'j_undotree_target', jtarget)
+    call setwinvar(diffid, 'j_undotree_target', jtarget)
 
     return [treeid, diffid]
 endfunction
@@ -71,17 +76,20 @@ function! ToIdentifyUndotree(winid)
         return {}
     endif
 
-    let supwinnr = -1
-    for winnr in range(1, winnr('$'))
-        if getwinvar(winnr, 'undotree_id') == t:undotree.targetid
-            let supwinnr = winnr
-            break
-        endif
-    endfor
-    if supwinnr < 0
-        throw 'Undotree targets nonexistent window'
+    let jtarget = getwinvar(a:winid, 'j_undotree_target', 0)
+    if jtarget
+        let supwinid = jtarget
+    else
+        let supwinid = -1
+        for winnr in range(1, winnr('$'))
+            if getwinvar(winnr, 'undotree_id') == t:undotree.targetid
+                let supwinid = win_getid(winnr)
+                call setwinvar(a:winid, 'j_undotree_target', supwinid)
+                break
+            endif
+        endfor
     endif
-    return {'typename':typename,'supwin':win_getid(supwinnr)}
+    return {'typename':typename,'supwin':supwinid}
 endfunction
 
 " The undotree and diffpanel are a subwin group
@@ -97,6 +105,18 @@ call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
 function! UpdateUndotreeSubwins()
     let info = WinCommonGetCursorWinInfo()
         for supwinid in WinModelSupwinIds()
+            " Special case: When a supwin is closed while it has a live undotree, the
+            " cursor jumps to the left - to the undotree windows. The undotree
+            " plugin's autocmds fire and update the text in those windows, and
+            " TextChanged fires and calls this function, before the resolver runs.
+            " Since the resolver hasn't run yet, the model and state are inconsistent.
+            " The supwin is returned by WinModelSupwinIds() but it isn't in the state
+            " when we call WinStateModeCursorToWinid(). The code below breaks.
+            " So check if the window exists before trying to jump to it
+            if !WinStateWinExists(supwinid)
+                continue
+            endif
+
             call WinStateMoveCursorToWinid(supwinid)
             let undotreewinsexist = WinModelSubwinGroupExists(supwinid, 'undotree')
             let undotreeexists = len(undotree().entries)

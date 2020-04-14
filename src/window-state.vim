@@ -179,3 +179,18 @@ function! WinStateAfterimageWindow(winid)
     " Return afterimage buffer ID
     return winbufnr('')
 endfunction
+
+function! WinStateCloseWindow(winid)
+    if !WinStateWinExists(a:winid)
+        throw 'Cannot close nonexistent winid ' . a:winid
+    endif
+
+    " :close fails if called on the last window. Explicitly exit Vim if
+    " there's only one window left.
+    if winnr('$') ==# 1 && tabpagenr('$') ==# 1
+        quit
+    endif
+    
+    let winnr = win_id2win(a:winid)
+    execute winnr . 'close'
+endfunction
