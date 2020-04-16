@@ -76,7 +76,7 @@ if !exists("g:pretest")
     call WinAddSubwinGroupType('testSingleSubwin',
                               \['testS'],
                               \'[TST]', '[HID]', 1,
-                              \0, [1], [-1], [5],
+                              \1, [1], [-1], [-1],
                               \function('TestToOpenSingleS'),
                               \function('TestToCloseSingleS'),
                               \function('TestToIdS')) 
@@ -84,7 +84,7 @@ if !exists("g:pretest")
     call WinAddSubwinGroupType('testDoubleSubwin',
                               \['testD1', 'testD2'],
                               \'[TDB]', '[HID]', 1,
-                              \1, [1, 1], [-1, -1], [5, 5],
+                              \2, [1, 1], [-1, -1], [-1, -1],
                               \function('TestToOpenDoubleS'),
                               \function('TestToCloseDoubleS'),
                               \function('TestToIdS')) 
@@ -92,7 +92,7 @@ if !exists("g:pretest")
     call WinAddUberwinGroupType('testSingleUberwin',
                                \['testS'],
                                \'[TST]', '[HID]', 1,
-                               \0, [-1], [5],
+                               \3, [-1], [-1],
                                \function('TestToOpenSingleU'),
                                \function('TestToCloseSingleU'),
                                \function('TestToIdU')) 
@@ -100,7 +100,7 @@ if !exists("g:pretest")
     call WinAddUberwinGroupType('testDoubleUberwin',
                                \['testD1', 'testD2'],
                                \'[TDB]', '[HID]', 1,
-                               \1, [-1, -1], [5, 5],
+                               \4, [-1, -1], [-1, -1],
                                \function('TestToOpenDoubleU'),
                                \function('TestToCloseDoubleU'),
                                \function('TestToIdU')) 
@@ -116,51 +116,53 @@ if !exists("g:pretest")
     nnoremap -dh :call WinHideSubwinGroup(win_getid(), 'testDoubleSubwin')<cr>
 endif
 
+vs
+
 " Uberwin Model
-call WinModelAddUberwins('testSingleUberwin', [])
-call WinModelShowUberwins('testSingleUberwin', [win_getid()+1])
+call WinModelAddUberwins('testSingleUberwin', [], [])
+call WinModelShowUberwins('testSingleUberwin', [win_getid()+1], [])
 call WinModelHideUberwins('testSingleUberwin')
 call WinModelRemoveUberwins('testSingleUberwin')
 
-call WinModelAddUberwins('testSingleUberwin', [win_getid()+1])
+call WinModelAddUberwins('testSingleUberwin', [win_getid()+1], [])
 call WinModelHideUberwins('testSingleUberwin')
-call WinModelShowUberwins('testSingleUberwin', [win_getid()+1])
+call WinModelShowUberwins('testSingleUberwin', [win_getid()+1], [])
 call WinModelRemoveUberwins('testSingleUberwin')
 
-call WinModelAddUberwins('testDoubleUberwin', [])
-call WinModelShowUberwins('testDoubleUberwin', [win_getid()+1, win_getid()+2])
+call WinModelAddUberwins('testDoubleUberwin', [], [])
+call WinModelShowUberwins('testDoubleUberwin', [win_getid()+1, win_getid()+2], [])
 call WinModelHideUberwins('testDoubleUberwin')
 call WinModelRemoveUberwins('testDoubleUberwin')
 
-call WinModelAddUberwins('testDoubleUberwin', [win_getid()+2, win_getid() + 3])
+call WinModelAddUberwins('testDoubleUberwin', [win_getid()+2, win_getid() + 3], [])
 call WinModelHideUberwins('testDoubleUberwin')
-call WinModelShowUberwins('testDoubleUberwin', [win_getid()+1, win_getid()+2])
+call WinModelShowUberwins('testDoubleUberwin', [win_getid()+1, win_getid()+2], [])
 call WinModelRemoveUberwins('testDoubleUberwin')
 
-call WinModelAddUberwins('testSingleUberwin', [])
-call WinModelAddUberwins('testDoubleUberwin', [])
+call WinModelAddUberwins('testSingleUberwin', [], [])
+call WinModelAddUberwins('testDoubleUberwin', [], [])
 
-call WinModelShowUberwins('testSingleUberwin', [win_getid()+1])
-call WinModelShowUberwins('testDoubleUberwin', [win_getid()+2, win_getid()+3])
+call WinModelShowUberwins('testSingleUberwin', [win_getid()+1], [])
+call WinModelShowUberwins('testDoubleUberwin', [win_getid()+2, win_getid()+3], [])
 call WinModelHideUberwins('testSingleUberwin')
 call WinModelHideUberwins('testDoubleUberwin')
-
-call WinModelRemoveUberwins('testSingleUberwin')
-call WinModelRemoveUberwins('testDoubleUberwin')
-
-call WinModelAddUberwins('testSingleUberwin', [win_getid()+4])
-call WinModelAddUberwins('testDoubleUberwin', [win_getid()+5, win_getid() + 6])
-
-call WinModelHideUberwins('testSingleUberwin')
-call WinModelHideUberwins('testDoubleUberwin')
-call WinModelShowUberwins('testSingleUberwin', [win_getid()+1])
-call WinModelShowUberwins('testDoubleUberwin', [win_getid()+2, win_getid()+3])
 
 call WinModelRemoveUberwins('testSingleUberwin')
 call WinModelRemoveUberwins('testDoubleUberwin')
 
-call WinModelAddUberwins('testSingleUberwin', [win_getid()+1])
-call WinModelAddUberwins('testDoubleUberwin', [win_getid()+2, win_getid() + 3])
+call WinModelAddUberwins('testSingleUberwin', [win_getid()+4], [])
+call WinModelAddUberwins('testDoubleUberwin', [win_getid()+5, win_getid() + 6], [])
+
+call WinModelHideUberwins('testSingleUberwin')
+call WinModelHideUberwins('testDoubleUberwin')
+call WinModelShowUberwins('testSingleUberwin', [win_getid()+1], [])
+call WinModelShowUberwins('testDoubleUberwin', [win_getid()+2, win_getid()+3], [])
+
+call WinModelRemoveUberwins('testSingleUberwin')
+call WinModelRemoveUberwins('testDoubleUberwin')
+
+call WinModelAddUberwins('testSingleUberwin', [win_getid()+1], [])
+call WinModelAddUberwins('testDoubleUberwin', [win_getid()+2, win_getid() + 3], [])
 
 call WinModelChangeUberwinIds('testSingleUberwin', [win_getid()+4])
 call WinModelChangeUberwinIds('testDoubleUberwin', [win_getid()+5, win_getid()+6])
@@ -169,40 +171,40 @@ call WinModelRemoveUberwins('testSingleUberwin')
 call WinModelRemoveUberwins('testDoubleUberwin')
 
 " Subwin model
-call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [])
-call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
+call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [], [])
+call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelHideSubwins(win_getid(), 'testSingleSubwin')
 call WinModelRemoveSubwins(win_getid(), 'testSingleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
+call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelHideSubwins(win_getid(), 'testSingleSubwin')
-call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
+call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelRemoveSubwins(win_getid(), 'testSingleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [])
-call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+1, win_getid()+2])
+call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [], [])
+call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+1, win_getid()+2], [])
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
 call WinModelHideSubwins(win_getid(), 'testDoubleSubwin')
 call WinModelRemoveSubwins(win_getid(), 'testDoubleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid() + 3])
+call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid() + 3], [])
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
 call WinModelHideSubwins(win_getid(), 'testDoubleSubwin')
-call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+1, win_getid()+2])
+call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+1, win_getid()+2], [])
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
 call WinModelRemoveSubwins(win_getid(), 'testDoubleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [])
-call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [])
+call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [], [])
+call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [], [])
 
-call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
-call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid()+3])
+call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
+call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid()+3], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
@@ -212,16 +214,16 @@ call WinModelHideSubwins(win_getid(), 'testDoubleSubwin')
 call WinModelRemoveSubwins(win_getid(), 'testSingleSubwin')
 call WinModelRemoveSubwins(win_getid(), 'testDoubleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+4])
-call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+5, win_getid() + 6])
+call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+4], [])
+call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+5, win_getid() + 6], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
 
 call WinModelHideSubwins(win_getid(), 'testSingleSubwin')
 call WinModelHideSubwins(win_getid(), 'testDoubleSubwin')
-call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
-call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid()+3])
+call WinModelShowSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
+call WinModelShowSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid()+3], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
@@ -229,8 +231,8 @@ call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)
 call WinModelRemoveSubwins(win_getid(), 'testSingleSubwin')
 call WinModelRemoveSubwins(win_getid(), 'testDoubleSubwin')
 
-call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1])
-call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid() + 3])
+call WinModelAddSubwins(win_getid(), 'testSingleSubwin', [win_getid()+1], [])
+call WinModelAddSubwins(win_getid(), 'testDoubleSubwin', [win_getid()+2, win_getid() + 3], [])
 call WinModelAfterimageSubwin(win_getid(), 'testSingleSubwin', 'testS', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD1', 123)
 call WinModelAfterimageSubwin(win_getid(), 'testDoubleSubwin', 'testD2', 123)

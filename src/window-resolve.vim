@@ -125,6 +125,8 @@ endfunction
 " Resolver steps
 " STEP 1 - Adjust the model so it accounts for recent changes to the state
 function! s:WinResolveStateToModel()
+    " TODO: Audit all additions to the model and decide whether to record
+    "       dimensions or not
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
     "           doesn't execute when the cursor is inside them
     " If any terminal window is listed in the model as an uberwin, mark that
@@ -158,7 +160,8 @@ function! s:WinResolveStateToModel()
                \})
                 if winid && WinStateWinIsTerminal(winid)
                     call WinModelHideSubwins(supwinid, grouptypename)
-                    call WinModelAddSupwin(winid)
+                    let dim = WinStateGetWinDimensions(supwinid)
+                    call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
                     let s:supwinsaddedcond = 1
                     break
                 endif
@@ -248,7 +251,8 @@ function! s:WinResolveStateToModel()
             " afterimaged
             if s:toIdentifyUberwins[grouptypename](winid) !=# typename
                 call WinModelHideUberwins(grouptypename)
-                call WinModelAddSupwin(winid)
+                let dim = WinStateGetWinDimensions(winid)
+                call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
                 let s:supwinsaddedcond = 1
                 break
             endif
@@ -272,7 +276,8 @@ function! s:WinResolveStateToModel()
                   \identified.supwin !=# supwinid ||
                   \identified.typename !=# typename
                     call WinModelHideSubwins(supwinid, grouptypename)
-                    call WinModelAddSupwin(winid)
+                    let dim = WinStateGetWinDimensions(winid)
+                    call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
                     let s:supwinsaddedcond = 1
                     break
                 endif
@@ -302,14 +307,18 @@ function! s:WinResolveStateToModel()
     " and type
     let groupedmissingwininfo = WinResolveGroupInfo(missingwininfos)
     for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
+        let winids = groupedmissingwininfo.uberwin[uberwingrouptypename].winids
+        let dims = WinStateGetWinDimensionsList(winids)
         call WinModelAddOrShowUberwins(
        \    uberwingrouptypename,
-       \    groupedmissingwininfo.uberwin[uberwingrouptypename].winids
+       \    winids,
+       \    dims
        \)
     endfor
     let s:uberwinsaddedcond = 1
     for supwinid in groupedmissingwininfo.supwin
-        call WinModelAddSupwin(supwinid)
+        let dim = WinStateGetWinDimensions(supwinid)
+        call WinModelAddSupwin(supwinid, dim.nr, dim.w, dim.h)
         let s:supwinsaddedcond = 1
     endfor
     for supwinid in keys(groupedmissingwininfo.subwin)
@@ -317,10 +326,14 @@ function! s:WinResolveStateToModel()
             continue
         endif
         for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
+            let winids = groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
+            let supwinnr = WinStateGetWinnrByWinid(supwinid)
+            let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
             call WinModelAddOrShowSubwins(
            \    supwinid,
            \    subwingrouptypename,
-           \    groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
+           \    winids,
+           \    dims
            \)
            let s:subwinsaddedcond = 1
         endfor
@@ -381,13 +394,14 @@ function! s:WinResolveModelToState()
     " TODO: If any uberwins were added by STEP 1, remove all uberwins from the
     "       state
     " TODO: Else if any uberwin's dimensions or position have changed, remove that
-    "       uberwin's group and all groups with lower priorities from the state
-    " TODO: If any subwins were added by STEP 1, remove all subwins from the
-    "       state
+    "       uberwin's group and all groups with higher priorities from the state
+
+    " TODO: If any subwins were added to the model by STEP 1, remove all subwins
+    "       from the state
     " TODO: Else if any supwin's dimensions or position has changed, remove all of
     "       that supwin's subwins from the state
-    " TODO: Else If any subwin's dimensions or positions have changed, remove that
-    "       subwin's group and all groups with lower priorities from the state
+    " TODO: Else If any subwin's dimensions or position have changed, remove that
+    "       subwin's group and all groups with higher priorities from the state
 
     " STEP 2.3: Add any missing windows to the state, including those that
     "           were temporarily removed, in the correct places

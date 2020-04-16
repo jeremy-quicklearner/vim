@@ -46,7 +46,7 @@ endfunction
 
 " The quickfix window is an uberwin
 call WinAddUberwinGroupType('quickfix', ['quickfix'],
-                           \'Qfx', 'Hid', 2, 0,
+                           \'Qfx', 'Hid', 2, 50,
                            \[-1], [10],
                            \function('ToOpenQuickfix'),
                            \function('ToCloseQuickfix'),

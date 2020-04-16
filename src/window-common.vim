@@ -34,6 +34,9 @@ function! WinCommonReopenUberwins(grouptypenames)
        \    g:uberwingrouptype[a:grouptypename]
        \)
         call WinModelChangeUberwinIds(grouptypename, winids)
+
+        let dims = WinStateGetWinDimensionsList(winids)
+        call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
     endfor
 endfunction
 
@@ -57,6 +60,25 @@ function! WinCommonReopenSubwins(supwinid, grouptypenames)
        \    g:subwingrouptype[grouptypename]
        \)
         call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
+
+        let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+        let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+        call WinModelChangeSubwinGroupDimensions(a:supwinid, grouptypename, dims)
+    endfor
+endfunction
+
+" Closes and reopens all shown subwins of a given supwin
+function! WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
+    let grouptypenames = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, -1)
+    call WinCommonReopenSubwins(a:supwinid, grouptypenames)
+
+    " TODO: Recompute dimensions for the supwin and its subwins
+endfunction
+
+" Closes and reopens all shown subwins in the current tab
+function! WinCommonCloseAndReopenAllShownSubwins()
+    for supwinid in WinModelSupwinIds()
+        call WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
     endfor
 endfunction
 

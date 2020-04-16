@@ -68,7 +68,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 
     " If we're adding the uberwin group as hidden, add it only to the model
     if a:hidden
-        call WinModelAddUberwins(a:grouptypename, [])
+        call WinModelAddUberwins(a:grouptypename, [], [])
         return
     endif
 
@@ -81,10 +81,17 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 
             let winids = WinStateOpenUberwinsByGroupType(grouptype)
  
-            call WinModelAddUberwins(a:grouptypename, winids)
+            let dims = WinStateGetWinDimensionsList(winids)
+
+            call WinModelAddUberwins(a:grouptypename, winids, dims)
+
 
         " Reopen the uberwins we closed
         call WinCommonReopenUberwins(highertypes)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins()
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -100,9 +107,14 @@ function! WinRemoveUberwinGroup(grouptypename)
             call WinStateCloseUberwinsByGroupType(grouptype)
         endif
 
-        call WinModelRemoveUberwins(a:grouptypename)
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins()
 
     call WinCommonRestoreCursorWinInfo(info)
+
+    call WinModelRemoveUberwins(a:grouptypename)
+
 endfunction
 
 function! WinHideUberwinGroup(grouptypename)
@@ -116,6 +128,10 @@ function! WinHideUberwinGroup(grouptypename)
 
         call WinStateCloseUberwinsByGroupType(grouptype)
         call WinModelHideUberwins(a:grouptypename)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins()
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -135,10 +151,16 @@ function! WinShowUberwinGroup(grouptypename)
 
             let winids = WinStateOpenUberwinsByGroupType(grouptype)
  
-            call WinModelShowUberwins(a:grouptypename, winids)
+            let dims = WinStateGetWinDimensionsList(winids)
+
+            call WinModelShowUberwins(a:grouptypename, winids, dims)
 
         " Reopen the uberwins we closed
         call WinCommonReopenUberwins(highertypes)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins()
 
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
@@ -197,7 +219,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
 
     " If we're adding the subwin group as hidden, add it only to the model
     if a:hidden
-        call WinModelAddSubwins(a:supwinid, a:grouptypename, [])
+        call WinModelAddSubwins(a:supwinid, a:grouptypename, [], [])
         return
     endif
 
@@ -209,13 +231,18 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
         let highertypes = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
 
             let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+
+            let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+            let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
  
-            call WinModelAddSubwins(a:supwinid, a:grouptypename, winids)
+            call WinModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
 
         " Reopen the subwins we closed
         call WinCommonReopenSubwins(a:supwinid, highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
+
+    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
@@ -232,6 +259,8 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
         call WinModelRemoveSubwins(a:supwinid, a:grouptypename)
 
     call WinCommonRestoreCursorWinInfo(info)
+
+    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinHideSubwinGroup(supwinid, grouptypename)
@@ -247,6 +276,8 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
         call WinModelHideSubwins(a:supwinid, a:grouptypename)
 
     call WinCommonRestoreCursorWinInfo(info)
+
+    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinShowSubwinGroup(supwinid, grouptypename)
@@ -263,13 +294,18 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
         let highertypes = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
 
             let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
- 
-            call WinModelShowSubwins(a:supwinid, a:grouptypename, winids)
+
+            let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+            let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+
+            call WinModelShowSubwins(a:supwinid, a:grouptypename, winids, reldims)
 
         " Reopen the subwins we closed
         call WinCommonReopenSubwins(a:supwinid, highertypes)
 
     call WinCommonRestoreCursorWinInfo(info)
+
+    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinGotoSubwin(supwinid, grouptypename, typename)

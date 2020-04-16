@@ -9,14 +9,23 @@ function! WinStateGetWinidsByCurrentTab()
     return winids
 endfunction
 
+
 function! WinStateWinExists(winid)
     return win_id2win(a:winid) != 0
 endfunction
+function! s:AssertWinExists(winid)
+    if !WinStateWinExists(a:winid)
+        throw 'no window with winid ' . a:winid
+    endif
+endfunction
+
+function! WinStateGetWinnrByWinid(winid)
+    call s:AssertWinExists(a:winid)
+    return win_id2win(a:winid)
+endfunction
 
 function! WinStateWinIsTerminal(winid)
-    if !WinStateWinExists(a:winid)
-        throw 'Nonexistent winid ' . a:winid
-    endif
+    call s:AssertWinExists(a:winid)
 
     return getwinvar(a:winid, '&buftype') ==# 'terminal'
 endfunction
@@ -25,10 +34,52 @@ function! WinStateGetCursorWinId()
     return win_getid()
 endfunction!
 
-function! WinStateMoveCursorToWinid(winid)
-    if !WinStateWinExists(a:winid)
-        throw 'Cannot move cursor to nonexistent winid ' . a:winid
+function! WinStateGetWinDimensions(winid)
+    call s:AssertWinExists(a:winid)
+    return {
+   \    'nr': win_id2win(a:winid),
+   \    'w': winwidth(a:winid),
+   \    'h': winheight(a:winid)
+   \}
+endfunction
+
+function! WinStateGetWinDimensionsList(winids)
+    if type(a:winids) != v:t_list
+        throw 'given winids are not a list'
     endif
+    let dim = []
+    for winid in a:winids
+        call add(dim, WinStateGetWinDimensions(winid))
+    endfor
+    return dim
+endfunction
+
+function! WinStateGetWinRelativeDimensions(winid, offset)
+    call s:AssertWinExists(a:winid)
+    if type(a:offset) != v:t_number
+        throw 'offset is not a number'
+    endif
+    return {
+   \    'relnr': win_id2win(a:winid) - a:offset,
+   \    'w': winwidth(a:winid),
+   \    'h': winheight(a:winid)
+   \}
+endfunction
+
+function! WinStateGetWinRelativeDimensionsList(winids, offset)
+    if type(a:winids) != v:t_list
+        throw 'given winids are not a list'
+    endif
+    let dim = []
+    for winid in a:winids
+        call add(dim, WinStateGetWinRelativeDimensions(winid, a:offset))
+    endfor
+    return dim
+endfunction
+
+" TODO: Add a wrapper in window-common that afterimages subwins
+function! WinStateMoveCursorToWinid(winid)
+    call s:AssertWinExists(a:winid)
     call win_gotoid(a:winid)
 endfunction
 
@@ -181,9 +232,7 @@ function! WinStateAfterimageWindow(winid)
 endfunction
 
 function! WinStateCloseWindow(winid)
-    if !WinStateWinExists(a:winid)
-        throw 'Cannot close nonexistent winid ' . a:winid
-    endif
+    call s:AssertWinExists(a:winid)
 
     " :close fails if called on the last window. Explicitly exit Vim if
     " there's only one window left.
