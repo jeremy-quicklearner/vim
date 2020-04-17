@@ -25,9 +25,7 @@ function! WinStateGetWinnrByWinid(winid)
 endfunction
 
 function! WinStateWinIsTerminal(winid)
-    call s:AssertWinExists(a:winid)
-
-    return getwinvar(a:winid, '&buftype') ==# 'terminal'
+    return WinStateWinExists(a:winid) && getwinvar(a:winid, '&buftype') ==# 'terminal'
 endfunction
 
 function! WinStateGetCursorWinId()

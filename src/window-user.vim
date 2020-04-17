@@ -247,7 +247,7 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
         call WinModelRemoveSubwins(a:supwinid, a:grouptypename)
 
         call WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
-       \    supwinid,
+       \    a:supwinid,
        \    grouptype.priority
        \)
 
@@ -316,4 +316,5 @@ function! WinGotoSubwin(supwinid, grouptypename, typename)
 endfunction
 
 " TODO: Zoom on supwins
+" TODO: Equalize supwins
 " TODO: Move from one supwin to another, in a direction

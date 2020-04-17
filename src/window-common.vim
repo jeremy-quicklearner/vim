@@ -7,6 +7,79 @@ function! WinCommonGetCursorWinInfo()
     return WinModelInfoById(WinStateGetCursorWinId())
 endfunction
 
+" Returns true if winids listed in in the model for an uberwin group exist in
+" the state
+function! WinCommonUberwinGroupExistsInState(grouptypename)
+    let winids = WinModelUberwinIdsByGroupTypeName(a:grouptypename)
+    return WinStateWinExists(winids[0])
+endfunction
+
+" Returns true if winids listed in the model for a subwin group exist in the
+" state
+function! WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
+    let winids = WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
+    return WinStateWinExists(winids[0])
+endfunction
+
+" Returns false if the dimensions in the model of any uberwin in a shown group of
+" a given type are dummies or inconsistent with the state. True otherwise.
+function! WinCommonUberwinGroupDimensionsMatch(grouptypename)
+    for typename in WinModelUberwinTypeNamesByGroupTypeName(a:grouptypename)
+        let mdims = WinModelUberwinDimensions(a:grouptypename, typename)
+        if mdims.nr ==# -1 || mdims.w ==# -1 || mdims.h ==# -1
+            return 0
+        endif
+        let winid = WinModelIdByInfo({
+       \    'category':'uberwin',
+       \    'grouptype':a:grouptypename,
+       \    'typename':typename
+       \})
+        let sdims = WinStateGetWinDimensions(winid)
+        if sdims.nr !=# mdims.nr || sdims.w !=# mdims.w || sdims.h !=# mdims.h
+            return 0
+        endif
+    endfor
+    return 1
+endfunction
+
+" Returns false if the dimensions in the model of a given supwin are dummies
+" or inconsistent with the state. True otherwise.
+function! WinCommonSupwinDimensionsMatch(supwinid)
+    let mdims = WinModelSupwinDimensions(a:supwinid)
+    if mdims.nr ==# -1 || mdims.w ==# -1 || mdims.h ==# -1
+        return 0
+    endif
+    let sdims = WinStateGetWinDimensions(a:supwinid)
+    if sdims.nr !=# mdims.nr || sdims.w !=# mdims.w || sdims.h !=# mdims.h
+        return 0
+    endif
+    return 1
+endfunction
+
+" Returns false if the dimensions in the model of any subwin in a shown group of
+" a given type for a given supwin are dummies or inconsistent with the state.
+" True otherwise.
+function! WinCommonSubwinGroupDimensionsMatch(supwinid, grouptypename)
+    for typename in WinModelSubwinTypeNamesByGroupTypeName(a:grouptypename)
+        let mdims = WinModelSubwinDimensions(a:supwinid, a:grouptypename, typename)
+        if mdims.relnr ==# 0 || mdims.w ==# -1 || mdims.h ==# -1
+            return 0
+        endif
+        let winid = WinModelIdByInfo({
+       \    'category':'subwin',
+       \    'supwin': a:supwinid,
+       \    'grouptype':a:grouptypename,
+       \    'typename':typename
+       \})
+        let sdims = WinStateGetWinDimensions(winid)
+        let snr = WinStateGetWinnrByWinid(a:supwinid)
+        if sdims.nr !=# snr + mdims.relnr || sdims.w !=# mdims.w || sdims.h !=# mdims.h
+            return 0
+        endif
+    endfor
+    return 1
+endfunction
+
 " Moves the cursor to a window remembered with WinCommonGetCursorWinInfo, if it still
 " exists
 function! WinCommonRestoreCursorWinInfo(info)

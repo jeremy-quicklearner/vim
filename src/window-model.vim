@@ -423,6 +423,21 @@ endfunction
 
 " General Getters
 
+" Returns a list containing the IDs of all uberwins in an uberwin group
+function! WinModelUberwinIdsByGroupTypeName(grouptypename)
+    call s:AssertWinModelExists()
+    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
+    let uberwinids = []
+    if !WinModelUberwinGroupExists(a:grouptypename) ||
+   \   WinModelUberwinGroupIsHidden(a:grouptypename)
+        return []
+    endif
+    for typename in WinModelUberwinTypeNamesByGroupTypeName(a:grouptypename)
+        call add(uberwinids, t:uberwin[a:grouptypename].uberwin[typename].id)
+    endfor
+    return uberwinids
+endfunction
+
 " Returns a list containing all uberwin IDs
 function! WinModelUberwinIds()
     call s:AssertWinModelExists()
@@ -442,6 +457,21 @@ endfunction
 function! WinModelSupwinIds()
     call s:AssertWinModelExists()
     return map(keys(t:supwin), 'str2nr(v:val)')
+endfunction
+
+" Returns a list containing the IDs of all subwins in a subwin group
+function! WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    call WinModelAssertSupwinExists(a:supwinid)
+    let subwinids = []
+    if !WinModelSubwinGroupExists(a:supwinid, a:grouptypename) ||
+   \   WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+        return []
+    endif
+    for typename in WinModelSubwinTypeNamesByGroupTypeName(a:grouptypename)
+        call add(subwinids, t:supwin[a:supwinid].subwin[a:grouptypename].subwin[typename].id)
+    endfor
+    return subwinids
 endfunction
 
 " Returns a list containing all subwin IDs
@@ -653,7 +683,9 @@ function! s:ValidateNewDimensions(category, grouptypename, typename, nr, w, h)
         let typeidx = index(g:uberwingrouptype[a:grouptypename].typenames, a:typename)
         let expw = g:uberwingrouptype[a:grouptypename].widths[typeidx]
         let exph = g:uberwingrouptype[a:grouptypename].heights[typeidx]
-        if expw !=# -1 && a:w !=# -1 && expw !=# a:w
+        " The group type's prescribed width and height are maximums because if
+        " Vim is resized into a small terminal, they need to shrink
+        if expw !=# -1 && a:w !=# -1 && expw < a:w
             throw 'width ' .
            \      a:w .
            \      ' invalid for ' .
@@ -661,7 +693,9 @@ function! s:ValidateNewDimensions(category, grouptypename, typename, nr, w, h)
            \      ':' .
            \      a:typename
         endif
-        if exph !=# -1 && a:h !=# -1 && exph !=# a:h
+        " The group type's prescribed width and height are maximums because if
+        " Vim is resized into a small terminal, they need to shrink
+        if exph !=# -1 && a:h !=# -1 && exph < a:h
             throw 'height ' .
            \      a:h .
            \      ' invalid for ' .
@@ -732,10 +766,14 @@ function! s:ValidateNewSubwinDimensions(grouptypename, typename, relnr, w, h)
     let typeidx = index(g:subwingrouptype[a:grouptypename].typenames, a:typename)
     let expw = g:subwingrouptype[a:grouptypename].widths[typeidx]
     let exph = g:subwingrouptype[a:grouptypename].heights[typeidx]
-    if expw !=# -1 && a:w !=# -1 && expw !=# a:w
+    " The group type's prescribed width and height are maximums because if
+    " Vim is resized into a small terminal, they need to shrink
+    if expw !=# -1 && a:w !=# -1 && expw < a:w
         throw 'width ' . a:w . ' invalid for ' . a:grouptypename . ':' . a:typename
     endif
-    if exph !=# -1 && a:h !=# -1 && exph !=# a:h
+    " The group type's prescribed width and height are maximums because if
+    " Vim is resized into a small terminal, they need to shrink
+    if exph !=# -1 && a:h !=# -1 && exph < a:h
         throw 'height ' . a:h . ' invalid for ' . a:grouptypename . ':' . a:typename
     endif
 endfunction
@@ -844,11 +882,17 @@ function! WinModelShownUberwinGroupTypeNames()
             call add(grouptypenames, grouptypename)
         endif
     endfor
-    return grouptypenames
+    return sort(grouptypenames, function('s:CompareUberwinGroupTypeNamesByPriority'))
 endfunction
 function! WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     return g:uberwingrouptype[a:grouptypename].typenames
+endfunction
+function! WinModelUberwinDimensions(grouptypename, typename)
+    call WinModelAssertUberwinTypeExists(a:grouptypename, a:typename)
+    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+    let windict = t:uberwin[a:grouptypename].uberwin[a:typename]
+    return {'nr':windict.nr,'w':windict.w,'h':windict.h}
 endfunction
 
 function! WinModelAddUberwins(grouptypename, winids, dimensions)
@@ -963,21 +1007,22 @@ function! WinModelChangeUberwinDimensions(grouptypename, typename, nr, w, h)
 
     let t:uberwin[a:grouptypename].uberwin[a:typename].nr = a:nr
     let t:uberwin[a:grouptypename].uberwin[a:typename].w = a:w
-    let t:uberwin[a:grouptypename].uberwin[a:typename].l = a:l
+    let t:uberwin[a:grouptypename].uberwin[a:typename].h = a:h
 endfunction
 
 function! WinModelChangeUberwinGroupDimensions(grouptypename, dims)
-    let vdims = s:ValidateNewDimensionsList(a:dims)
+    let vdims = s:ValidateNewDimensionsList('uberwin', a:grouptypename, a:dims)
 
     for typeidx in range(len(g:uberwingrouptype[a:grouptypename].typenames))
         let typename = g:uberwingrouptype[a:grouptypename].typenames[typeidx]
         call WinModelChangeUberwinDimensions(
        \    a:grouptypename,
        \    typename,
-       \    dims[typeidx].nr,
-       \    dims[typeidx].w,
-       \    dims[typeidx].h
+       \    vdims[typeidx].nr,
+       \    vdims[typeidx].w,
+       \    vdims[typeidx].h
        \)
+    endfor
 endfunction
 
 " Supwin manipulation
@@ -994,6 +1039,11 @@ function! WinModelAssertSupwinDoesntExist(winid)
     if WinModelSupwinExists(a:winid)
         throw 'supwin ' . a:winid . ' exists'
     endif
+endfunction
+function! WinModelSupwinDimensions(supwinid)
+    call WinModelAssertSupwinExists(a:supwinid)
+    let windict = t:supwin[a:supwinid]
+    return {'nr':windict.nr,'w':windict.w,'h':windict.h}
 endfunction
 
 function! WinModelChangeSupwinDimensions(supwinid, nr, w, h)
@@ -1191,11 +1241,18 @@ function! WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             call add(grouptypenames, grouptypename)
         endif
     endfor
-    return grouptypenames
+    return sort(grouptypenames, function('s:CompareSubwinGroupTypeNamesByPriority'))
 endfunction
 function! WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     return g:subwingrouptype[a:grouptypename].typenames
+endfunction
+function! WinModelSubwinDimensions(supwinid, grouptypename, typename)
+    call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    let subwinid = t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].id
+    let windict = t:subwin[subwinid]
+    return {'relnr':windict.relnr,'w':windict.w,'h':windict.h}
 endfunction
 
 

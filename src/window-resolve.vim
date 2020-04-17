@@ -398,37 +398,124 @@ function! s:WinResolveModelToState()
     "           touched it. That touch may have put it in the wrong place. So
     "           any window in the model with non-dummy dimensions inconsistent
     "           with its state dimensions needs to be temporarily closed.
-    " TODO: If any uberwins have dummy dimensions or non-dummy dimensions that
-    "       are inconsistent with the state, remove them from the state
-    "       along with any other shown uberwin groups with higher priority. Set flag
-    "       X.
+    "           Since a window can be anywhere, closing it may affect the
+    "           dimensions of other windows and make them inconsistent after
+    "           they've been checked already. So if we close a window, we need
+    "           to make another pass.
+    let passneeded = 1
+    while passneeded
+        let passneeded = 0
+        " If any uberwins have dummy or inconsistent dimensions, remove them from the
+        " state along with any other shown uberwin groups with higher priority.
+        let uberwinsremoved = 0
+        for grouptypename in WinModelShownUberwinGroupTypeNames()
+            if WinCommonUberwinGroupExistsInState(grouptypename)
+                if uberwinsremoved || !WinCommonUberwinGroupDimensionsMatch(grouptypename)
+                    let grouptype = g:uberwingrouptype[grouptypename]
+                    call WinStateCloseUberwinsByGroupType(grouptype)
+                    let uberwinsremoved = 1
+                    let passneeded = 1
+                endif
+            endif
+        endfor
 
-    " TODO: If flag X, add all shown subwin groups to set S of
-    "       supwinid/grouptypename keys
-    " TODO: Else, for all supwins in the model
-    "       TODO: If the supwin has dummy dimensions or non-dummy dimensions
-    "             that are inconsistent with the state, add all its shown
-    "             subwin groups to set S 
-    "       TODO: Else if any subwin of the supwin has dummy dimensions or
-    "             non-dummy dimensions that are inconsistent with the state,
-    "             add its group to set S along with all shown groups in the
-    "             subwin with higher priority
+        let toremove = {}
+        for supwinid in WinModelSupwinIds()
+            let toremove[supwinid] = []
+            " If we removed uberwins, flag all shown subwins for removal
+            " Also flag all shown subwins of any supwin with dummy or inconsistent
+            " dimensions
+            if uberwinsremoved || !WinCommonSupwinDimensionsMatch(supwinid)
+                let toremove[supwinid] = WinModelShownSubwinGroupTypeNamesBySupwinId(
+               \    supwinid
+               \)
 
-    " TODO: Remove all subwin groups in set S from the state
+            " Otherwise, if any subwin of the supwin has dummy or inconsistent
+            " dimensions, flag that subwin's group along with all higher-priority
+            " shown subwin groups in the supwin
+            else
+                let subwinsflagged = 0
+                for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(
+               \    supwinid
+               \)
+                    if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
+                        if subwinsflagged || !WinCommonSubwinGroupDimensionsMatch(
+                       \    supwinid,
+                       \    grouptypename
+                       \)
+                            echom supwinid
+                            echom grouptypename
+                            call add(toremove[supwinid], grouptypename)
+                            let subwinsflagged = 1
+                        endif
+                    endif
+                endfor
+            endif
+        endfor
+
+        " Remove all flagged subwins from the state
+        for supwinid in keys(toremove)
+            for grouptypename in toremove[supwinid]
+                let grouptype = g:subwingrouptype[grouptypename]
+                if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
+                    call WinStateCloseSubwinsByGroupType(supwinid, grouptype)
+                    let passneeded = 1
+                endif
+            endfor
+        endfor
+    endwhile
 
     " STEP 2.3: Add any missing windows to the state, including those that
     "           were temporarily removed, in the correct places
-    " TODO: If any shown uberwin in the model isn't in the state,
-    "       add it to the state
-    " TODO: If any shown subwin in the model isn't in the state,
-    "       add it to the state
+    " If any shown uberwin in the model isn't in the state,
+    " add it to the state
+    for grouptypename in WinModelShownUberwinGroupTypeNames()
+        if !WinCommonUberwinGroupExistsInState(grouptypename)
+            let grouptype = g:uberwingrouptype[grouptypename]
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
+            " This Model write in ResolveModelToState is unfortunate, but I
+            " see no sensible way to put it anywhere else
+            call WinModelChangeUberwinIds(grouptypename, winids)
+        endif
+    endfor
+
+    " If any shown subwin in the model isn't in the state,
+    " add it to the state
+    for supwinid in WinModelSupwinIds()
+        for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+            if !WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
+                let grouptype = g:subwingrouptype[grouptypename]
+                let winids = WinStateOpenSubwinsByGroupType(supwinid, grouptype)
+                " This Model write in ResolveModelToState is unfortunate, but I
+                " see no sensible way to put it anywhere else
+                call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
+            endif
+        endfor
+    endfor
 endfunction
 
 " STEP 3: Record all window dimensions in the model
 function! s:WinResolveRecordDimensions()
-    " TODO STEP 3.1: Record all uberwin dimensions in the model
-    " TODO STEP 3.2: Record all supwin dimensions in the model
-    " TODO STEP 3.3: Record all subwin dimensions in the model
+    " STEP 3.1: Record all uberwin dimensions in the model
+    for grouptypename in WinModelShownUberwinGroupTypeNames()
+        let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
+        let dims = WinStateGetWinDimensionsList(winids)
+        call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+    endfor
+
+    " STEP 3.2: Record all supwin dimensions in the model
+    for supwinid in WinModelSupwinIds()
+        let dim = WinStateGetWinDimensions(supwinid)
+        call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
+
+    " STEP 3.3: Record all subwin dimensions in the model
+        let supwinnr = WinStateGetWinnrByWinid(supwinid)
+        for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+            let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
+            let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+            call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
+        endfor
+    endfor
 endfunction
 
 " STEP 4: Afterimage any subwins that need it
@@ -462,6 +549,9 @@ function! WinResolve(arg)
             call TabInitCallback()
         endfor
     endif
+
+    " Save cursor position to be restored at the end
+    let curpos = WinCommonGetCursorWinInfo()
 
     " If this is the first time running the resolver after entering a tab, run
     " the appropriate callbacks
@@ -516,6 +606,9 @@ function! WinResolve(arg)
     " STEP 4: The model and state are now consistent. Afterimage any subwins
     "         that need it
     call s:WinResolveAfterimage()
+
+    " Restore the cursor position from when the resolver started
+    call WinCommonRestoreCursorWinInfo(curpos)
 
     " Run the post-resolve callbacks
     for PostResolveCallback in WinModelPostResolveCallbacks()
