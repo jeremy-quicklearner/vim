@@ -67,12 +67,19 @@ function! WinCommonReopenSubwins(supwinid, grouptypenames)
     endfor
 endfunction
 
-" Closes and reopens all shown subwins of a given supwin
-function! WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
-    let grouptypenames = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, -1)
+" Closes and reopens all shown subwins of a given supwin with priority higher
+" than a given
+function! WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(supwinid, priority)
+    let grouptypenames = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, a:priority)
     call WinCommonReopenSubwins(a:supwinid, grouptypenames)
 
-    " TODO: Recompute dimensions for the supwin and its subwins
+    let dims = WinStateGetWinDimensions(a:supwinid)
+    call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
+endfunction
+
+" Closes and reopens all shown subwins of a given supwin
+function! WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
+    call WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(a:supwinid, -1)
 endfunction
 
 " Closes and reopens all shown subwins in the current tab

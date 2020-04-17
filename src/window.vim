@@ -1,4 +1,6 @@
 " Window manipulation
+" TODO: Audit all the asserts for redundancy
+" TODO: Audit all the user operations for redundancy
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and

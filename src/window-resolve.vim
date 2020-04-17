@@ -125,8 +125,6 @@ endfunction
 " Resolver steps
 " STEP 1 - Adjust the model so it accounts for recent changes to the state
 function! s:WinResolveStateToModel()
-    " TODO: Audit all additions to the model and decide whether to record
-    "       dimensions or not
     " STEP 1.1: Terminal windows get special handling because the CursorHold event
     "           doesn't execute when the cursor is inside them
     " If any terminal window is listed in the model as an uberwin, mark that
@@ -140,7 +138,7 @@ function! s:WinResolveStateToModel()
            \})
             if winid && WinStateWinIsTerminal(winid)
                 call WinModelHideUberwins(grouptypename)
-                call WinModelAddSupwin(winid)
+                call WinModelAddSupwin(winid, -1, -1, -1)
                 let s:supwinsaddedcond = 1
                 break
             endif
@@ -160,8 +158,7 @@ function! s:WinResolveStateToModel()
                \})
                 if winid && WinStateWinIsTerminal(winid)
                     call WinModelHideSubwins(supwinid, grouptypename)
-                    let dim = WinStateGetWinDimensions(supwinid)
-                    call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
+                    call WinModelAddSupwin(winid, -1, -1, -1)
                     let s:supwinsaddedcond = 1
                     break
                 endif
@@ -169,7 +166,7 @@ function! s:WinResolveStateToModel()
         endfor
     endfor
     
-    " If any supwin is terminal window with non-hidden subwins, mark them as
+    " If any supwin is terminal window with shown subwins, mark them as
     " hidden in the model
     for supwinid in WinModelSupwinIds()
         if WinStateWinExists(supwinid)&& WinStateWinIsTerminal(supwinid)
@@ -251,8 +248,7 @@ function! s:WinResolveStateToModel()
             " afterimaged
             if s:toIdentifyUberwins[grouptypename](winid) !=# typename
                 call WinModelHideUberwins(grouptypename)
-                let dim = WinStateGetWinDimensions(winid)
-                call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
+                call WinModelAddSupwin(winid, -1, -1, -1)
                 let s:supwinsaddedcond = 1
                 break
             endif
@@ -276,8 +272,7 @@ function! s:WinResolveStateToModel()
                   \identified.supwin !=# supwinid ||
                   \identified.typename !=# typename
                     call WinModelHideSubwins(supwinid, grouptypename)
-                    let dim = WinStateGetWinDimensions(winid)
-                    call WinModelAddSupwin(winid, dim.nr, dim.w, dim.h)
+                    call WinModelAddSupwin(winid, -1, -1, -1)
                     let s:supwinsaddedcond = 1
                     break
                 endif
@@ -308,17 +303,15 @@ function! s:WinResolveStateToModel()
     let groupedmissingwininfo = WinResolveGroupInfo(missingwininfos)
     for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
         let winids = groupedmissingwininfo.uberwin[uberwingrouptypename].winids
-        let dims = WinStateGetWinDimensionsList(winids)
         call WinModelAddOrShowUberwins(
        \    uberwingrouptypename,
        \    winids,
-       \    dims
+       \    []
        \)
     endfor
     let s:uberwinsaddedcond = 1
     for supwinid in groupedmissingwininfo.supwin
-        let dim = WinStateGetWinDimensions(supwinid)
-        call WinModelAddSupwin(supwinid, dim.nr, dim.w, dim.h)
+        call WinModelAddSupwin(supwinid, -1, -1, -1)
         let s:supwinsaddedcond = 1
     endfor
     for supwinid in keys(groupedmissingwininfo.subwin)
@@ -328,17 +321,15 @@ function! s:WinResolveStateToModel()
         for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
             let winids = groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
             let supwinnr = WinStateGetWinnrByWinid(supwinid)
-            let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
             call WinModelAddOrShowSubwins(
            \    supwinid,
            \    subwingrouptypename,
            \    winids,
-           \    dims
+           \    []
            \)
            let s:subwinsaddedcond = 1
         endfor
     endfor
-    " TODO: Figure out how higher-priority subwins get reopened
 endfunction
 
 " STEP 2 - Adjust the state so that it matches the model
@@ -390,35 +381,64 @@ function! s:WinResolveModelToState()
         endif
     endfor
 
-    " STEP 2.2: Temporarily close any windows that may be in the wrong place
-    " TODO: If any uberwins were added by STEP 1, remove all uberwins from the
-    "       state
-    " TODO: Else if any uberwin's dimensions or position have changed, remove that
-    "       uberwin's group and all groups with higher priorities from the state
+    " STEP 2.2: Temporarily close any windows that may be in the wrong place.
+    "           Any window that was added in STEP 1 was added because it
+    "           spontaneously appeared. It may have spontaneously appeared in
+    "           the wrong place, so any window that was added in STEP 1 must
+    "           be temporarily closed. STEP 1 is the only place where windows
+    "           are added to the model with dummy dimensions, so any window in
+    "           the model with dummy dimensions needs to be temporarily
+    "           closed.
+    "           Conversely, any window with non-dummy dimensions in the model
+    "           has been touched by a user operation or by the previous
+    "           execution of the resolver, which would have left its model
+    "           dimensions consistent with its state dimensions. If there is
+    "           an inconsistency, then the window has been touched by
+    "           something else after hte user operation or resolver last
+    "           touched it. That touch may have put it in the wrong place. So
+    "           any window in the model with non-dummy dimensions inconsistent
+    "           with its state dimensions needs to be temporarily closed.
+    " TODO: If any uberwins have dummy dimensions or non-dummy dimensions that
+    "       are inconsistent with the state, remove them from the state
+    "       along with any other shown uberwin groups with higher priority. Set flag
+    "       X.
 
-    " TODO: If any subwins were added to the model by STEP 1, remove all subwins
-    "       from the state
-    " TODO: Else if any supwin's dimensions or position has changed, remove all of
-    "       that supwin's subwins from the state
-    " TODO: Else If any subwin's dimensions or position have changed, remove that
-    "       subwin's group and all groups with higher priorities from the state
+    " TODO: If flag X, add all shown subwin groups to set S of
+    "       supwinid/grouptypename keys
+    " TODO: Else, for all supwins in the model
+    "       TODO: If the supwin has dummy dimensions or non-dummy dimensions
+    "             that are inconsistent with the state, add all its shown
+    "             subwin groups to set S 
+    "       TODO: Else if any subwin of the supwin has dummy dimensions or
+    "             non-dummy dimensions that are inconsistent with the state,
+    "             add its group to set S along with all shown groups in the
+    "             subwin with higher priority
+
+    " TODO: Remove all subwin groups in set S from the state
 
     " STEP 2.3: Add any missing windows to the state, including those that
     "           were temporarily removed, in the correct places
-    " TODO: If any non-hidden uberwin in the model isn't in the state,
+    " TODO: If any shown uberwin in the model isn't in the state,
     "       add it to the state
-    " TODO: If any non-hidden subwin in the model isn't in the state,
+    " TODO: If any shown subwin in the model isn't in the state,
     "       add it to the state
 endfunction
 
-" STEP 3 - Afterimage any subwins that need it
+" STEP 3: Record all window dimensions in the model
+function! s:WinResolveRecordDimensions()
+    " TODO STEP 3.1: Record all uberwin dimensions in the model
+    " TODO STEP 3.2: Record all supwin dimensions in the model
+    " TODO STEP 3.3: Record all subwin dimensions in the model
+endfunction
+
+" STEP 4: Afterimage any subwins that need it
 function! s:WinResolveAfterimage()
-    " TODO STEP 3.1: If the cursor is in a subwin, afterimage all non-hidden
+    " TODO STEP 4.1: If the cursor is in a subwin, afterimage all shown
     "           afterimaging subwin groups of its supwin except the one
     "           containing the current window
-    " TODO STEP 3.2: If the cursor is in a supwin, afterimage all non-hidden
+    " TODO STEP 4.2: If the cursor is in a supwin, afterimage all shown
     "           afterimaging subwin groups of all supwins
-    " TODO STEP 3.3: If the cursor is in an uberwin, afterimage all non-hidden
+    " TODO STEP 4.3: If the cursor is in an uberwin, afterimage all shown
     "           afterimaging subwin groups
 endfunction
 
@@ -489,8 +509,13 @@ function! WinResolve(arg)
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
 
-    " STEP 3: The model and state are now consistent. Afterimage any subwins
+    " STEP 3: Now the state is the way it should be, so record the dimensions
+    "         of all windows in the model
+    call s:WinResolveRecordDimensions()
+
+    " STEP 4: The model and state are now consistent. Afterimage any subwins
     "         that need it
+    call s:WinResolveAfterimage()
 
     " Run the post-resolve callbacks
     for PostResolveCallback in WinModelPostResolveCallbacks()

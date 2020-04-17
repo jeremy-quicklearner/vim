@@ -63,7 +63,6 @@ function! WinAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
 endfunction
 
 function! WinAddUberwinGroup(grouptypename, hidden)
-    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
 
     " If we're adding the uberwin group as hidden, add it only to the model
@@ -97,9 +96,6 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 endfunction
 
 function! WinRemoveUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertUberwinGroupExists(a:grouptypename)
-
     let info = WinCommonGetCursorWinInfo()
 
         if !WinModelUberwinGroupIsHidden(a:grouptypename)
@@ -118,8 +114,6 @@ function! WinRemoveUberwinGroup(grouptypename)
 endfunction
 
 function! WinHideUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertUberwinGroupExists(a:grouptypename)
     call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
 
     let grouptype = g:uberwingrouptype[a:grouptypename]
@@ -137,8 +131,6 @@ function! WinHideUberwinGroup(grouptypename)
 endfunction
 
 function! WinShowUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertUberwinGroupExists(a:grouptypename)
     call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
 
     let grouptype = g:uberwingrouptype[a:grouptypename]
@@ -166,7 +158,6 @@ function! WinShowUberwinGroup(grouptypename)
 endfunction
 
 function! WinGotoUberwin(grouptypename, typename)
-    call WinModelAssertUberwinTypeExists(a:grouptypename, a:typename)
     if WinModelUberwinGroupIsHidden(a:grouptypename)
         call WinShowUberwinGroup(a:grouptypename)
     endif
@@ -214,7 +205,6 @@ function! WinAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
 endfunction
 
 function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
-    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
 
     " If we're adding the subwin group as hidden, add it only to the model
@@ -242,13 +232,11 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
 
     call WinCommonRestoreCursorWinInfo(info)
 
-    " TODO: Recompute dimensions for the supwin and its subwins
+    let dims = WinStateGetWinDimensions(a:supwinid)
+    call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
-    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
-
     let info = WinCommonGetCursorWinInfo()
 
         if !WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
@@ -258,14 +246,16 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
 
         call WinModelRemoveSubwins(a:supwinid, a:grouptypename)
 
+        call WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
+       \    supwinid,
+       \    grouptype.priority
+       \)
+
     call WinCommonRestoreCursorWinInfo(info)
 
-    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinHideSubwinGroup(supwinid, grouptypename)
-    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
     call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
 
     let grouptype = g:subwingrouptype[a:grouptypename]
@@ -273,16 +263,19 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
     let info = WinCommonGetCursorWinInfo()
 
         call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+
         call WinModelHideSubwins(a:supwinid, a:grouptypename)
+
+        call WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
+       \    a:supwinid,
+       \    grouptype.priority
+       \)
 
     call WinCommonRestoreCursorWinInfo(info)
 
-    " TODO: Recompute dimensions for the supwin and its subwins
 endfunction
 
 function! WinShowSubwinGroup(supwinid, grouptypename)
-    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
-    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
     call WinModelAssertSubwinGroupIsHidden(a:supwinid, a:grouptypename)
 
     let grouptype = g:subwingrouptype[a:grouptypename]
@@ -305,11 +298,11 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
 
     call WinCommonRestoreCursorWinInfo(info)
 
-    " TODO: Recompute dimensions for the supwin and its subwins
+    let dims = WinStateGetWinDimensions(a:supwinid)
+    call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
 function! WinGotoSubwin(supwinid, grouptypename, typename)
-    call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
     if WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
         call WinShowSubwinGroup(a:supwinid, a:grouptypename)
     endif

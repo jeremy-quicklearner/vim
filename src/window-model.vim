@@ -1002,7 +1002,7 @@ function! WinModelChangeSupwinDimensions(supwinid, nr, w, h)
 
     let t:supwin[a:supwinid].nr = a:nr
     let t:supwin[a:supwinid].w = a:w
-    let t:supwin[a:supwinid].l = a:l
+    let t:supwin[a:supwinid].h = a:h
 endfunction
 
 " Subwin manipulation
@@ -1372,28 +1372,30 @@ endfunction
 
 function! WinModelChangeSubwinDimensions(supwinid, grouptypename, typename, relnr, w, h)
     call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
-    call s:ValidateNewSubwinDimensions(a:grouptypename, a:typename, a:nr, a:w, a:h)
+    call s:ValidateNewSubwinDimensions(a:grouptypename, a:typename, a:relnr, a:w, a:h)
 
-    let subwinid = t:subwin[a:supwinid][a:grouptypename].subwin[a:typename].id
+    let subwinid = t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].id
     let t:subwin[subwinid].relnr = a:relnr
     let t:subwin[subwinid].w = a:w
-    let t:subwin[subwinid].l = a:l
+    let t:subwin[subwinid].l = a:h
 
     call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
 endfunction
 
 function! WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
-    let vdims = s:ValidateNewSubwinDimensionsList(a:dims)
+    let vdims = s:ValidateNewSubwinDimensionsList(a:grouptypename, a:dims)
 
     for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
         let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
         call WinModelChangeSubwinDimensions(
+       \    a:supwinid,
        \    a:grouptypename,
        \    typename,
        \    vdims[typeidx].relnr,
        \    vdims[typeidx].w,
        \    vdims[typeidx].h
        \)
+    endfor
 endfunction
 
 function! WinModelAfterimageSubwin(supwinid, grouptypename, typename, aibufnum)
