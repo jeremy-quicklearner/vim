@@ -14,23 +14,14 @@ Hard but I know how
 - Pre-8.1 version compatibility
 - Replace common big motions like H M L Ctrl-D and Ctrl-U with more animated versions
 - Add mapping to change instances of "false" to "true" and vice versa
-- Add a new subwin on the left that shows marks. Jump to each mark with <enter> and <space>
-- Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
-- Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
-- Figure out why location windows' statuslines glitch out sometimes
 - Figure out Tags
 - Add a way to switch off line wrapping per window
 - Figure out some convenient way to store sessions
 - Write a command that calls a ws make and puts errors in the quickfix list
 - Populate the pmenu with only tokens from the current indented block
-
-I don't know if I know how
-- Add an undotree visualization plugin
-- Automatically jump to location/quickfix window after commands that change its content
-- Subwin/Uberwin engine
-- Make locwins into subwins
-- Make qfwins into uberwins
-- Make Help into uberwin
+- Add a new subwin on the right that shows marks. Jump to each mark with <enter> and <space>
+- Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
+- Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
