@@ -25,6 +25,7 @@ I don't know how
 - Add a way to switch off line wrapping per window
 - Figure out some convenient way to store sessions
 - Write a command that calls a ws make and puts errors in the quickfix list
+- Populate the pmenu with only tokens from the current indented block
 
 I don't know if I know how
 - Add an undotree visualization plugin

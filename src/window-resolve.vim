@@ -1,6 +1,9 @@
 " Window infrastructure Resolve function
 " See window.vim
 
+" The cursor's final position is used in multiple places
+let s:curpos = {}
+
 " Internal conditions - flags used by different helpers to communicate with
 " each other
 let s:uberwinsaddedcond = 0
@@ -12,10 +15,26 @@ let s:subwinsaddedcond = 0
 let t:winresolvetabenteredcond = 1
 
 " Helpers
+
+" If given the winid of an afterimaged subwin, return model info about the
+" subwin
+function! WinResolveIdentifyAfterimagedSubwin(winid)
+    let wininfo = WinModelInfoById(a:winid)
+    if wininfo.category ==# 'subwin' && 
+   \   WinModelSubwinIsAfterimaged(
+   \       wininfo.supwin,
+   \       wininfo.grouptype,
+   \       wininfo.typename
+   \   ) &&
+   \   WinModelSubwinAibufBySubwinId(a:winid) ==# WinStateGetBufnrByWinid(a:winid)
+        return wininfo
+    endif
+    return {'category':'none','id':a:winid}
+endfunction
+
 " Run all the toIdentify callbacks against a window until one of
 " them succeeds. Return the model info obtained.
 function! WinResolveIdentifyWindow(winid)
-    " TODO: Special case: The window is an afterimaged subwin
     for uberwingrouptypename in keys(s:toIdentifyUberwins)
         let uberwintypename = s:toIdentifyUberwins[uberwingrouptypename](a:winid)
         if !empty(uberwintypename)
@@ -48,6 +67,12 @@ function! WinResolveIdentifyWindow(winid)
            \}
         endif
     endfor
+    let aiinfo = WinResolveIdentifyAfterimagedSubwin(a:winid)
+    if aiinfo.category !=# 'none'
+        " No need to sanity check the 'supwin' field like above because this
+        " information already comes from the model
+        return aiinfo
+    endif
     return {
    \    'category': 'supwin',
    \    'id': a:winid
@@ -244,8 +269,6 @@ function! s:WinResolveStateToModel()
            \    'grouptype': grouptypename,
            \    'typename': typename
            \})
-            " TODO: toIdentify() consistency isn't required if the subwin is
-            " afterimaged
             if s:toIdentifyUberwins[grouptypename](winid) !=# typename
                 call WinModelHideUberwins(grouptypename)
                 call WinModelAddSupwin(winid, -1, -1, -1)
@@ -267,6 +290,11 @@ function! s:WinResolveStateToModel()
                \    'grouptype': grouptypename,
                \    'typename': typename
                \})
+                " toIdentify consistency isn't required if the subwin is
+                " afterimaged
+                if WinModelSubwinIsAfterimaged(supwinid, grouptypename, typename)
+                    continue
+                endif
                 let identified = s:toIdentifySubwins[grouptypename](winid)
                 if empty(identified) ||
                   \identified.supwin !=# supwinid ||
@@ -332,7 +360,7 @@ function! s:WinResolveStateToModel()
     endfor
 endfunction
 
-" STEP 2 - Adjust the state so that it matches the model
+" STEP 2: Adjust the state so that it matches the model
 function! s:WinResolveModelToState()
     " STEP 2.1: Purge the state of window that isn't in the model
     " TODO: Do something more civilized than stomping each window
@@ -394,7 +422,7 @@ function! s:WinResolveModelToState()
     "           execution of the resolver, which would have left its model
     "           dimensions consistent with its state dimensions. If there is
     "           an inconsistency, then the window has been touched by
-    "           something else after hte user operation or resolver last
+    "           something else after the user operation or resolver last
     "           touched it. That touch may have put it in the wrong place. So
     "           any window in the model with non-dummy dimensions inconsistent
     "           with its state dimensions needs to be temporarily closed.
@@ -410,7 +438,8 @@ function! s:WinResolveModelToState()
         let uberwinsremoved = 0
         for grouptypename in WinModelShownUberwinGroupTypeNames()
             if WinCommonUberwinGroupExistsInState(grouptypename)
-                if uberwinsremoved || !WinCommonUberwinGroupDimensionsMatch(grouptypename)
+                if uberwinsremoved ||
+               \   !WinCommonUberwinGroupDimensionsMatch(grouptypename)
                     let grouptype = g:uberwingrouptype[grouptypename]
                     call WinStateCloseUberwinsByGroupType(grouptype)
                     let uberwinsremoved = 1
@@ -443,8 +472,6 @@ function! s:WinResolveModelToState()
                        \    supwinid,
                        \    grouptypename
                        \)
-                            echom supwinid
-                            echom grouptypename
                             call add(toremove[supwinid], grouptypename)
                             let subwinsflagged = 1
                         endif
@@ -456,9 +483,8 @@ function! s:WinResolveModelToState()
         " Remove all flagged subwins from the state
         for supwinid in keys(toremove)
             for grouptypename in toremove[supwinid]
-                let grouptype = g:subwingrouptype[grouptypename]
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
-                    call WinStateCloseSubwinsByGroupType(supwinid, grouptype)
+                    call WinCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1
                 endif
             endfor
@@ -485,6 +511,34 @@ function! s:WinResolveModelToState()
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             if !WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
                 let grouptype = g:subwingrouptype[grouptypename]
+                if WinModelSubwinGroupTypeHasAfterimagingSubwin(grouptypename)
+                    " Afterimaging subwins may be state-open in at most one supwin
+                    " at a time. So if we're opening an afterimaging subwin, it
+                    " must first be afterimaged everywhere else.
+                    for othersupwinid in WinModelSupwinIds()
+                        if othersupwinid ==# supwinid
+                            continue
+                        endif
+                        if WinModelSubwinGroupExists(
+                       \    othersupwinid,
+                       \    grouptypename
+                       \) && !WinModelSubwinGroupIsHidden(
+                       \    othersupwinid,
+                       \    grouptypename
+                       \) && !WinModelSubwinGroupHasAfterimagedSubwin(
+                       \    othersupwinid,
+                       \    grouptypename
+                       \) && WinCommonSubwinGroupExistsInState(
+                       \    othersupwinid,
+                       \    grouptypename
+                       \)
+                            call WinCommonAfterimageSubwinsByInfo(
+                           \    othersupwinid,
+                           \    grouptypename
+                           \)
+                        endif
+                    endfor
+                endif
                 let winids = WinStateOpenSubwinsByGroupType(supwinid, grouptype)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
@@ -494,21 +548,27 @@ function! s:WinResolveModelToState()
     endfor
 endfunction
 
-" STEP 3: Record all window dimensions in the model
+" STEP 3: Make sure that the subwins are afterimaged according to the cursor's
+"         final position
+function! s:WinResolveCursor()
+    call WinCommonUpdateAfterimagingByCursorPosition(s:curpos)
+endfunction
+
+" STEP 4: Record all window dimensions in the model
 function! s:WinResolveRecordDimensions()
-    " STEP 3.1: Record all uberwin dimensions in the model
+    " STEP 4.1: Record all uberwin dimensions in the model
     for grouptypename in WinModelShownUberwinGroupTypeNames()
         let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
         let dims = WinStateGetWinDimensionsList(winids)
         call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
     endfor
 
-    " STEP 3.2: Record all supwin dimensions in the model
+    " STEP 4.2: Record all supwin dimensions in the model
     for supwinid in WinModelSupwinIds()
         let dim = WinStateGetWinDimensions(supwinid)
         call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
 
-    " STEP 3.3: Record all subwin dimensions in the model
+    " STEP 4.3: Record all subwin dimensions in the model
         let supwinnr = WinStateGetWinnrByWinid(supwinid)
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
@@ -516,17 +576,6 @@ function! s:WinResolveRecordDimensions()
             call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
         endfor
     endfor
-endfunction
-
-" STEP 4: Afterimage any subwins that need it
-function! s:WinResolveAfterimage()
-    " TODO STEP 4.1: If the cursor is in a subwin, afterimage all shown
-    "           afterimaging subwin groups of its supwin except the one
-    "           containing the current window
-    " TODO STEP 4.2: If the cursor is in a supwin, afterimage all shown
-    "           afterimaging subwin groups of all supwins
-    " TODO STEP 4.3: If the cursor is in an uberwin, afterimage all shown
-    "           afterimaging subwin groups
 endfunction
 
 " Resolver
@@ -550,9 +599,6 @@ function! WinResolve(arg)
         endfor
     endif
 
-    " Save cursor position to be restored at the end
-    let curpos = WinCommonGetCursorWinInfo()
-
     " If this is the first time running the resolver after entering a tab, run
     " the appropriate callbacks
     if t:winresolvetabenteredcond
@@ -570,6 +616,11 @@ function! WinResolve(arg)
     " STEP 1: The state may have changed since the last WinResolve() call. Adapt the
     "         model to fit it.
     call s:WinResolveStateToModel()
+
+    " Save the cursor position to be restored at the end of the resolver. This
+    " is done here because the position is stored in terms of model keys which
+    " may not have existed until now
+    let s:curpos = WinCommonGetCursorWinInfo()
 
     " Run the conditional callbacks
     if s:uberwinsaddedcond
@@ -599,16 +650,21 @@ function! WinResolve(arg)
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
 
-    " STEP 3: Now the state is the way it should be, so record the dimensions
-    "         of all windows in the model
+    " STEP 3: The model and state are now consistent with each other, but
+    "         afterimaging may be inconsistent with the final position of the
+    "         cursor. Make it consistent.
+    call s:WinResolveCursor()
+
+    " STEP 4: Now everything is consistent, so record the dimensions of all
+    "         windows in the model. The next resolver run will consider those
+    "         dimensions as being the last known consistent data, unless a
+    "         user operation overwrites them with its own (also consistent)
+    "         data.
     call s:WinResolveRecordDimensions()
 
-    " STEP 4: The model and state are now consistent. Afterimage any subwins
-    "         that need it
-    call s:WinResolveAfterimage()
-
     " Restore the cursor position from when the resolver started
-    call WinCommonRestoreCursorWinInfo(curpos)
+    call WinCommonRestoreCursorWinInfo(s:curpos)
+    let s:curpos = {}
 
     " Run the post-resolve callbacks
     for PostResolveCallback in WinModelPostResolveCallbacks()

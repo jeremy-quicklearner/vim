@@ -157,19 +157,6 @@ function! WinShowUberwinGroup(grouptypename)
     call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
-function! WinGotoUberwin(grouptypename, typename)
-    if WinModelUberwinGroupIsHidden(a:grouptypename)
-        call WinShowUberwinGroup(a:grouptypename)
-    endif
-
-    let winid = WinModelIdByInfo({
-   \    'category': 'uberwin',
-   \    'grouptype': a:grouptypename,
-   \    'typename': a:typename
-   \})
-    call WinStateMoveCursorToWinid(winid)
-endfunction
-
 " Add a subwin group type. One subwin group type represents the types of one or more
 " subwins which are opened together
 " one window
@@ -239,9 +226,11 @@ endfunction
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
     let info = WinCommonGetCursorWinInfo()
 
+        call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+        let grouptype = g:subwingrouptype[a:grouptypename]
+
         if !WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
-            let grouptype = g:subwingrouptype[a:grouptypename]
-            call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+            call WinCommonCloseSubwins(a:supwinid, a:grouptypename)
         endif
 
         call WinModelRemoveSubwins(a:supwinid, a:grouptypename)
@@ -262,7 +251,7 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
 
     let info = WinCommonGetCursorWinInfo()
 
-        call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+        call WinCommonCloseSubwins(a:supwinid, a:grouptypename)
 
         call WinModelHideSubwins(a:supwinid, a:grouptypename)
 
@@ -302,19 +291,202 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
     call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
-function! WinGotoSubwin(supwinid, grouptypename, typename)
-    if WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
-        call WinShowSubwinGroup(a:supwinid, a:grouptypename)
+" Movement between different categories of windows is restricted and sometimes
+" requires afterimaging and deafterimaging
+" TODO: Write an 'alwayshide' option that closes subwins when the cursor isn't
+" in them
+function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
+    call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    if WinModelUberwinGroupIsHidden(a:dstgrouptypename)
+        call WinShowUberwinGroup(a:dstgrouptypename)
     endif
     let winid = WinModelIdByInfo({
-   \    'category': 'subwin',
-   \    'supwin': a:supwinid,
+   \    'category': 'uberwin',
    \    'grouptype': a:grouptypename,
    \    'typename': a:typename
    \})
     call WinStateMoveCursorToWinid(winid)
 endfunction
 
+function! s:GoUberwinToSupwin(dstsupwinid)
+    call WinStateMoveCursorToWinid(a:dstsupwinid)
+    let curwin = WinCommonGetCursorWinInfo()
+        call WinCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
+    call WinCommonRestoreCursorWinInfo(curwin)
+endfunction
+
+function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
+    call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    if WinModelUberwinGroupIsHidden(a:dstgrouptypename)
+        call WinShowUberwinGroup(a:dstgrouptypename)
+    endif
+    call WinCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
+    let winid = WinModelIdByInfo({
+   \    'category': 'uberwin',
+   \    'grouptype': a:dstgrouptypename,
+   \    'typename': a:dsttypename
+   \})
+    call WinStateMoveCursorToWinid(winid)
+endfunction
+
+function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid)
+    call WinCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
+    call WinStateMoveCursorToWinid(a:dstsupwinid)
+    let curwin = WinCommonGetCursorWinInfo()
+        call WinCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
+    call WinCommonRestoreCursorWinInfo(curwin)
+endfunction
+
+function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
+    call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    if WinModelSubwinGroupIsHidden(a:srcsupwinid, a:dstgrouptypename)
+        call WinShowSubwinGroup(a:srcsupwinid, a:dstgrouptypename)
+    endif
+    call WinCommonAfterimageSubwinsBySupwinExceptOne(a:srcsupwinid, a:dstgrouptypename)
+    let winid = WinModelIdByInfo({
+   \    'category': 'subwin',
+   \    'supwin': a:srcsupwinid,
+   \    'grouptype': a:dstgrouptypename,
+   \    'typename': a:dsttypename
+   \})
+    call WinStateMoveCursorToWinid(winid)
+endfunction
+
+function! s:GoSubwinToSupwin(srcsupwinid)
+    call WinStateMoveCursorToWinid(a:srcsupwinid)
+    let curwin = WinCommonGetCursorWinInfo()
+        call WinCommonDeafterimageSubwinsBySupwin(a:srcsupwinid)
+    call WinCommonRestoreCursorWinInfo(curwin)
+endfunction
+function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename)
+    let winid = WinModelIdByInfo({
+   \    'category': 'subwin',
+   \    'supwin': a:srcsupwinid,
+   \    'grouptype': a:srcgrouptype,
+   \    'typename': a:dsttypename
+   \})
+    call WinStateMoveCursorToWinid(winid)
+endfunction
+
+" Move the cursor to a given uberwin
+function! WinGotoUberwin(dstgrouptype, dsttypename)
+    let curwin = WinCommonGetCursorWinInfo()
+    
+    " Moving from subwin to uberwin must be done via supwin
+    if curwin.category ==# 'subwin'
+        call s:GoSubwinToSupwin(curwin.supwin)
+        let curwin = WinCommonGetCursorWinInfo()
+    endif
+
+    if curwin.category ==# 'supwin'
+        call s:GoSupwinToUberwin(curwin.id, a:dstgrouptype, a:dsttypename)
+        return
+    endif
+
+    if curwin.category ==# 'uberwin'
+        call s:GoUberwinToUberwin(a:dstgrouptypename, a:dsttypename)
+        return
+    endif
+
+    throw 'Cursor window is neither supwin nor uberwin'
+endfunction
+
+" Move the cursor to a given supwin
+function! WinGotoSupwin(dstsupwinid)
+    let curwin = WinCommonGetCursorWinInfo()
+
+    if curwin.category ==# 'subwin'
+        call s:GoSubwinToSupwin(curwin.supwin)
+        let curwin = WinCommonGetCursorWinInfo()
+    endif
+
+    if curwin.category ==# 'uberwin'
+        call s:GoUberwinToSupwin(a:dstsupwinid)
+        return
+    endif
+
+    if curwin.category ==# 'supwin' && curwin.id != a:dstsupwinid
+        call s:GoSupwinToSupwin(curwin.id,  a:dstsupwinid)
+        return
+    endif
+endfunction
+
+" Move the cursor to a given subwin
+function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
+    let curwin = WinCommonGetCursorWinInfo()
+
+    if curwin.category ==# 'subwin'
+        if curwin.supwin ==# a:dstsupwinid && curwin.grouptype ==# a:dstgrouptypename
+            call s:GoSubwinToSubwin(curwin.supwin, curwin.grouptype, a:dsttypename)
+            return
+        endif
+
+        call s:GoSubwinToSupwin(curwin.supwin)
+        let curwin = WinCommonGetCursorWinInfo()
+    endif
+
+    if curwin.category ==# 'uberwin'
+        call s:GoUberwinToSupwin(a:dstsupwinid)
+        let curwin = WinCommonGetCursorWinInfo()
+    endif
+
+    if curwin.category !=# 'supwin'
+        throw 'Cursor should be in a supwin now'
+    endif
+
+    if curwin.id !=# a:dstsupwinid
+        call s:GoSupwinToSupwin(curwin.id, a:dstsupwinid)
+        let curwin = WinCommonGetCursorWinInfo()
+    endif
+
+    call s:GoSupwinToSubwin(curwin.id, a:dstgrouptypename, a:dsttypename)
+endfunction
+
+function! s:GoInDirection(direction)
+    let srcwinid = WinStateGetCursorWinId()
+    let curwinid = srcwinid
+    let prvwinid = 0
+    let dstwinid = 0
+    while 1
+        let prvwinid = curwinid
+        execute 'call WinStateMoveCursor' . a:direction . 'Silently()'
+        let curwinid = WinStateGetCursorWinId()
+ 
+        if WinModelSupwinExists(curwinid)
+            let dstwinid = curwinid
+            break
+        endif
+        if curwinid == prvwinid
+            break
+        endif
+    endwhile
+
+    call WinStateMoveCursorToWinidSilently(srcwinid)
+    if dstwinid
+        call WinGotoSupwin(dstwinid)
+    endif
+endfunction
+
+" Move the cursor to the supwin on the left
+function! WinGoLeft()
+    call s:GoInDirection('Left')
+endfunction
+
+" Move the cursor to the supwin below
+function! WinGoDown()
+    call s:GoInDirection('Down')
+endfunction
+
+" Move the cursor to the supwin above
+function! WinGoUp()
+    call s:GoInDirection('Up')
+endfunction
+
+" Move the cursor to the supwin to the right
+function! WinGoRight()
+    call s:GoInDirection('Right')
+endfunction
+
 " TODO: Zoom on supwins
 " TODO: Equalize supwins
-" TODO: Move from one supwin to another, in a direction
+" TODO: Something like WinDo but just for supwins

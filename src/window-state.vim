@@ -13,15 +13,20 @@ endfunction
 function! WinStateWinExists(winid)
     return win_id2win(a:winid) != 0
 endfunction
-function! s:AssertWinExists(winid)
+function! WinStateAssertWinExists(winid)
     if !WinStateWinExists(a:winid)
         throw 'no window with winid ' . a:winid
     endif
 endfunction
 
 function! WinStateGetWinnrByWinid(winid)
-    call s:AssertWinExists(a:winid)
+    call WinStateAssertWinExists(a:winid)
     return win_id2win(a:winid)
+endfunction
+
+function! WinStateGetBufnrByWinid(winid)
+    call WinStateAssertWinExists(a:winid)
+    return winbufnr(a:winid)
 endfunction
 
 function! WinStateWinIsTerminal(winid)
@@ -33,7 +38,7 @@ function! WinStateGetCursorWinId()
 endfunction!
 
 function! WinStateGetWinDimensions(winid)
-    call s:AssertWinExists(a:winid)
+    call WinStateAssertWinExists(a:winid)
     return {
    \    'nr': win_id2win(a:winid),
    \    'w': winwidth(a:winid),
@@ -53,7 +58,7 @@ function! WinStateGetWinDimensionsList(winids)
 endfunction
 
 function! WinStateGetWinRelativeDimensions(winid, offset)
-    call s:AssertWinExists(a:winid)
+    call WinStateAssertWinExists(a:winid)
     if type(a:offset) != v:t_number
         throw 'offset is not a number'
     endif
@@ -75,10 +80,30 @@ function! WinStateGetWinRelativeDimensionsList(winids, offset)
     return dim
 endfunction
 
-" TODO: Add a wrapper in window-common that afterimages subwins
 function! WinStateMoveCursorToWinid(winid)
-    call s:AssertWinExists(a:winid)
+    call WinStateAssertWinExists(a:winid)
     call win_gotoid(a:winid)
+endfunction
+
+function! WinStateMoveCursorToWinidSilently(winid)
+    call WinStateAssertWinExists(a:winid)
+    noautocmd call win_gotoid(a:winid)
+endfunction
+
+function! WinStateMoveCursorLeftSilently()
+    noautocmd wincmd h
+endfunction
+
+function! WinStateMoveCursorDownSilently()
+    noautocmd wincmd j
+endfunction
+
+function! WinStateMoveCursorUpSilently()
+    noautocmd wincmd k
+endfunction
+
+function! WinStateMoveCursorRightSilently()
+    noautocmd wincmd l
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -195,9 +220,10 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
 endfunction
 
 function! WinStateAfterimageWindow(winid)
-   " noautocmd is used here because undotree has autocmds that fire on
-   " WinLeave and close the diff window
-    noautocmd call WinStateMoveCursorToWinid(a:winid)
+    " Silent movement (noautocmd) is used here because we want to preserve the
+    " state of the window exactly as it was when the function was first
+    " called, and autocmds may fire on win_gotoid that change the state
+    call WinStateMoveCursorToWinidSilently(a:winid)
 
     " Preserve buffer contents
     let bufcontents = getline(0, '$')
@@ -230,7 +256,7 @@ function! WinStateAfterimageWindow(winid)
 endfunction
 
 function! WinStateCloseWindow(winid)
-    call s:AssertWinExists(a:winid)
+    call WinStateAssertWinExists(a:winid)
 
     " :close fails if called on the last window. Explicitly exit Vim if
     " there's only one window left.

@@ -111,7 +111,7 @@ function! UpdateUndotreeSubwins()
             " TextChanged fires and calls this function, before the resolver runs.
             " Since the resolver hasn't run yet, the model and state are inconsistent.
             " The supwin is returned by WinModelSupwinIds() but it isn't in the state
-            " when we call WinStateModeCursorToWinid(). The code below breaks.
+            " when we call WinStateMoveCursorToWinid(). The code below breaks.
             " So check if the window exists before trying to jump to it
             if !WinStateWinExists(supwinid)
                 continue

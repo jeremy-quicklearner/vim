@@ -105,7 +105,7 @@
 "         supwin: <supwinid>
 "         grouptypename: <grouptypename>
 "         typename: <typename>
-"         aibuf: <burnr>
+"         aibuf: <bufnr>
 "         relnr: <relnr>
 "         w: <width>
 "         h: <height>
@@ -326,6 +326,14 @@ function! WinModelAssertSubwinTypeExists(grouptypename, typename)
        \      a:typename
     endif
 endfunction
+function! WinModelSubwinGroupTypeHasAfterimagingSubwin(grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    for idx in range(len(g:subwingrouptype[a:grouptypename].typenames))
+        if g:subwingrouptype[a:grouptypename].afterimaging[idx]
+            return 1
+        endif
+    endfor
+endfunction
 function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                     \priority, afterimaging, widths, heights,
                                     \toOpen, toClose, toIdentify)
@@ -463,11 +471,11 @@ endfunction
 function! WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     call WinModelAssertSupwinExists(a:supwinid)
-    let subwinids = []
     if !WinModelSubwinGroupExists(a:supwinid, a:grouptypename) ||
    \   WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
         return []
     endif
+    let subwinids = []
     for typename in WinModelSubwinTypeNamesByGroupTypeName(a:grouptypename)
         call add(subwinids, t:supwin[a:supwinid].subwin[a:grouptypename].subwin[typename].id)
     endfor
@@ -501,6 +509,7 @@ function! s:AssertWinExists(winid)
 endfunction
 
 " Given a window ID, return a dict that identifies it within the model
+" TODO: Do the lookups directly. The current algorithm is awful
 function! WinModelInfoById(winid)
     if index(WinModelSupwinIds(), a:winid) != -1
         return {
@@ -735,7 +744,7 @@ function! s:ValidateNewDimensionsList(category, grouptypename, dims)
     endif
 
     for typeidx in range(len(g:uberwingrouptype[a:grouptypename].typenames))
-        " TODO: Fill in missing dicts with -1,-1,-1
+        " TODO: Fill in missing dicts with -1,-1,-1?
         let dim = a:dims[typeidx]
         let typename = g:uberwingrouptype[a:grouptypename].typenames[typeidx]
         if type(dim) !=# v:t_dict
@@ -799,7 +808,7 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
     endif
 
     for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
-        " TODO: FIll in missing dicts with 0,-1,-1
+        " TODO: Fill in missing dicts with 0,-1,-1?
         let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
         let dim = a:dims[typeidx]
 
@@ -1103,6 +1112,17 @@ function! WinModelSubwinIsAfterimaged(supwinid, grouptypename, typename)
     call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
     return t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].afterimaged
 endfunction
+function! WinModelAssertSubwinIsAfterimaged(supwinid, grouptypename, typename)
+    if !WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, a:typename)
+        throw 'subwin ' .
+       \      a:grouptypename .
+       \      ':' .
+       \      a:typename .
+       \      ' for supwin ' .
+       \      a:supwinid .
+       \      ' is not afterimaged'
+    endif
+endfunction
 function! WinModelAssertSubwinIsNotAfterimaged(supwinid, grouptypename, typename)
     if WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, a:typename)
         throw 'subwin ' .
@@ -1113,6 +1133,15 @@ function! WinModelAssertSubwinIsNotAfterimaged(supwinid, grouptypename, typename
        \      a:supwinid .
        \      ' is not afterimaged'
     endif
+endfunction
+function! WinModelSubwinGroupHasAfterimagedSubwin(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    for typename in WinModelSubwinTypeNamesByGroupTypeName(a:grouptypename)
+        if WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
+            return 1
+        endif
+    endfor
+    return 0
 endfunction
 function! s:SubwinidIsInSubwinList(subwinid)
     call s:AssertWinModelExists()
@@ -1254,7 +1283,11 @@ function! WinModelSubwinDimensions(supwinid, grouptypename, typename)
     let windict = t:subwin[subwinid]
     return {'relnr':windict.relnr,'w':windict.w,'h':windict.h}
 endfunction
-
+function! WinModelSubwinAibufBySubwinId(subwinid)
+    call s:AssertWinModelExists()
+    call s:AssertSubwinidIsInSubwinList(a:subwinid)
+    return t:subwin[a:subwinid].aibuf
+endfunction
 
 function! WinModelAddSupwin(winid, nr, w, h)
     call s:AssertWinModelExists()
@@ -1434,7 +1467,7 @@ function! WinModelChangeSubwinDimensions(supwinid, grouptypename, typename, reln
     let subwinid = t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].id
     let t:subwin[subwinid].relnr = a:relnr
     let t:subwin[subwinid].w = a:w
-    let t:subwin[subwinid].l = a:h
+    let t:subwin[subwinid].h = a:h
 
     call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
 endfunction
@@ -1473,6 +1506,27 @@ function! WinModelAfterimageSubwin(supwinid, grouptypename, typename, aibufnum)
     let t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].afterimaged = 1
     let t:subwin[subwinid].aibuf = a:aibufnum
     call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
+endfunction
+
+function! WinModelDeafterimageSubwin(supwinid, grouptypename, typename)
+    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    call WinModelAssertSubwinIsAfterimaged(a:supwinid, a:grouptypename, a:typename)
+    let subwinid = t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].id
+    let t:supwin[a:supwinid].subwin[a:grouptypename].subwin[a:typename].afterimaged = 0
+    let t:subwin[subwinid].aibuf = -1
+    call s:AssertSubwinGroupIsConsistent(a:supwinid, a:grouptypename)
+endfunction
+
+function! WinModelDeafterimageSubwinsByGroup(supwinid, grouptypename)
+    if !WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
+        return
+    endif
+
+    for typename in g:subwingrouptype[a:grouptypename].typenames
+        if WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
+            call WinModelDeafterimageSubwin(a:supwinid, a:grouptypename, typename)
+        endif
+    endfor
 endfunction
 
 " TODO - Some individual types may need an option for a non-default toClose
