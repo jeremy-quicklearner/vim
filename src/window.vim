@@ -76,8 +76,6 @@ command! -nargs=0 -complete=command GoLeft call WinGoLeft()
 command! -nargs=0 -complete=command GoDown call WinGoDown()
 command! -nargs=0 -complete=command GoUp call WinGoUp()
 command! -nargs=0 -complete=command GoRight call WinGoRight()
-" TODO: Command-ify all the user operations
-
 nnoremap <silent> <c-h> :GoLeft<cr>
 nnoremap <silent> <c-j> :GoDown<cr>
 nnoremap <silent> <c-k> :GoUp<cr>
@@ -87,3 +85,12 @@ tnoremap <silent> <c-j> :GoDown<cr>
 tnoremap <silent> <c-k> :GoUp<cr>
 tnoremap <silent> <c-l> :GoRight<cr>
 
+" Window resizing with Ctrl using the user operations
+command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()<cr>
+command! -nargs=0 -complete=command WinZoom call WinZoomCurrentSupwin()<cr>
+nnoremap <silent> <c-w>= :WinEqualize<cr>
+vnoremap <silent> <c-w>= :WinEqualize<cr>
+tnoremap <silent> <c-w>= :WinEqualize<cr>
+nnoremap <silent> <c-w>z :WinZoom<cr>
+vnoremap <silent> <c-w>z :WinZoom<cr>
+tnoremap <silent> <c-w>z :WinZoom<cr>

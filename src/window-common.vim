@@ -3,8 +3,11 @@
 
 " Returns a data structure that encodes information about the window that the
 " cursor is in
-function! WinCommonGetCursorWinInfo()
-    return WinModelInfoById(WinStateGetCursorWinId())
+function! WinCommonGetCursorPosition()
+    return {
+   \    'win':WinModelInfoById(WinStateGetCursorWinId()),
+   \    'cur':WinStateGetCursorPosition()
+   \}
 endfunction
 
 " Returns true if winids listed in in the model for an uberwin group exist in
@@ -110,9 +113,9 @@ function WinCommonFirstUberwinInfo()
    \}
 endfunction
 
-" Given a cursor position remembered with WinCommonGetCursorWinInfo, return
+" Given a cursor position remembered with WinCommonGetCursorPosition, return
 " either the same position or an updated one if it doesn't exist anymore
-function WinCommonReselectCursorPosition(oldpos)
+function WinCommonReselectCursorWindow(oldpos)
     let pos = a:oldpos
 
     " If the cursor is in a nonexistent subwin, try to select its supwin
@@ -152,13 +155,14 @@ function WinCommonReselectCursorPosition(oldpos)
 
 endfunction
 
-" Moves the cursor to a window remembered with WinCommonGetCursorWinInfo. If
+" Moves the cursor to a window remembered with WinCommonGetCursorPosition. If
 " the window no longer exists, go to the next best window as selected by
-" WinCommonReselectCursorPosition
-function! WinCommonRestoreCursorWinInfo(info)
-    let newpos = WinCommonReselectCursorPosition(a:info)
+" WinCommonReselectCursorWindow
+function! WinCommonRestoreCursorPosition(info)
+    let newpos = WinCommonReselectCursorWindow(a:info.win)
     let winid = WinModelIdByInfo(newpos)
     call WinStateMoveCursorToWinid(winid)
+    call WinStateRestoreCursorPosition(a:info.cur)
 endfunction
 
 " Closes all uberwins with priority higher than a given, and returns a list of
@@ -340,10 +344,10 @@ function! WinCommonDeafterimageSubwinsBySupwin(supwinid)
     endfor
 endfunction
 
-function! WinCommonUpdateAfterimagingByCursorPosition(curpos)
+function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     " If the given cursor is in a window that doesn't exist, place it in a
     " window that does exist
-    let finalpos = WinCommonReselectCursorPosition(a:curpos)
+    let finalpos = WinCommonReselectCursorWindow(a:curwin)
 
     " If the cursor's position is in an uberwin, afterimage
     " all shown afterimaging subwins of all supwins
@@ -392,13 +396,32 @@ endfunction
 
 " Closes and reopens all shown subwins in the current tab, afterimaging the
 " afterimaging ones that need it
-function! WinCommonCloseAndReopenAllShownSubwins()
-    for supwinid in WinModelSupwinIds()
+function! WinCommonCloseAndReopenAllShownSubwins(curpos)
+    let supwinids = WinModelSupwinIds()
+    if empty(supwinids)
+        return
+    endif
+
+    let startwith = supwinids[0]
+
+    " If the cursor is in a supwin, start with it
+    if a:curwin.category ==# 'supwin'
+        let startwith = a:curwin.id
+
+    " If the cursor is in a subwin, start with its supwin
+    elseif a:curwin.category ==# 'subwin'
+        let startwith = a:curwin.supwin
+    endif
+
+    call remove(supwinids, index(supwinids, startwith))
+    call insert(supwinids, startwith)
+
+    for supwinid in supwinids
         call WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
         " Afterimage everything after finishing with each supwin to avoid collisions
         call WinCommonAfterimageSubwinsBySupwin(supwinid)
     endfor
     " Deafterimage everything that needs it
-    call WinCommonUpdateAfterimagingByCursorPosition(WinCommonGetCursorWinInfo())
+    call WinCommonUpdateAfterimagingByCursorWindow(WinCommonGetCursorPosition().win)
 endfunction
 

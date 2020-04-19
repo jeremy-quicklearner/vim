@@ -92,8 +92,8 @@ function! WinResolveGroupInfo(wininfos)
             if !has_key(uberwingroupinfo, wininfo.grouptype)
                 let uberwingroupinfo[wininfo.grouptype] = {}
             endif
-            " TODO: Handle case where two uberwins of the same type are
-            "       present?
+            " TODO? Handle case where two uberwins of the same type are
+            "       present
             let uberwingroupinfo[wininfo.grouptype][wininfo.typename] = wininfo.id
         elseif wininfo.category ==# 'subwin'
             if !has_key(subwingroupinfo, wininfo.supwin)
@@ -102,8 +102,8 @@ function! WinResolveGroupInfo(wininfos)
             if !has_key(subwingroupinfo[wininfo.supwin], wininfo.grouptype)
                 let subwingroupinfo[wininfo.supwin][wininfo.grouptype] = {}
             endif
-            " TODO: Handle case where two subwins of the same type are present
-            "       for the same supwin?
+            " TODO? Handle case where two subwins of the same type are present
+            "       for the same supwin
             let subwingroupinfo[wininfo.supwin]
                               \[wininfo.grouptype]
                               \[wininfo.typename] = wininfo.id
@@ -194,7 +194,7 @@ function! s:WinResolveStateToModel()
     " If any supwin is terminal window with shown subwins, mark them as
     " hidden in the model
     for supwinid in WinModelSupwinIds()
-        if WinStateWinExists(supwinid)&& WinStateWinIsTerminal(supwinid)
+        if WinStateWinExists(supwinid) && WinStateWinIsTerminal(supwinid)
             for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
                 call WinModelHideSubwins(supwinid, grouptypename)
             endfor
@@ -363,8 +363,8 @@ endfunction
 " STEP 2: Adjust the state so that it matches the model
 function! s:WinResolveModelToState()
     " STEP 2.1: Purge the state of window that isn't in the model
-    " TODO: Do something more civilized than stomping each window
-    "       individually? So far it's ok but some other group type
+    " TODO? Do something more civilized than stomping each window
+    "       individually. So far it's ok but some other group type
     "       may require it in the future
     for winid in WinStateGetWinidsByCurrentTab()
         if !WinStateWinExists(winid)
@@ -551,7 +551,7 @@ endfunction
 " STEP 3: Make sure that the subwins are afterimaged according to the cursor's
 "         final position
 function! s:WinResolveCursor()
-    call WinCommonUpdateAfterimagingByCursorPosition(s:curpos)
+    call WinCommonUpdateAfterimagingByCursorWindow(s:curpos.win)
 endfunction
 
 " STEP 4: Record all window dimensions in the model
@@ -620,7 +620,7 @@ function! WinResolve(arg)
     " Save the cursor position to be restored at the end of the resolver. This
     " is done here because the position is stored in terms of model keys which
     " may not have existed until now
-    let s:curpos = WinCommonGetCursorWinInfo()
+    let s:curpos = WinCommonGetCursorPosition()
 
     " Run the conditional callbacks
     if s:uberwinsaddedcond
@@ -663,7 +663,7 @@ function! WinResolve(arg)
     call s:WinResolveRecordDimensions()
 
     " Restore the cursor position from when the resolver started
-    call WinCommonRestoreCursorWinInfo(s:curpos)
+    call WinCommonRestoreCursorPosition(s:curpos)
     let s:curpos = {}
 
     " Run the post-resolve callbacks

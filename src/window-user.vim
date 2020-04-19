@@ -1,7 +1,10 @@
 " Window user operations
 " See window.vim
+" " TODO: Add validation to add/remove/show/hide
 
 " The User Operations
+
+" Resolver callback registration
 
 " Register a callback to run after the resolver initializes a tab
 function! WinAddTabInitPreResolveCallback(callback)
@@ -36,6 +39,8 @@ function! WinAddPostResolveCallback(callback)
     call WinModelAddPostResolveCallback(a:callback)
 endfunction
 
+" Group Types
+
 " Add an uberwin group type. One uberwin group type represents one or more uberwins
 " which are opened together
 " one window
@@ -60,101 +65,6 @@ function! WinAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
     call WinModelAddUberwinGroupType(a:name, a:typenames, a:flag, a:hidflag,
                                     \a:flagcol, a:priority, a:widths, a:heights,
                                     \a:toOpen, a:toClose, a:toIdentify)
-endfunction
-
-function! WinAddUberwinGroup(grouptypename, hidden)
-    call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
-
-    " If we're adding the uberwin group as hidden, add it only to the model
-    if a:hidden
-        call WinModelAddUberwins(a:grouptypename, [], [])
-        return
-    endif
-
-    let grouptype = g:uberwingrouptype[a:grouptypename]
-    let info = WinCommonGetCursorWinInfo()
-
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-
-            let winids = WinStateOpenUberwinsByGroupType(grouptype)
- 
-            let dims = WinStateGetWinDimensionsList(winids)
-
-            call WinModelAddUberwins(a:grouptypename, winids, dims)
-
-
-        " Reopen the uberwins we closed
-        call WinCommonReopenUberwins(highertypes)
-
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        call WinCommonCloseAndReopenAllShownSubwins()
-
-    call WinCommonRestoreCursorWinInfo(info)
-endfunction
-
-function! WinRemoveUberwinGroup(grouptypename)
-    let info = WinCommonGetCursorWinInfo()
-
-        if !WinModelUberwinGroupIsHidden(a:grouptypename)
-            let grouptype = g:uberwingrouptype[a:grouptypename]
-            call WinStateCloseUberwinsByGroupType(grouptype)
-        endif
-
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        call WinCommonCloseAndReopenAllShownSubwins()
-
-    call WinCommonRestoreCursorWinInfo(info)
-
-    call WinModelRemoveUberwins(a:grouptypename)
-
-endfunction
-
-function! WinHideUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
-
-    let grouptype = g:uberwingrouptype[a:grouptypename]
-
-    let info = WinCommonGetCursorWinInfo()
-
-        call WinStateCloseUberwinsByGroupType(grouptype)
-        call WinModelHideUberwins(a:grouptypename)
-
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        call WinCommonCloseAndReopenAllShownSubwins()
-
-    call WinCommonRestoreCursorWinInfo(info)
-endfunction
-
-function! WinShowUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
-
-    let grouptype = g:uberwingrouptype[a:grouptypename]
-
-    let info = WinCommonGetCursorWinInfo()
-
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-
-            let winids = WinStateOpenUberwinsByGroupType(grouptype)
- 
-            let dims = WinStateGetWinDimensionsList(winids)
-
-            call WinModelShowUberwins(a:grouptypename, winids, dims)
-
-        " Reopen the uberwins we closed
-        call WinCommonReopenUberwins(highertypes)
-
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        call WinCommonCloseAndReopenAllShownSubwins()
-
-    call WinCommonRestoreCursorWinInfo(info)
 endfunction
 
 " Add a subwin group type. One subwin group type represents the types of one or more
@@ -191,6 +101,104 @@ function! WinAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
                                    \a:toIdentify)
 endfunction
 
+" Uberwins
+
+function! WinAddUberwinGroup(grouptypename, hidden)
+    call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
+
+    " If we're adding the uberwin group as hidden, add it only to the model
+    if a:hidden
+        call WinModelAddUberwins(a:grouptypename, [], [])
+        return
+    endif
+
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+    let info = WinCommonGetCursorPosition()
+
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
+ 
+            let dims = WinStateGetWinDimensionsList(winids)
+
+            call WinModelAddUberwins(a:grouptypename, winids, dims)
+
+        " Reopen the uberwins we closed
+        call WinCommonReopenUberwins(highertypes)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. So close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins(info.win)
+
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+function! WinRemoveUberwinGroup(grouptypename)
+    let info = WinCommonGetCursorPosition()
+
+        if !WinModelUberwinGroupIsHidden(a:grouptypename)
+            let grouptype = g:uberwingrouptype[a:grouptypename]
+            call WinStateCloseUberwinsByGroupType(grouptype)
+        endif
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins(info.win)
+
+    call WinCommonRestoreCursorPosition(info)
+
+    call WinModelRemoveUberwins(a:grouptypename)
+
+endfunction
+
+function! WinHideUberwinGroup(grouptypename)
+    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorPosition()
+
+        call WinStateCloseUberwinsByGroupType(grouptype)
+        call WinModelHideUberwins(a:grouptypename)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins(info.win)
+
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+function! WinShowUberwinGroup(grouptypename)
+    call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
+
+    let grouptype = g:uberwingrouptype[a:grouptypename]
+
+    let info = WinCommonGetCursorPosition()
+
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
+ 
+            let dims = WinStateGetWinDimensionsList(winids)
+
+            call WinModelShowUberwins(a:grouptypename, winids, dims)
+
+        " Reopen the uberwins we closed
+        call WinCommonReopenUberwins(highertypes)
+
+        " Opening an uberwin changes how much space is available to supwins
+        " and their subwins. Close and reopen all subwins.
+        call WinCommonCloseAndReopenAllShownSubwins(info.win)
+
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+" Subwins
+
 function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
 
@@ -201,7 +209,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     endif
 
     let grouptype = g:subwingrouptype[a:grouptypename]
-    let info = WinCommonGetCursorWinInfo()
+    let info = WinCommonGetCursorPosition()
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
@@ -217,14 +225,14 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
         " Reopen the subwins we closed
         call WinCommonReopenSubwins(a:supwinid, highertypes)
 
-    call WinCommonRestoreCursorWinInfo(info)
+    call WinCommonRestoreCursorPosition(info)
 
     let dims = WinStateGetWinDimensions(a:supwinid)
     call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
-    let info = WinCommonGetCursorWinInfo()
+    let info = WinCommonGetCursorPosition()
 
         call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
         let grouptype = g:subwingrouptype[a:grouptypename]
@@ -240,7 +248,7 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
        \    grouptype.priority
        \)
 
-    call WinCommonRestoreCursorWinInfo(info)
+    call WinCommonRestoreCursorPosition(info)
 
 endfunction
 
@@ -249,7 +257,7 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
 
     let grouptype = g:subwingrouptype[a:grouptypename]
 
-    let info = WinCommonGetCursorWinInfo()
+    let info = WinCommonGetCursorPosition()
 
         call WinCommonCloseSubwins(a:supwinid, a:grouptypename)
 
@@ -260,7 +268,7 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
        \    grouptype.priority
        \)
 
-    call WinCommonRestoreCursorWinInfo(info)
+    call WinCommonRestoreCursorPosition(info)
 
 endfunction
 
@@ -269,7 +277,7 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
 
     let grouptype = g:subwingrouptype[a:grouptypename]
 
-    let info = WinCommonGetCursorWinInfo()
+    let info = WinCommonGetCursorPosition()
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
@@ -285,10 +293,89 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
         " Reopen the subwins we closed
         call WinCommonReopenSubwins(a:supwinid, highertypes)
 
-    call WinCommonRestoreCursorWinInfo(info)
+    call WinCommonRestoreCursorPosition(info)
 
     let dims = WinStateGetWinDimensions(a:supwinid)
     call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
+endfunction
+
+" Window resizing
+function! WinEqualizeSupwins()
+    let closedsubwingroupsbysupwin = {}
+
+    let info = WinCommonGetCursorPosition()
+
+       let supwinids = WinModelSupwinIds()
+       if empty(supwinids)
+           return
+       endif
+
+       let startwith = supwinids[0]
+
+       " If the cursor is in a supwin, start with it
+       if info.win.category ==# 'supwin'
+           let startwith = info.win.id
+
+       " If the cursor is in a subwin, start with its supwin
+       elseif info.win.category ==# 'subwin'
+           let startwith = info.win.supwin
+       endif
+
+       call remove(supwinids, index(supwinids, startwith))
+       call insert(supwinids, startwith)
+
+       for supwinid in supwinids
+            let closedsubwingroupsbysupwin[supwinid] = 
+           \    WinCommonCloseSubwinsWithHigherPriority(supwinid, -1)
+        endfor
+
+        call WinStateEqualizeWindows()
+
+        for supwinid in WinModelSupwinIds()
+            call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
+            let dims = WinStateGetWinDimensions(supwinid)
+            " Afterimage everything after finishing with each supwin to avoid collisions
+            call WinCommonAfterimageSubwinsBySupwin(supwinid)
+            call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
+        endfor
+
+    call WinCommonRestoreCursorPosition(info)
+    
+endfunction
+
+function! WinZoomCurrentSupwin()
+    let info = WinCommonGetCursorPosition()
+        if info.win.category ==# 'uberwin'
+            return
+        endif
+
+        if info.win.category ==# 'subwin'
+            let tozoom = info.win.supwin
+        elseif info.win.category ==# 'supwin'
+            let tozoom = info.win.id
+        else
+            return
+        endif
+
+        let zoomedgrouptypenames = []
+        for supwinid in WinModelSupwinIds()
+            if supwinid ==# tozoom
+                let zoomedgrouptypenames = WinCommonCloseSubwinsWithHigherPriority(
+               \    tozoom,
+               \    -1
+               \)
+                continue
+            endif
+            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                call WinHideSubwinGroup(supwinid, grouptypename)
+            endfor
+        endfor
+
+        call WinStateMoveCursorToWinid(tozoom)
+        call WinStateZoomCurrentWindow()
+        call WinCommonReopenSubwins(tozoom, zoomedgrouptypenames)
+
+    call WinCommonRestoreCursorPosition(info)
 endfunction
 
 " Movement between different categories of windows is restricted and sometimes
@@ -310,9 +397,9 @@ endfunction
 
 function! s:GoUberwinToSupwin(dstsupwinid)
     call WinStateMoveCursorToWinid(a:dstsupwinid)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
         call WinCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
-    call WinCommonRestoreCursorWinInfo(curwin)
+    call WinCommonRestoreCursorPosition(cur)
 endfunction
 
 function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
@@ -332,9 +419,9 @@ endfunction
 function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid)
     call WinCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
     call WinStateMoveCursorToWinid(a:dstsupwinid)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
         call WinCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
-    call WinCommonRestoreCursorWinInfo(curwin)
+    call WinCommonRestoreCursorPosition(cur)
 endfunction
 
 function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
@@ -354,9 +441,9 @@ endfunction
 
 function! s:GoSubwinToSupwin(srcsupwinid)
     call WinStateMoveCursorToWinid(a:srcsupwinid)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
         call WinCommonDeafterimageSubwinsBySupwin(a:srcsupwinid)
-    call WinCommonRestoreCursorWinInfo(curwin)
+    call WinCommonRestoreCursorPosition(cur)
 endfunction
 function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename)
     let winid = WinModelIdByInfo({
@@ -370,20 +457,20 @@ endfunction
 
 " Move the cursor to a given uberwin
 function! WinGotoUberwin(dstgrouptype, dsttypename)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
     
     " Moving from subwin to uberwin must be done via supwin
-    if curwin.category ==# 'subwin'
-        call s:GoSubwinToSupwin(curwin.supwin)
-        let curwin = WinCommonGetCursorWinInfo()
+    if cur.win.category ==# 'subwin'
+        call s:GoSubwinToSupwin(cur.win.supwin)
+        let cur = WinCommonGetCursorPosition()
     endif
 
-    if curwin.category ==# 'supwin'
+    if cur.win.category ==# 'supwin'
         call s:GoSupwinToUberwin(curwin.id, a:dstgrouptype, a:dsttypename)
         return
     endif
 
-    if curwin.category ==# 'uberwin'
+    if cur.win.category ==# 'uberwin'
         call s:GoUberwinToUberwin(a:dstgrouptypename, a:dsttypename)
         return
     endif
@@ -393,53 +480,53 @@ endfunction
 
 " Move the cursor to a given supwin
 function! WinGotoSupwin(dstsupwinid)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
 
-    if curwin.category ==# 'subwin'
-        call s:GoSubwinToSupwin(curwin.supwin)
-        let curwin = WinCommonGetCursorWinInfo()
+    if cur.win.category ==# 'subwin'
+        call s:GoSubwinToSupwin(cur.win.supwin)
+        let cur.win = WinCommonGetCursorPosition()
     endif
 
-    if curwin.category ==# 'uberwin'
+    if cur.win.category ==# 'uberwin'
         call s:GoUberwinToSupwin(a:dstsupwinid)
         return
     endif
 
-    if curwin.category ==# 'supwin' && curwin.id != a:dstsupwinid
-        call s:GoSupwinToSupwin(curwin.id,  a:dstsupwinid)
+    if cur.win.category ==# 'supwin' && cur.win.id != a:dstsupwinid
+        call s:GoSupwinToSupwin(cur.win.id,  a:dstsupwinid)
         return
     endif
 endfunction
 
 " Move the cursor to a given subwin
 function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
-    let curwin = WinCommonGetCursorWinInfo()
+    let cur = WinCommonGetCursorPosition()
 
-    if curwin.category ==# 'subwin'
-        if curwin.supwin ==# a:dstsupwinid && curwin.grouptype ==# a:dstgrouptypename
-            call s:GoSubwinToSubwin(curwin.supwin, curwin.grouptype, a:dsttypename)
+    if cur.win.category ==# 'subwin'
+        if cur.win.supwin ==# a:dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
+            call s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename)
             return
         endif
 
-        call s:GoSubwinToSupwin(curwin.supwin)
-        let curwin = WinCommonGetCursorWinInfo()
+        call s:GoSubwinToSupwin(cur.win.supwin)
+        let cur = WinCommonGetCursorPosition()
     endif
 
-    if curwin.category ==# 'uberwin'
+    if cur.win.category ==# 'uberwin'
         call s:GoUberwinToSupwin(a:dstsupwinid)
-        let curwin = WinCommonGetCursorWinInfo()
+        let cur.win = WinCommonGetCursorPosition()
     endif
 
-    if curwin.category !=# 'supwin'
+    if cur.win.category !=# 'supwin'
         throw 'Cursor should be in a supwin now'
     endif
 
-    if curwin.id !=# a:dstsupwinid
-        call s:GoSupwinToSupwin(curwin.id, a:dstsupwinid)
-        let curwin = WinCommonGetCursorWinInfo()
+    if cur.win.id !=# a:dstsupwinid
+        call s:GoSupwinToSupwin(cur.win.id, a:dstsupwinid)
+        let cur = WinCommonGetCursorPosition()
     endif
 
-    call s:GoSupwinToSubwin(curwin.id, a:dstgrouptypename, a:dsttypename)
+    call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
 endfunction
 
 function! s:GoInDirection(direction)
@@ -487,6 +574,4 @@ function! WinGoRight()
     call s:GoInDirection('Right')
 endfunction
 
-" TODO: Zoom on supwins
-" TODO: Equalize supwins
 " TODO: Something like WinDo but just for supwins

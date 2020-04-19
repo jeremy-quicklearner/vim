@@ -1,5 +1,6 @@
 " Window state manipulation functions
 " See window.vim
+" TODO: Use winsaveview() instead of getpos()
 
 function! WinStateGetWinidsByCurrentTab()
     let winids = []
@@ -36,6 +37,14 @@ endfunction
 function! WinStateGetCursorWinId()
     return win_getid()
 endfunction!
+
+function! WinStateGetCursorPosition()
+    return getpos('.')
+endfunction
+
+function! WinStateRestoreCursorPosition(pos)
+    call cursor(a:pos[1], a:pos[2], a:pos[3])
+endfunction
 
 function! WinStateGetWinDimensions(winid)
     call WinStateAssertWinExists(a:winid)
@@ -104,6 +113,15 @@ endfunction
 
 function! WinStateMoveCursorRightSilently()
     noautocmd wincmd l
+endfunction
+
+function! WinStateEqualizeWindows()
+    wincmd =
+endfunction
+
+function! WinStateZoomCurrentWindow()
+    wincmd |
+    wincmd _
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -249,7 +267,6 @@ function! WinStateAfterimageWindow(winid)
     " Restore buffer options
     let &ft = bufft
     let &wrap = bufwrap
-    " TODO: Use winsaveview() instead
     call cursor(bufpos[1], bufpos[2], bufpos[3])
 
     " Return afterimage buffer ID

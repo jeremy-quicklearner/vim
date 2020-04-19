@@ -103,7 +103,7 @@ call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
 function! UpdateUndotreeSubwins()
-    let info = WinCommonGetCursorWinInfo()
+    let info = WinCommonGetCursorPosition()
         for supwinid in WinModelSupwinIds()
             " Special case: When a supwin is closed while it has a live undotree, the
             " cursor jumps to the left - to the undotree windows. The undotree
@@ -130,7 +130,7 @@ function! UpdateUndotreeSubwins()
                 call WinAddSubwinGroup(supwinid, 'undotree', 1)
             endif
         endfor
-    call WinCommonRestoreCursorWinInfo(info)
+    call WinCommonRestoreCursorPosition(info)
 endfunction
 
 " Update the undotree subwins when new supwins are added

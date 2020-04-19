@@ -744,7 +744,7 @@ function! s:ValidateNewDimensionsList(category, grouptypename, dims)
     endif
 
     for typeidx in range(len(g:uberwingrouptype[a:grouptypename].typenames))
-        " TODO: Fill in missing dicts with -1,-1,-1?
+        " TODO? Fill in missing dicts with -1,-1,-1
         let dim = a:dims[typeidx]
         let typename = g:uberwingrouptype[a:grouptypename].typenames[typeidx]
         if type(dim) !=# v:t_dict
@@ -808,7 +808,7 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
     endif
 
     for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
-        " TODO: Fill in missing dicts with 0,-1,-1?
+        " TODO? Fill in missing dicts with 0,-1,-1?
         let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
         let dim = a:dims[typeidx]
 
@@ -1529,6 +1529,6 @@ function! WinModelDeafterimageSubwinsByGroup(supwinid, grouptypename)
     endfor
 endfunction
 
-" TODO - Some individual types may need an option for a non-default toClose
+" TODO? Some individual types may need an option for a non-default toClose
 " callback so that the resolver doesn't have to stomp them with :q! when their groups
 " become incomplete

@@ -93,3 +93,7 @@ nnoremap <silent> <leader>qc :cexpr []<cr>
 nnoremap <silent> <leader>qs :call WinShowUberwinGroup('quickfix')<cr>
 nnoremap <silent> <leader>qh :call WinHideUberwinGroup('quickfix')<cr>
 nnoremap <silent> <leader>qq :call WinGotoUberwin('quickfix', 'quickfix')<cr>
+
+" Peek at entries in quickfix and location lists
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<space>"
+
