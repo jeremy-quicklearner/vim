@@ -1,4 +1,5 @@
 " Tabline definition
+" TODO: Incorporate uberwin flags
 
 " Convert a global variable to a string based on a map lookup
 " If the variable doesn't exist, return dne

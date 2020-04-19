@@ -249,6 +249,7 @@ function! WinStateAfterimageWindow(winid)
     " Restore buffer options
     let &ft = bufft
     let &wrap = bufwrap
+    " TODO: Use winsaveview() instead
     call cursor(bufpos[1], bufpos[2], bufpos[3])
 
     " Return afterimage buffer ID

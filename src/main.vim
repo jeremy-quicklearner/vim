@@ -10,7 +10,7 @@ source <sfile>:p:h/paths.vim
 source <sfile>:p:h/util.vim
 
 " Subwindow/Uberwindow infrastructure should be available to plugins
-source <sfile>:p:h/window.vim
+ source <sfile>:p:h/window.vim
 
 " Anything I do should take precedence over anything a plugin does
 source <sfile>:p:h/plugin.vim
