@@ -84,7 +84,7 @@ function! WinCommonSubwinGroupDimensionsMatch(supwinid, grouptypename)
 endfunction
 
 " Get the window ID of the topmost leftmost supwin
-function WinCommonFirstSupwinId()
+function! WinCommonFirstSupwinId()
     let minsupwinnr = 0
     let minsupwinid = 0
     for supwinid in WinModelSupwinIds()
@@ -99,7 +99,7 @@ endfunction
 
 " Get the window ID of the first uberwin in the lowest-priority shown uberwin
 " group
-function WinCommonFirstUberwinInfo()
+function! WinCommonFirstUberwinInfo()
     let grouptypenames = WinModelShownUberwinGroupTypeNames()
     if !grouptypenames
         return {'category':'none','id':0}
@@ -115,7 +115,7 @@ endfunction
 
 " Given a cursor position remembered with WinCommonGetCursorPosition, return
 " either the same position or an updated one if it doesn't exist anymore
-function WinCommonReselectCursorWindow(oldpos)
+function! WinCommonReselectCursorWindow(oldpos)
     let pos = a:oldpos
 
     " If the cursor is in a nonexistent subwin, try to select its supwin
@@ -152,7 +152,6 @@ function WinCommonReselectCursorWindow(oldpos)
         throw "No windows exist. Cannot select a window for the cursor."
     endif
     return pos
-
 endfunction
 
 " Moves the cursor to a window remembered with WinCommonGetCursorPosition. If
@@ -395,9 +394,9 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
-" Closes and reopens all shown subwins in the current tab, afterimaging the
-" afterimaging ones that need it
-function! WinCommonCloseAndReopenAllShownSubwins(curwin)
+function! WinCommonDoWithoutSubwins(curwin, callback)
+    let closedsubwingroupsbysupwin = {}
+
     let supwinids = WinModelSupwinIds()
     if empty(supwinids)
         return
@@ -418,11 +417,27 @@ function! WinCommonCloseAndReopenAllShownSubwins(curwin)
     call insert(supwinids, startwith)
 
     for supwinid in supwinids
-        call WinCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
+         let closedsubwingroupsbysupwin[supwinid] = 
+        \    WinCommonCloseSubwinsWithHigherPriority(supwinid, -1)
+    endfor
+
+    call a:callback()
+
+    for supwinid in supwinids
+        call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
+        let dims = WinStateGetWinDimensions(supwinid)
         " Afterimage everything after finishing with each supwin to avoid collisions
         call WinCommonAfterimageSubwinsBySupwin(supwinid)
+        call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
     endfor
-    " Deafterimage everything that needs it
-    call WinCommonUpdateAfterimagingByCursorWindow(WinCommonGetCursorPosition().win)
+    call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
 endfunction
 
+function! s:Nop()
+endfunction
+
+" Closes and reopens all shown subwins in the current tab, afterimaging the
+" afterimaging ones that need it
+function! WinCommonCloseAndReopenAllShownSubwins(curwin)
+     call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'))
+endfunction

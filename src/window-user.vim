@@ -325,44 +325,8 @@ endfunction
 
 " Window resizing
 function! WinEqualizeSupwins()
-    let closedsubwingroupsbysupwin = {}
-
     let info = WinCommonGetCursorPosition()
-
-       let supwinids = WinModelSupwinIds()
-       if empty(supwinids)
-           return
-       endif
-
-       let startwith = supwinids[0]
-
-       " If the cursor is in a supwin, start with it
-       if info.win.category ==# 'supwin'
-           let startwith = info.win.id
-
-       " If the cursor is in a subwin, start with its supwin
-       elseif info.win.category ==# 'subwin'
-           let startwith = info.win.supwin
-       endif
-
-       call remove(supwinids, index(supwinids, startwith))
-       call insert(supwinids, startwith)
-
-       for supwinid in supwinids
-            let closedsubwingroupsbysupwin[supwinid] = 
-           \    WinCommonCloseSubwinsWithHigherPriority(supwinid, -1)
-        endfor
-
-        call WinStateEqualizeWindows()
-
-        for supwinid in WinModelSupwinIds()
-            call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
-            let dims = WinStateGetWinDimensions(supwinid)
-            " Afterimage everything after finishing with each supwin to avoid collisions
-            call WinCommonAfterimageSubwinsBySupwin(supwinid)
-            call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
-        endfor
-
+        call WinCommonDoWithoutSubwins(info.win, function('WinStateEqualizeWindows'))
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
