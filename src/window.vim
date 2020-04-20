@@ -1,5 +1,6 @@
 " Window manipulation
 " TODO: Audit all files for lines longer than 80 characters
+"   - Do this at the very end
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all the user operations for redundancy
 

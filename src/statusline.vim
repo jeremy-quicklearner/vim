@@ -1,6 +1,7 @@
 " Statusline definition
 " TODO: Incorporate subwin flags
 " TODO: Figure out why SetStatusLine sometimes doesn't run after WinResolve
+"   - Maybe SetStatusLine's priority is higher than WinResolve's?
 
 " Convert a window-local variable to a string based on a map lookup
 " If the variable doesn't exist in the window, return dne

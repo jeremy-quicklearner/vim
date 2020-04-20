@@ -26,3 +26,4 @@ I don't know how
 - Add a new subwin on the right that shows marks. Jump to each mark with <enter> and <space>
 - Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
 - Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
+- See if there's a way to draw columns to the left of indented blocks

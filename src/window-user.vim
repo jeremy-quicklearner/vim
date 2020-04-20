@@ -1,9 +1,19 @@
 " Window user operations
 " See window.vim
 " TODO: Add validation to add/remove/show/hide
-" TODO: Clean up equalization code to pass a callback to a common function
-"       that closes and reopens subwins
-" TODO: Add replacements for <c-w>w and <c-w>r
+"   - There's already validation but it fails with an ugly backtrace. Maybe
+"     just catch the assertions at the start by returning silently
+" TODO: Add a replacement for <c-w>w
+"   - Fail if in a uberwin
+"   - Get supwin
+"   - Get list of supwins, find supwin in it, go up one in the list. Go to
+"     first if it's the last
+"   - use GotoSupwin as callback to WinCommonDoWithoutSubwins
+" TODO: Add a replacement for <c-w>r
+"   - Write WinCommonDoWithoutUberwins
+"   - Figure out a way to combine it with WinCommonDoWithoutSubwins
+"   - Add native 'wincmd r' to state and pass it as a callback to be done
+"     without uberwins or subwins
 
 " The User Operations
 
@@ -367,8 +377,6 @@ endfunction
 
 " Movement between different categories of windows is restricted and sometimes
 " requires afterimaging and deafterimaging
-" TODO: Write an 'alwayshide' option that closes subwins when the cursor isn't
-" in them
 function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
     call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     if WinModelUberwinGroupIsHidden(a:dstgrouptypename)
@@ -562,3 +570,9 @@ function! WinGoRight()
 endfunction
 
 " TODO: Something like WinDo but just for supwins
+"   - Save cursor position
+"   - For each Supwin, do a GotoSupwin and call the callback
+"   - Restore cursor position
+" TODO: Once the supwin-specific WinDo is working, audit every use of every
+"       variant of windo in src and decide whether to replace it with the new
+"       one
