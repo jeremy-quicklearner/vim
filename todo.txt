@@ -5,6 +5,7 @@ Easy
 - Add l: to all variables in functions
 - Add command that accepts range of lines and executes them as vimscript
 - Lookup shiftwidth and tabstop in a table of some kind. Make sure their values are applicable recursively to directories
+- Make a colour scheme without big white bars
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces

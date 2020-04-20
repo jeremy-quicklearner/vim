@@ -1,7 +1,7 @@
 " Window manipulation
+" TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all the user operations for redundancy
-" TODO: Graceful failure of toOpen
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and
@@ -86,8 +86,8 @@ tnoremap <silent> <c-k> :GoUp<cr>
 tnoremap <silent> <c-l> :GoRight<cr>
 
 " Window resizing with Ctrl using the user operations
-command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()<cr>
-command! -nargs=0 -complete=command WinZoom call WinZoomCurrentSupwin()<cr>
+command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()
+command! -nargs=0 -complete=command WinZoom call WinZoomCurrentSupwin()
 nnoremap <silent> <c-w>= :WinEqualize<cr>
 vnoremap <silent> <c-w>= :WinEqualize<cr>
 tnoremap <silent> <c-w>= :WinEqualize<cr>

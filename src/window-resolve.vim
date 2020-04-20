@@ -498,10 +498,14 @@ function! s:WinResolveModelToState()
     for grouptypename in WinModelShownUberwinGroupTypeNames()
         if !WinCommonUberwinGroupExistsInState(grouptypename)
             let grouptype = g:uberwingrouptype[grouptypename]
-            let winids = WinStateOpenUberwinsByGroupType(grouptype)
-            " This Model write in ResolveModelToState is unfortunate, but I
-            " see no sensible way to put it anywhere else
-            call WinModelChangeUberwinIds(grouptypename, winids)
+            try
+                let winids = WinStateOpenUberwinsByGroupType(grouptype)
+                " This Model write in ResolveModelToState is unfortunate, but I
+                " see no sensible way to put it anywhere else
+                call WinModelChangeUberwinIds(grouptypename, winids)
+            catch /.*/
+                echom 'Resolver step 2.3 failed to add ' . grouptype . ' uberwin group'
+            endtry
         endif
     endfor
 
@@ -539,10 +543,14 @@ function! s:WinResolveModelToState()
                         endif
                     endfor
                 endif
-                let winids = WinStateOpenSubwinsByGroupType(supwinid, grouptype)
-                " This Model write in ResolveModelToState is unfortunate, but I
-                " see no sensible way to put it anywhere else
-                call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
+                try
+                    let winids = WinStateOpenSubwinsByGroupType(supwinid, grouptype)
+                    " This Model write in ResolveModelToState is unfortunate, but I
+                    " see no sensible way to put it anywhere else
+                    call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
+                catch /.*/
+                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid
+                endtry
             endif
         endfor
     endfor
@@ -558,22 +566,34 @@ endfunction
 function! s:WinResolveRecordDimensions()
     " STEP 4.1: Record all uberwin dimensions in the model
     for grouptypename in WinModelShownUberwinGroupTypeNames()
-        let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
-        let dims = WinStateGetWinDimensionsList(winids)
-        call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+        try
+            let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
+            let dims = WinStateGetWinDimensionsList(winids)
+            call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+        catch /.*/
+            echom 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent'
+        endtry
     endfor
 
     " STEP 4.2: Record all supwin dimensions in the model
     for supwinid in WinModelSupwinIds()
-        let dim = WinStateGetWinDimensions(supwinid)
-        call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
+        try
+            let dim = WinStateGetWinDimensions(supwinid)
+            call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
+        catch
+            echom 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent'
+        endtry
 
     " STEP 4.3: Record all subwin dimensions in the model
         let supwinnr = WinStateGetWinnrByWinid(supwinid)
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-            let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
-            let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-            call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
+            try
+                let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
+                let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+                call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
+            catch /.*/
+                echom 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent'
+            endtry
         endfor
     endfor
 endfunction

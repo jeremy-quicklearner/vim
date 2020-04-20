@@ -43,7 +43,7 @@ highlight CursorLine        ctermfg=none    ctermbg=none    cterm=none
 " Error-type stuff is red so it stands out
 highlight ErrorMsg          ctermfg=Red     ctermbg=Black   cterm=none
 highlight WarningMsg        ctermfg=Magenta ctermbg=Black   cterm=none
-highlight Question          ctermfg=Magenta ctermbg=Black   cterm=none
+highlight Question          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellBad          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellCap          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellLocal        ctermfg=Red     ctermbg=Black   cterm=none
@@ -73,16 +73,6 @@ highlight DiffAdd           ctermfg=Green   ctermbg=Black   cterm=none
 highlight DiffChange        ctermfg=White   ctermbg=Black   cterm=none
 highlight DiffDelete        ctermfg=Red     ctermbg=Black   cterm=none
 highlight DiffText          ctermfg=Yellow  ctermbg=Black   cterm=none
-
-" vim/runtime/syntax/diff.vim has some weird choices at the bottom.
-" Overwrite them.
-highlight link diffOldFile NonText
-highlight link diffNewFile NonText
-highlight link diffFile NonText
-highlight link diffAdded DiffAdd
-highlight link diffIdentical DiffChange
-highlight link diffRemoved DiffDelete
-highlight link diffChanged DiffText
 
 highlight Directory         ctermfg=Blue    ctermbg=Black   cterm=none
 highlight ModeMsg           ctermfg=White   ctermbg=Black   cterm=none
@@ -166,3 +156,19 @@ highlight SpecialComment    ctermfg=Red     ctermbg=Red     cterm=none
 highlight Tag               ctermfg=Red     ctermbg=Red     cterm=none
 highlight Underlined        ctermfg=Red     ctermbg=Red     cterm=none
 highlight Ignore            ctermfg=Red     ctermbg=Red     cterm=none
+
+" Highlight groups relinked in src/after/syntax/undotree.vim
+highlight JUTNode           ctermfg=Magenta ctermbg=Black   cterm=none
+highlight JUTNodeCurrent    ctermfg=Red     ctermbg=Black   cterm=none
+highlight JUTTimeStamp      ctermfg=Green   ctermbg=Black   cterm=none
+highlight JUTFirstNode      ctermfg=Green   ctermbg=Black   cterm=none
+highlight JUTBranch         ctermfg=Cyan    ctermbg=Black   cterm=none
+highlight JUTSeq            ctermfg=White   ctermbg=Black   cterm=none
+highlight JUTCurrent        ctermfg=Red     ctermbg=Black   cterm=none
+highlight JUTNext           ctermfg=Yellow  ctermbg=Black   cterm=none
+highlight JUTHead           ctermfg=Yellow  ctermbg=Black   cterm=none
+highlight JUTHelp           ctermfg=Red     ctermbg=Red     cterm=none
+highlight JUTHelpKey        ctermfg=Red     ctermbg=Red     cterm=none
+highlight JUTHelpTitle      ctermfg=Red     ctermbg=Red     cterm=none
+highlight JUTSavedSmall     ctermfg=Yellow  ctermbg=Black   cterm=none
+highlight JUTSavedBig       ctermfg=Yellow  ctermbg=Black   cterm=none

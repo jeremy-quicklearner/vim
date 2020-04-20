@@ -136,7 +136,7 @@ function WinCommonReselectCursorWindow(oldpos)
    \   (pos.category ==# 'uberwin' && !WinModelUberwinGroupExists(pos.grouptype))
         let firstsupwinid = WinCommonFirstSupwinId()
         if firstsupwinid
-            let pos = {'category':'supwin','id':firstsupwinnr}
+            let pos = {'category':'supwin','id':firstsupwinid}
         endif
     endif
 
@@ -179,13 +179,17 @@ endfunction
 " and updates the model with the new winids
 function! WinCommonReopenUberwins(grouptypenames)
     for grouptypename in a:grouptypenames
-        let winids = WinStateOpenUberwinsByGroupType(
-       \    g:uberwingrouptype[a:grouptypename]
-       \)
-        call WinModelChangeUberwinIds(grouptypename, winids)
+        try
+            let winids = WinStateOpenUberwinsByGroupType(
+           \    g:uberwingrouptype[a:grouptypename]
+           \)
+            call WinModelChangeUberwinIds(grouptypename, winids)
 
-        let dims = WinStateGetWinDimensionsList(winids)
-        call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+            let dims = WinStateGetWinDimensionsList(winids)
+            call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+        catch /.*/
+            echom 'WinCommonReopenUberwins failed to open ' . grouptypename . ' uberwin group'
+        endtry
     endfor
 endfunction
 
@@ -225,16 +229,20 @@ endfunction
 " and updates the model with the new winids
 function! WinCommonReopenSubwins(supwinid, grouptypenames)
     for grouptypename in a:grouptypenames
-        let winids = WinStateOpenSubwinsByGroupType(
-       \    a:supwinid,
-       \    g:subwingrouptype[grouptypename]
-       \)
-        call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
-        call WinModelDeafterimageSubwinsByGroup(a:supwinid, grouptypename)
+        try
+            let winids = WinStateOpenSubwinsByGroupType(
+           \    a:supwinid,
+           \    g:subwingrouptype[grouptypename]
+           \)
+            call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
+            call WinModelDeafterimageSubwinsByGroup(a:supwinid, grouptypename)
 
-        let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
-        let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-        call WinModelChangeSubwinGroupDimensions(a:supwinid, grouptypename, dims)
+            let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+            let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+            call WinModelChangeSubwinGroupDimensions(a:supwinid, grouptypename, dims)
+        catch /.*/
+            echom 'WinCommonReopenSubwins failed to open ' . grouptypename . ' subwin group for supwin ' . a:supwinid
+        endtry
     endfor
 endfunction
 
@@ -273,7 +281,7 @@ function! WinCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
     endif
 
     " To make sure the subwins are in a good state, start from their supwin
-     call WinStateMoveCursorToWinid(a:supwinid)
+    call WinStateMoveCursorToWinid(a:supwinid)
 
     " Each subwin type can be individually afterimaging, so deal with them one
     " by one
@@ -288,13 +296,6 @@ function! WinCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
         if WinModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
             continue
         endif
-
-        " To make sure the subwins are in a good state, start from their supwin
-        " Silent movement (noautocmd) is used here because we want to preserve the
-        " state of the window exactly as it was when the function was first
-        " called, and autocmds may fire on win_gotoid that change the state
-        " TODO: Try commenting out this line. It probably isn't needed
-        call WinStateMoveCursorToWinidSilently(a:supwinid)
 
         " Get the subwin ID
         let subwinid = WinModelIdByInfo({
@@ -396,7 +397,7 @@ endfunction
 
 " Closes and reopens all shown subwins in the current tab, afterimaging the
 " afterimaging ones that need it
-function! WinCommonCloseAndReopenAllShownSubwins(curpos)
+function! WinCommonCloseAndReopenAllShownSubwins(curwin)
     let supwinids = WinModelSupwinIds()
     if empty(supwinids)
         return

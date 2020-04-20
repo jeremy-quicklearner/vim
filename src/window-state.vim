@@ -244,7 +244,7 @@ function! WinStateAfterimageWindow(winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
 
     " Preserve buffer contents
-    let bufcontents = getline(0, '$')
+    let bufcontents = getline(0, '$' - 1)
 
     " Preserve some window options
     let bufft = &ft
@@ -262,7 +262,6 @@ function! WinStateAfterimageWindow(winid)
 
     " Restore buffer contents
     call append(0, bufcontents)
-    normal Gdd
 
     " Restore buffer options
     let &ft = bufft

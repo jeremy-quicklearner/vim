@@ -14,6 +14,9 @@ let g:undotree_HelpLine = 0
 " Use O for each node
 let g:undotree_TreeNodeShape = 'O'
 
+" Don't highlight anything in the target windows
+let g:undotree_HighlightChangedText = 0
+
 " Callback that opens the undotree windows for the current window
 function! ToOpenUndotree()
     if (exists('t:undotree') && t:undotree.IsVisible())
