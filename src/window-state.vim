@@ -89,6 +89,21 @@ function! WinStateGetWinRelativeDimensionsList(winids, offset)
     return dim
 endfunction
 
+function! WinStateFreezeWindowSize(winid)
+    let prefreeze = {
+   \    'w': getwinvar(a:winid, '&winfixwidth'),
+   \    'h': getwinvar(a:winid, '&winfixheight')
+   \}
+    call setwinvar(a:winid, '&winfixwidth', 1)
+    call setwinvar(a:winid, '&winfixheight', 1)
+    return prefreeze
+endfunction
+
+function! WinStateThawWindowSize(winid, prefreeze)
+    call setwinvar(a:winid, '&winfixwidth', a:prefreeze.w)
+    call setwinvar(a:winid, '&winfixheight', a:prefreeze.h)
+endfunction
+
 function! WinStateMoveCursorToWinid(winid)
     call WinStateAssertWinExists(a:winid)
     call win_gotoid(a:winid)
@@ -122,6 +137,30 @@ endfunction
 function! WinStateZoomCurrentWindow()
     wincmd |
     wincmd _
+endfunction
+
+function! WinStateRotateWindows()
+    wincmd r
+endfunction
+
+function! WinStateMoveCurrentWindowToLeftEdge()
+    wincmd H
+    call WinStateEqualizeWindows()
+endfunction
+
+function! WinStateMoveCurrentWindowToBottomEdge()
+    wincmd J
+    call WinStateEqualizeWindows()
+endfunction
+
+function! WinStateMoveCurrentWindowToTopEdge()
+    wincmd K
+    call WinStateEqualizeWindows()
+endfunction
+
+function! WinStateMoveCurrentWindowToRightEdge()
+    wincmd L
+    call WinStateEqualizeWindows()
 endfunction
 
 " Open windows using the toOpen function from a group type and return the

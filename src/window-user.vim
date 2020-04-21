@@ -3,19 +3,6 @@
 " TODO: Add validation to add/remove/show/hide
 "   - There's already validation but it fails with an ugly backtrace. Maybe
 "     just catch the assertions at the start by returning silently
-" TODO: Add a replacement for <c-w>w
-"   - Fail if in a uberwin
-"   - Get supwin
-"   - Get list of supwins, find supwin in it, go up one in the list. Go to
-"     first if it's the last
-"   - use GotoSupwin as callback to WinCommonDoWithoutSubwins
-" TODO: Add a replacement for <c-w>r
-"   - Write WinCommonDoWithoutUberwins
-"   - Figure out a way to combine it with WinCommonDoWithoutSubwins
-"   - Add native 'wincmd r' to state and pass it as a callback to be done
-"     without uberwins or subwins
-
-" The User Operations
 
 " Resolver callback registration
 
@@ -375,6 +362,46 @@ function! WinZoomCurrentSupwin()
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
+" Window rearranging
+function! WinRotateSupwins()
+    let info = WinCommonGetCursorPosition()
+        if info.win.category ==# 'uberwin'
+            echom 'Cannot rotate an uberwin'
+        endif
+        if info.win.category ==# 'subwin'
+            call WinGotoSupwin(info.win.supwin)
+        endif
+        call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateRotateWindows'))
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+function! s:MoveCurrentSupwinToEdge(edge)
+    let info = WinCommonGetCursorPosition()
+        let curwin = info.win
+        if info.win.category ==# 'uberwin'
+            echom 'Cannot move an uberwin'
+            return
+        endif
+        if info.win.category ==# 'subwin'
+            call WinGotoSupwin(info.win.supwin)
+            let curwin = WinCommonGetCursorPosition().win
+        endif
+        call WinCommonDoWithoutUberwinsOrSubwins(curwin, function('WinStateMoveCurrentWindowTo' . a:edge . 'Edge'))
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+function! WinMoveSupwinToLeftEdge()
+    call s:MoveCurrentSupwinToEdge('Left')
+endfunction
+function! WinMoveSupwinToBottomEdge()
+    call s:MoveCurrentSupwinToEdge('Bottom')
+endfunction
+function! WinMoveSupwinToTopEdge()
+    call s:MoveCurrentSupwinToEdge('Top')
+endfunction
+function! WinMoveSupwinToRightEdge()
+    call s:MoveCurrentSupwinToEdge('Right')
+endfunction
+
 " Movement between different categories of windows is restricted and sometimes
 " requires afterimaging and deafterimaging
 function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
@@ -568,6 +595,14 @@ endfunction
 function! WinGoRight()
     call s:GoInDirection('Right')
 endfunction
+
+" TODO: Add a replacement for <c-w>w
+"   - If in an uberwin, go to the first supwin and exit
+"   - If in a subwin, start from its supwin
+"   - If in a supwin, start where you are
+"   - Get list of supwins, find start supwin in it, go up one in the list. Go to
+"     first if it's the last
+"   - use GotoSupwin
 
 " TODO: Something like WinDo but just for supwins
 "   - Save cursor position

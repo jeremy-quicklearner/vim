@@ -491,10 +491,10 @@ endfunction
 " Returns 1 if a winid is represented in the model. 0 otherwise.
 function! WinModelWinExists(winid)
     call s:AssertWinModelExists()
-    if index(WinModelUberwinIds(), a:winid) > -1
+    if index(WinModelUberwinIds(), str2nr(a:winid)) > -1
         return 1
     endif
-    if index(WinModelSupwinIds(), a:winid) > -1
+    if index(WinModelSupwinIds(), str2nr(a:winid)) > -1
         return 1
     endif
     if index(WinModelSubwinIds(), a:winid) > -1
@@ -511,7 +511,7 @@ endfunction
 " Given a window ID, return a dict that identifies it within the model
 " TODO: Do the lookups directly. The current algorithm is awful
 function! WinModelInfoById(winid)
-    if index(WinModelSupwinIds(), a:winid) != -1
+    if index(WinModelSupwinIds(), str2nr(a:winid)) != -1
         return {
        \    'category': 'supwin',
        \    'id': a:winid,
@@ -521,7 +521,7 @@ function! WinModelInfoById(winid)
        \}
     endif
 
-    if index(WinModelSubwinIds(), a:winid) != -1
+    if index(WinModelSubwinIds(), str2nr(a:winid)) != -1
         return {
        \    'category': 'subwin',
        \    'supwin': t:subwin[a:winid].supwin,
@@ -533,7 +533,7 @@ function! WinModelInfoById(winid)
        \}
     endif
 
-    if index(WinModelUberwinIds(), a:winid) != -1
+    if index(WinModelUberwinIds(), str2nr(a:winid)) != -1
         for grouptypename in keys(t:uberwin)
             for typename in keys(t:uberwin[grouptypename].uberwin)
                 if t:uberwin[grouptypename].uberwin[typename].id == a:winid
@@ -659,7 +659,7 @@ function! s:ValidateNewWinids(winids, explen)
         if type(winid) != v:t_number
             throw 'winid ' . winid . ' is not a number'
         endif
-        if index(existingwinids, winid) != -1
+        if index(existingwinids, str2nr(winid)) != -1
             throw 'winid ' . winid . ' is already in the model'
         endif
     endfor
@@ -1287,6 +1287,18 @@ function! WinModelSubwinAibufBySubwinId(subwinid)
     call s:AssertWinModelExists()
     call s:AssertSubwinidIsInSubwinList(a:subwinid)
     return t:subwin[a:subwinid].aibuf
+endfunction
+function! WinModelShownSubwinIdsBySupwinId(supwinid)
+    call WinModelAssertSupwinExists(a:supwinid)
+    let winids = []
+    for grouptypename in keys(t:supwin[a:supwinid].subwin)
+        if !WinModelSubwinGroupIsHidden(a:supwinid, grouptypename)
+            for typename in keys(t:supwin[a:supwinid].subwin[grouptypename].subwin)
+                call add(winids, t:supwin[a:supwinid].subwin[grouptypename].subwin[typename].id)
+            endfor
+        endif
+    endfor
+    return winids
 endfunction
 
 function! WinModelAddSupwin(winid, nr, w, h)

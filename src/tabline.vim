@@ -47,7 +47,7 @@ endfunction
 function! HyphenIfEmpty(letter)
     " If an upper-case letter is passed to getreg() here, then for reasons
     " unknown to me, the default register gets populated with the contents
-    " of whichever register is indexed by the character that HypenIsEmpty
+    " of whichever register is indexed by the character that HyphenIfEmpty
     " returns.
     if len(getreg(tolower(a:letter)))
         return a:letter

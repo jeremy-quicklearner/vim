@@ -54,8 +54,8 @@ function! WinResolveIdentifyWindow(winid)
             " If there is no supwin, or if the identified 'supwin' isn't a
             " supwin, the window we are identifying has no place in the model
             if subwindict.supwin ==# -1 ||
-           \   index(uberwinids, subwindict.supwin) >=# 0 ||
-           \   index(subwinids, subwindict.supwin) >=# 0
+           \   index(uberwinids, str2nr(subwindict.supwin)) >=# 0 ||
+           \   index(subwinids, str2nr(subwindict.supwin)) >=# 0
                 return {'category':'none','id':a:winid}
             endif
             return {
@@ -404,7 +404,17 @@ function! s:WinResolveModelToState()
        \    !WinModelSubwinGroupExists(wininfo.supwin, wininfo.grouptype) ||
        \    WinModelSubwinGroupIsHidden(wininfo.supwin, wininfo.grouptype)
        \)
+           " If the supwin exists, freeze dimensions of all windows
+           " outside it while closing. See comment in WinCommonCloseSubwins
+           if WinModelSupwinExists(wininfo.supwin)
+               let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(wininfo.supwin)
+           endif
+
            call WinStateCloseWindow(winid)
+
+           if WinModelSupwinExists(wininfo.supwin)
+               call WinCommonThawWindowSizes(prefreeze)
+           endif
            continue
         endif
     endfor
@@ -481,7 +491,7 @@ function! s:WinResolveModelToState()
         endfor
 
         " Remove all flagged subwins from the state
-        for supwinid in keys(toremove)
+        for supwinidstr in keys(toremove)
             for grouptypename in toremove[supwinid]
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
                     call WinCommonCloseSubwins(supwinid, grouptypename)

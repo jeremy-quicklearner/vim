@@ -154,6 +154,33 @@ function! WinCommonReselectCursorWindow(oldpos)
     return pos
 endfunction
 
+" Freeze the width and height of all windows except for a given supwin and its
+" subwins. Return information about the frozen windows' previous settings so
+" that they can later be thawed
+function! WinCommonFreezeAllWindowSizesOutsideSupwin(immunesupwinid)
+    let immunewinids = [a:immunesupwinid]
+    for subwinid in WinModelShownSubwinIdsBySupwinId(a:immunesupwinid)
+        call add(immunewinids, str2nr(subwinid))
+    endfor
+
+    let prefreeze = {}
+    for winid in WinStateGetWinidsByCurrentTab()
+        if index(immunewinids, str2nr(winid)) < 0
+            let prefreeze[winid] = WinStateFreezeWindowSize(winid)
+        endif
+    endfor
+    
+    return prefreeze
+endfunction
+
+" Thaw the height and width of all windows that were frozen with
+" WinCommonFreezeAllWindowSizesOutsideSupwin()
+function! WinCommonThawWindowSizes(prefreeze)
+    for winid in keys(a:prefreeze)
+        call WinStateThawWindowSize(winid, a:prefreeze[winid])
+    endfor
+endfunction
+
 " Moves the cursor to a window remembered with WinCommonGetCursorPosition. If
 " the window no longer exists, go to the next best window as selected by
 " WinCommonReselectCursorWindow
@@ -193,21 +220,32 @@ function! WinCommonReopenUberwins(grouptypenames)
 endfunction
 
 " Wrapper for WinStateCloseSubwinsByGroupType that falls back to
-" WinStateCloseWindow if any subwins in the group are afterimaged
+" WinStateCloseWindow if any subwins in the group are afterimaged and freezes
+" windows whose dimensions shouldn't change
 function! WinCommonCloseSubwins(supwinid, grouptypename)
-    if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
-        for subwinid in WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
-            call WinStateCloseWindow(subwinid)
-        endfor
+    " When windows are closed, Vim needs to choose which other windows to
+    " stretch to fill the empty space left. Sometimes Vim makes choices I
+    " don't like, such as filling space left behind by subwins with
+    " supwins other than the closed subwin's supwin. So before closing the
+    " subwin, freeze the height and width of every window except the
+    " supwin of the subwin being closed and its other subwins.
+    let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
 
-        " Here, afterimaged subwins are removed from the state but not from
-        " the model. If they are opened again, they will not be afterimaged in
-        " the state. So deafterimage them in the model.
-        call WinModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
-    else
-        let grouptype = g:subwingrouptype[a:grouptypename]
-        call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
-    endif
+        if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
+            for subwinid in WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
+                call WinStateCloseWindow(subwinid)
+            endfor
+
+            " Here, afterimaged subwins are removed from the state but not from
+            " the model. If they are opened again, they will not be afterimaged in
+            " the state. So deafterimage them in the model.
+            call WinModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
+        else
+            let grouptype = g:subwingrouptype[a:grouptypename]
+            call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+        endif
+
+    call WinCommonThawWindowSizes(prefreeze)
 endfunction
 
 " Closes all subwins for a given supwin with priority higher than a given, and
@@ -394,43 +432,69 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
+function! s:DoWithout(curwin, callback, nouberwins, nosubwins)
+    if a:nosubwins
+        let closedsubwingroupsbysupwin = {}
+
+        let supwinids = WinModelSupwinIds()
+        if empty(supwinids)
+            return
+        endif
+
+        let startwith = supwinids[0]
+
+        " If the cursor is in a supwin, start with it
+        if a:curwin.category ==# 'supwin'
+            let startwith = str2nr(a:curwin.id)
+
+        " If the cursor is in a subwin, start with its supwin
+        elseif a:curwin.category ==# 'subwin'
+            let startwith = str2nr(a:curwin.supwin)
+        endif
+
+        call remove(supwinids, index(supwinids, startwith))
+        call insert(supwinids, startwith)
+
+        for supwinid in supwinids
+             let closedsubwingroupsbysupwin[supwinid] = 
+            \    WinCommonCloseSubwinsWithHigherPriority(supwinid, -1)
+        endfor
+    endif
+
+    if a:nouberwins
+        let closeduberwingroups = WinCommonCloseUberwinsWithHigherPriority(-1)
+    endif
+
+    if type(a:curwin) ==# v:t_dict
+        call WinStateMoveCursorToWinid(WinModelIdByInfo(a:curwin))
+    endif
+    call call(a:callback, [])
+
+    if a:nouberwins
+        call WinCommonReopenUberwins(closeduberwingroups)
+    endif
+
+    if a:nosubwins
+        for supwinid in supwinids
+            call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
+            let dims = WinStateGetWinDimensions(supwinid)
+            " Afterimage everything after finishing with each supwin to avoid collisions
+            call WinCommonAfterimageSubwinsBySupwin(supwinid)
+            call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
+        endfor
+        call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
+    endif
+endfunction
+function! WinCommonDoWithoutUberwins(callback)
+    call s:DoWithout(0, a:callback, 1, 0)
+endfunction
+
 function! WinCommonDoWithoutSubwins(curwin, callback)
-    let closedsubwingroupsbysupwin = {}
+    call s:DoWithout(a:curwin, a:callback, 0, 1)
+endfunction
 
-    let supwinids = WinModelSupwinIds()
-    if empty(supwinids)
-        return
-    endif
-
-    let startwith = supwinids[0]
-
-    " If the cursor is in a supwin, start with it
-    if a:curwin.category ==# 'supwin'
-        let startwith = a:curwin.id
-
-    " If the cursor is in a subwin, start with its supwin
-    elseif a:curwin.category ==# 'subwin'
-        let startwith = a:curwin.supwin
-    endif
-
-    call remove(supwinids, index(supwinids, startwith))
-    call insert(supwinids, startwith)
-
-    for supwinid in supwinids
-         let closedsubwingroupsbysupwin[supwinid] = 
-        \    WinCommonCloseSubwinsWithHigherPriority(supwinid, -1)
-    endfor
-
-    call a:callback()
-
-    for supwinid in supwinids
-        call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
-        let dims = WinStateGetWinDimensions(supwinid)
-        " Afterimage everything after finishing with each supwin to avoid collisions
-        call WinCommonAfterimageSubwinsBySupwin(supwinid)
-        call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
-    endfor
-    call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
+function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback)
+    call s:DoWithout(a:curwin, a:callback, 1, 1)
 endfunction
 
 function! s:Nop()

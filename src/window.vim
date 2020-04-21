@@ -86,12 +86,32 @@ tnoremap <silent> <c-j> :GoDown<cr>
 tnoremap <silent> <c-k> :GoUp<cr>
 tnoremap <silent> <c-l> :GoRight<cr>
 
-" Window resizing with Ctrl using the user operations
+" Window resizing and moving using the user operations
 command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()
+command! -nargs=0 -complete=command WinRotate call WinRotateSupwins()
 command! -nargs=0 -complete=command WinZoom call WinZoomCurrentSupwin()
+command! -nargs=0 -complete=command WinMoveToLeftEdge call WinMoveSupwinToLeftEdge()
+command! -nargs=0 -complete=command WinMoveToBottomEdge call WinMoveSupwinToBottomEdge()
+command! -nargs=0 -complete=command WinMoveToTopEdge call WinMoveSupwinToTopEdge()
+command! -nargs=0 -complete=command WinMoveToRightEdge call WinMoveSupwinToRightEdge()
 nnoremap <silent> <c-w>= :WinEqualize<cr>
 vnoremap <silent> <c-w>= :WinEqualize<cr>
 tnoremap <silent> <c-w>= :WinEqualize<cr>
+nnoremap <silent> <c-w>r :WinRotate<cr>
+vnoremap <silent> <c-w>r :WinRotate<cr>
+tnoremap <silent> <c-w>r :WinRotate<cr>
+nnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
+vnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
+tnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
+nnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
+vnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
+tnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
+nnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
+vnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
+tnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
+nnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
+vnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
+tnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
 nnoremap <silent> <c-w>z :WinZoom<cr>
 vnoremap <silent> <c-w>z :WinZoom<cr>
 tnoremap <silent> <c-w>z :WinZoom<cr>
