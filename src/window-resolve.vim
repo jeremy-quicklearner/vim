@@ -491,7 +491,7 @@ function! s:WinResolveModelToState()
         endfor
 
         " Remove all flagged subwins from the state
-        for supwinidstr in keys(toremove)
+        for supwinid in keys(toremove)
             for grouptypename in toremove[supwinid]
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
                     call WinCommonCloseSubwins(supwinid, grouptypename)

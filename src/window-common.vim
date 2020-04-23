@@ -505,3 +505,17 @@ endfunction
 function! WinCommonCloseAndReopenAllShownSubwins(curwin)
      call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'))
 endfunction
+
+" Returns a statusline-friendly string that will evaluate to the correct
+" colour and flag for the given subwin group
+" This code is awkward because statusline expressions cannot recurse
+function! WinCommonSubwinFlagStrByGroup(grouptypename)
+    let flagcol = WinModelSubwinFlagCol(a:grouptypename)
+    let winidexpr = 'WinStateGetCursorWinId()'
+    let flagexpr = 'WinModelSubwinFlagByGroup(' .
+   \               winidexpr .
+   \               ",'" .
+   \               a:grouptypename .
+   \               "')"
+    return '%' . flagcol . '*%{' . flagexpr . '}'
+endfunction

@@ -431,6 +431,12 @@ endfunction
 
 " General Getters
 
+" Returns the names of all uberwin groups in the current tab, shown or not
+function! WinModelUberwinGroups()
+    call s:AssertWinModelExists()
+    return keys(t:uberwin)
+endfunction
+
 " Returns a list containing the IDs of all uberwins in an uberwin group
 function! WinModelUberwinIdsByGroupTypeName(grouptypename)
     call s:AssertWinModelExists()
@@ -461,10 +467,39 @@ function! WinModelUberwinIds()
     return uberwinids
 endfunction
 
+" Returns a string with uberwin flags to be included in the tabline, and its
+" length (not counting colour-changing escape sequences)
+function! WinModelUberwinFlagsStr()
+    if !WinModelExists()
+        return ['', 0]
+    endif
+
+    let flagsstr = ''
+    let flagslen = 0
+
+    for grouptypename in WinModelUberwinGroups()
+        if WinModelUberwinGroupIsHidden(grouptypename)
+            let flag = g:uberwingrouptype[grouptypename].hidflag
+        else
+            let flag = g:uberwingrouptype[grouptypename].flag
+        endif
+        let flagsstr .= '%' . g:uberwingrouptype[grouptypename].flagcol . '*[' . flag . ']'
+        let flagslen += len(flag) + 2
+    endfor
+
+    return [flagsstr, flagslen]
+endfunction
+
 " Returns a list containing all supwin IDs
 function! WinModelSupwinIds()
     call s:AssertWinModelExists()
     return map(keys(t:supwin), 'str2nr(v:val)')
+endfunction
+
+" Returns the names of all subwin groups for a given supwin, shown or not
+function! WinModelSubwinGroupsBySupwin(supwinid)
+    call WinModelAssertSupwinExists(a:supwinid)
+    return keys(t:supwin[a:supwinid].subwin)
 endfunction
 
 " Returns a list containing the IDs of all subwins in a subwin group
@@ -480,6 +515,28 @@ function! WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
         call add(subwinids, t:supwin[a:supwinid].subwin[a:grouptypename].subwin[typename].id)
     endfor
     return subwinids
+endfunction
+
+" Returns which flag to show for a given supwin due to a given subwin group
+" type's existence, hiddenness, etc.
+function! WinModelSubwinFlagByGroup(supwinid, grouptypename)
+    if !WinModelSupwinExists(a:supwinid) ||
+   \   !WinModelSubwinGroupExists(a:supwinid, a:grouptypename)
+        return ''
+    endif
+
+    if WinModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+        let flag = g:subwingrouptype[a:grouptypename].hidflag
+    else
+        let flag = g:subwingrouptype[a:grouptypename].flag
+    endif
+
+    return '[' . flag . ']'
+endfunction
+
+function! WinModelSubwinFlagCol(grouptypename)
+    call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    return g:subwingrouptype[a:grouptypename].flagcol
 endfunction
 
 " Returns a list containing all subwin IDs
@@ -808,7 +865,7 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
     endif
 
     for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
-        " TODO? Fill in missing dicts with 0,-1,-1?
+        " TODO? Fill in missing dicts with 0,-1,-1
         let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
         let dim = a:dims[typeidx]
 

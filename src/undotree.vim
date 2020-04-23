@@ -97,7 +97,7 @@ endfunction
 
 " The undotree and diffpanel are a subwin group
 call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
-                          \'Und', 'Hid', 2, 40, [1, 1],
+                          \'U', 'u', 4, 40, [1, 1],
                           \[25, 25], [-1, 10],
                           \function('ToOpenUndotree'),
                           \function('ToCloseUndotree'),

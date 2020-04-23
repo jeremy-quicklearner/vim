@@ -1,5 +1,4 @@
 " Tabline definition
-" TODO: Incorporate uberwin flags
 
 " Convert a global variable to a string based on a map lookup
 " If the variable doesn't exist, return dne
@@ -276,25 +275,13 @@ function! GetRegListString()
     return [rv, 32]
 endfunction
 
-" Get the quickfix window flag
-function! GetQfWinFlag()
-    " If there is a quickfix list, the flag is visible
-    if len(getqflist())
-        " The flag is [Qfx] or [Hid] depending on whether the quickfix window
-        " is hidden
-        return ['%2*' . TabVarAsFlag('qfwinHidden', '', {0:'[Qfx]',1:'[Hid]'}), 5]
-    else
-        return ['', 0]
-    endif
-endfunction
-
 " Construct the tabline
 function! GetTabLine()
     " Compute everything except the tabs first
     let vimVersionString = GetVimVersionString()
     let argcString = GetArgcString()
     let regListString = GetRegListString()
-    let qfWinFlag = GetQfWinFlag()
+    let uberwinFlagsString = WinUberwinFlagsStr()
 
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()
@@ -304,7 +291,7 @@ function! GetTabLine()
     let colsForTabs -= vimVersionString[1]
     let colsForTabs -= argcString[1]
     let colsForTabs -= regListString[1]
-    let colsForTabs -= qfWinFlag[1]
+    let colsForTabs -= uberwinFlagsString[1]
 
     " Use the remaining space for tabs
     let tabsString = GetTabsString(colsForTabs)
@@ -314,8 +301,8 @@ function! GetTabLine()
     let tabline .= vimVersionString[0]
     let tabline .= argcString[0]
     let tabline .= tabsString
+    let tabline .= uberwinFlagsString[0]
     let tabline .= regListString[0]
-    let tabline .= qfWinFlag[0]
     return tabline
 endfunction
 

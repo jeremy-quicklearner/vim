@@ -58,7 +58,7 @@ endfunction
 
 " The location window is a subwin
 call WinAddSubwinGroupType('loclist', ['loclist'],
-                          \'Loc', 'Hid', 2, 50, [0],
+                          \'L', 'l', 2, 50, [0],
                           \[-1], [10],
                           \function('ToOpenLoclist'),
                           \function('ToCloseLoclist'),

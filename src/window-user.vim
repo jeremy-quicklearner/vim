@@ -103,6 +103,11 @@ endfunction
 
 " Uberwins
 
+" For tabline generation
+function! WinUberwinFlagsStr()
+    return WinModelUberwinFlagsStr()
+endfunction
+
 function! WinAddUberwinGroup(grouptypename, hidden)
     call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
 
@@ -209,6 +214,15 @@ function! WinShowUberwinGroup(grouptypename)
 endfunction
 
 " Subwins
+
+" For statusline generation
+function! WinSubwinFlags()
+    let flagsstr = ''
+    for grouptypename in WinModelSubwinGroupTypeNames()
+        let flagsstr .= WinCommonSubwinFlagStrByGroup(grouptypename)
+    endfor
+    return flagsstr
+endfunction
 
 function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
