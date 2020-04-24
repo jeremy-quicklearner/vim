@@ -577,7 +577,6 @@ function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
     call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
 endfunction
 
-" TODO: If you encounter a subwin, make its supwin the destination
 function! s:GoInDirection(direction)
     let srcwinid = WinStateGetCursorWinId()
     let curwinid = srcwinid
@@ -587,9 +586,14 @@ function! s:GoInDirection(direction)
         let prvwinid = curwinid
         execute 'call WinStateMoveCursor' . a:direction . 'Silently()'
         let curwinid = WinStateGetCursorWinId()
+        let curwininfo = WinModelInfoById(curwinid)
  
-        if WinModelSupwinExists(curwinid)
+        if curwininfo.category ==# 'supwin'
             let dstwinid = curwinid
+            break
+        endif
+        if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid
+            let dstwinid = curwininfo.supwin
             break
         endif
         if curwinid == prvwinid

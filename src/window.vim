@@ -1,9 +1,9 @@
 " Window manipulation
 " TODO: Fix sessions
+" TODO: Audit all the user operations for redundancy
+" TODO: Audit all the asserts for redundancy
 " TODO: Audit all files for lines longer than 80 characters
 "   - Do this at the very end
-" TODO: Audit all the asserts for redundancy
-" TODO: Audit all the user operations for redundancy
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and
@@ -73,19 +73,29 @@ augroup END
 " Don't equalize window sizes when windows are closed
 set noequalalways
 
-" Window navigation with Ctrl using the user operations
+" Window movement should use the user operations
 command! -nargs=0 -complete=command GoLeft call WinGoLeft()
 command! -nargs=0 -complete=command GoDown call WinGoDown()
 command! -nargs=0 -complete=command GoUp call WinGoUp()
 command! -nargs=0 -complete=command GoRight call WinGoRight()
+nnoremap <silent> <c-w>h :GoLeft<cr>
+vnoremap <silent> <c-w>h :GoLeft<cr>
+tnoremap <silent> <c-w>h :GoLeft<cr>
+nnoremap <silent> <c-w>j :GoDown<cr>
+vnoremap <silent> <c-w>j :GoDown<cr>
+tnoremap <silent> <c-w>j :GoDown<cr>
+nnoremap <silent> <c-w>k :GoUp<cr>
+vnoremap <silent> <c-w>k :GoUp<cr>
+tnoremap <silent> <c-w>k :GoUp<cr>
+nnoremap <silent> <c-w>l :GoRight<cr>
+vnoremap <silent> <c-w>l :GoRight<cr>
+tnoremap <silent> <c-w>l :GoRight<cr>
+
+" In non-terminal windows, rebind CTRL-H|J|K|L for less awkward movement
 nnoremap <silent> <c-h> :GoLeft<cr>
 nnoremap <silent> <c-j> :GoDown<cr>
 nnoremap <silent> <c-k> :GoUp<cr>
 nnoremap <silent> <c-l> :GoRight<cr>
-tnoremap <silent> <c-h> :GoLeft<cr>
-tnoremap <silent> <c-j> :GoDown<cr>
-tnoremap <silent> <c-k> :GoUp<cr>
-tnoremap <silent> <c-l> :GoRight<cr>
 
 " Window resizing and moving using the user operations
 command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()

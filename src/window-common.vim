@@ -195,7 +195,9 @@ endfunction
 " group types closed. The model is unchanged.
 function! WinCommonCloseUberwinsWithHigherPriority(priority)
     let grouptypenames = WinModelUberwinGroupTypeNamesByMinPriority(a:priority)
-    for grouptypename in grouptypenames
+    " grouptypenames is revsersed so that we close uberwins in descending
+    " priority order. See comments in WinCommonCloseSubwinsWithHigherPriority
+    for grouptypename in reverse(copy(grouptypenames))
         call WinStateCloseUberwinsByGroupType(g:uberwingrouptype[grouptypename])
     endfor
     return grouptypenames

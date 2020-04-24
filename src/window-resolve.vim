@@ -1,6 +1,5 @@
 " Window infrastructure Resolve function
 " See window.vim
-" TODO: Handle state failures better
 
 " The cursor's final position is used in multiple places
 let s:curpos = {}
@@ -491,7 +490,6 @@ function! s:WinResolveModelToState()
             endif
         endfor
 
-        " TODO: Find out why this happens after equalization
         " Remove all flagged subwins from the state
         for supwinid in keys(toremove)
             " toremove[supwinid] is reversed so that we close subwins in
@@ -519,7 +517,8 @@ function! s:WinResolveModelToState()
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)
             catch /.*/
-                echom 'Resolver step 2.3 failed to add ' . string(grouptype) . ' uberwin group'
+                echom 'Resolver step 2.3 failed to add ' . string(grouptype) . ' uberwin group. Hiding.'
+                call WinModelHideSubwins(grouptypename)
             endtry
         endif
     endfor
@@ -563,7 +562,8 @@ function! s:WinResolveModelToState()
                     " see no sensible way to put it anywhere else
                     call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
                 catch /.*/
-                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid
+                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . '. Hiding.'
+                    call WinModelHideSubwins(supwinid, grouptypename)
                 endtry
             endif
         endfor
