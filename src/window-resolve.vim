@@ -1,5 +1,6 @@
 " Window infrastructure Resolve function
 " See window.vim
+" TODO: Handle state failures better
 
 " The cursor's final position is used in multiple places
 let s:curpos = {}
@@ -493,7 +494,10 @@ function! s:WinResolveModelToState()
         " TODO: Find out why this happens after equalization
         " Remove all flagged subwins from the state
         for supwinid in keys(toremove)
-            for grouptypename in toremove[supwinid]
+            " toremove[supwinid] is reversed so that we close subwins in
+            " descending priority order. See comments in
+            " WinCommonCloseSubwinsWithHigherPriority
+            for grouptypename in reverse(copy(toremove[supwinid]))
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
                     call WinCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1

@@ -1,6 +1,4 @@
 " Window manipulation
-" TODO: Fix equalization bug, which is still hitting the case with four
-"       supwins with both subwins
 " TODO: Fix sessions
 " TODO: Audit all files for lines longer than 80 characters
 "   - Do this at the very end
