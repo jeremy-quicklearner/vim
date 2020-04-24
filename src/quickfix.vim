@@ -44,9 +44,43 @@ function! ToIdentifyQuickfix(winid)
     return ''
 endfunction
 
+" Returns the statusline of the quickfix window
+function! QuickfixStatusLine()
+    let qfdict = getqflist({
+   \    'title': 1,
+   \    'nr': 0
+   \})
+
+    let qfdict = map(qfdict, function('SanitizeForStatusLine'))
+
+    let statusline = ''
+
+    " 'Quickfix' string
+    let statusline .= '%2*[Quickfix]'
+
+    " Start truncating
+    let statusline .= '%<'
+
+    " Quickfix list number
+    let statusline .= '%1*[' . qfdict.nr . ']'
+
+    " Quickfix list title (from the command that generated the list)
+    let statusline .= '%1*[' . qfdict.title . ']'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Column][Current line/Total lines][% of buffer]
+    let statusline .= '%2*[%c][%l/%L][%p%%]'
+
+    return statusline
+endfunction
+
 " The quickfix window is an uberwin
 call WinAddUberwinGroupType('quickfix', ['quickfix'],
-                           \'Q', 'q', 2, 50,
+                           \['%!QuickfixStatusLine()'],
+                           \'Q', 'q', 2,
+                           \50,
                            \[-1], [10],
                            \function('ToOpenQuickfix'),
                            \function('ToCloseQuickfix'),

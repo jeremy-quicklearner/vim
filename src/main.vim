@@ -19,8 +19,10 @@ source <sfile>:p:h/plugin.vim
 source <sfile>:p:h/quickfix.vim
 source <sfile>:p:h/loclist.vim
 source <sfile>:p:h/undotree.vim
-" Statusline and tabline are last because they may display information from
-" the others
+
+" Statusline and Tabline come after the uberwin/subwin groups because all
+" groups need to be registered before the default statusline (with subwin
+" flags) is generated
 source <sfile>:p:h/statusline.vim
 source <sfile>:p:h/tabline.vim
 

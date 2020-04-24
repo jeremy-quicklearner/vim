@@ -36,6 +36,7 @@
 " g:uberwingrouptype = {
 "     <grouptypename>: {
 "         typenames: [ <typename>, ... ]
+"         statuslines: [<statusline>, ...]
 "         flag: <flag>
 "         hidflag: <flag>
 "         flagcol: <1-9>
@@ -51,6 +52,7 @@
 " g:subwingrouptype = {
 "     <grouptypename>: {
 "         typenames: [ <typename>, ... ]
+"         statuslines: [<statusline>, ...]
 "         flag: <flag>
 "         hidflag: <flag>
 "         flagcol: <1-9>
@@ -225,14 +227,10 @@ function! WinModelAssertUberwinTypeExists(grouptypename, typename)
        \      a:typename
     endif
 endfunction
-function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
+function! WinModelAddUberwinGroupType(name, typenames, statuslines,
+                                     \flag, hidflag, flagcol,
                                      \priority, widths, heights, toOpen, toClose,
                                      \toIdentify)
-    " The group type must not already exist
-    if s:UberwinGroupTypeExists(a:name)
-        throw 'uberwin group type ' . a:name . ' already exists'
-    endif
-
     " All parameters must be of the correct type
     if type(a:name) != v:t_string
         throw 'name must be a string'
@@ -243,6 +241,14 @@ function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
     for elem in a:typenames
         if type(elem) != v:t_string
             throw 'typenames must be a list of strings'
+        endif
+    endfor
+    if type(a:statuslines) != v:t_list
+        throw 'statuslines must be a list'
+    endif
+    for elem in a:statuslines
+        if type(elem) != v:t_string
+            throw 'statuslines must be a list of strings'
         endif
     endfor
     if type(a:flag) != v:t_string
@@ -296,6 +302,7 @@ function! WinModelAddUberwinGroupType(name, typenames, flag, hidflag, flagcol,
     let g:uberwingrouptype[a:name] = {
     \    'name': a:name,
     \    'typenames': a:typenames,
+    \    'statuslines': a:statuslines,
     \    'flag': a:flag,
     \    'hidflag': a:hidflag,
     \    'flagcol': a:flagcol,
@@ -334,14 +341,10 @@ function! WinModelSubwinGroupTypeHasAfterimagingSubwin(grouptypename)
         endif
     endfor
 endfunction
-function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
+function! WinModelAddSubwinGroupType(name, typenames, statuslines,
+                                    \flag, hidflag, flagcol,
                                     \priority, afterimaging, widths, heights,
                                     \toOpen, toClose, toIdentify)
-    " The group type must not already exist
-    if s:SubwinGroupTypeExists(a:name)
-        throw 'subwin group type ' . a:name . ' already exists'
-    endif
-
     " All parameters must be of the correct type
     if type(a:name) != v:t_string
         throw 'name must be a string'
@@ -349,6 +352,14 @@ function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
     if type(a:typenames) != v:t_list
         throw 'typenames must be a list'
     endif
+    if type(a:statuslines) != v:t_list
+        throw 'statuslines must be a list'
+    endif
+    for elem in a:statuslines
+        if type(elem) != v:t_string
+            throw 'statuslines must be a list of strings'
+        endif
+    endfor
     for elem in a:typenames
         if type(elem) != v:t_string
             throw 'typenames must be a list of strings'
@@ -416,6 +427,7 @@ function! WinModelAddSubwinGroupType(name, typenames, flag, hidflag, flagcol,
     let g:subwingrouptype[a:name] = {
     \    'name': a:name,
     \    'typenames': a:typenames,
+    \    'statuslines': a:statuslines,
     \    'flag': a:flag,
     \    'hidflag': a:hidflag,
     \    'flagcol': a:flagcol,
@@ -608,6 +620,25 @@ function! WinModelInfoById(winid)
     endif
 
     return {'category': 'none', 'id': a:winid}
+endfunction
+
+" Given window info, return a statusline for that window. Returns an empty
+" string if the window should have the default statusline
+function! WinModelStatusLineByInfo(info)
+    call s:AssertWinModelExists()
+
+    if a:info.category ==# 'supwin' || a:info.category ==# 'none'
+        return ''
+    elseif a:info.category ==# 'uberwin'
+        call WinModelAssertUberwinTypeExists(a:info.grouptype, a:info.typename)
+        let grouptype = g:uberwingrouptype[a:info.grouptype]
+    elseif a:info.category ==# 'subwin'
+        call WinModelAssertSubwinTypeExists(a:info.grouptype, a:info.typename)
+        let grouptype = g:subwingrouptype[a:info.grouptype]
+    endif
+
+    let typeidx = index(grouptype.typenames, a:info.typename)
+    return grouptype.statuslines[typeidx]
 endfunction
 
 " Given an info dict from WinModelInfoById, return the window ID
@@ -1042,11 +1073,11 @@ function! WinModelShowUberwins(grouptypename, winids, dimensions)
     let t:uberwin[a:grouptypename].uberwin = uberwindict
 endfunction
 
-function! WinModelAddOrShowUberwins(grouptypename, subwinids, dimensions)
+function! WinModelAddOrShowUberwins(grouptypename, uberwinids, dimensions)
     if !WinModelUberwinGroupExists(a:grouptypename)
-        call WinModelAddSubwins(a:grouptypename, a:subwinids, a:dimensions)
+        call WinModelAddUberwins(a:grouptypename, a:uberwinids, a:dimensions)
     else
-        call WinModelShowSubwins(a:grouptypename, a:subwinids, a:dimensions)
+        call WinModelShowUberwins(a:grouptypename, a:uberwinids, a:dimensions)
     endif
 endfunction
 

@@ -33,7 +33,8 @@ function! SpaceIfArgs()
     endif
 endfunction
 
-function! SetStatusLine()
+" Set the status line for a supwin
+function! SetDefaultStatusLine()
     " Always show the status line
     set laststatus=2
 
@@ -71,26 +72,33 @@ function! SetStatusLine()
     set statusline+=%3*[%c][%l/%L][%p%%]
 endfunction
 
-function! CorrectStatusLine(arg)
-    " Don't let Vim override the statusline locally
-    call WinDo('setlocal statusline=', '')
+" The window engine dictates that some windows have non-default status lines.
+" It defers to the default by returning an empty string that won't supersede
+" the global default statusline
+function! SetSpecificStatusLine()
+    execute 'setlocal statusline=' . WinNonDefaultStatusLine()
 endfunction
-    
+
+function! CorrectAllStatusLines(arg)
+    call WinDo('call SetSpecificStatusLine()', '')
+endfunction
 
 " Register the above function to be called on the next CursorHold event
-function! RegisterCorrectStatusLine()
-    call RegisterCursorHoldCallback(function('CorrectStatusLine'), "", 0, 1, 0)
+function! RegisterCorrectStatusLines()
+    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), "", 0, 1, 0)
 endfunction
 
 augroup StatusLine
     autocmd!
-    " Set the status line on entering Vim
-    autocmd VimEnter * call SetStatusLine()
     " Quickfix and Terminal windows have different statuslines that Vim sets
-    " when they open or buffers enter them, so overwrite the statusline
-    " after that happens
-    autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLine()
+    " when they open or buffers enter them, so overwrite all non-default
+    " statuslines after that happens
+    autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
 
-    " Also use the statusline for netrw windows
-    autocmd FileType netrw call RegisterCorrectStatusLine()
+    " Netrw windows also have local statuslines that get set by some autocmd
+    " someplace. Overwrite them as well.
+    autocmd FileType netrw call RegisterCorrectStatusLines()
 augroup END
+
+" The default status line is the value of the global statusline option
+call SetDefaultStatusLine()

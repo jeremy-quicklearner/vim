@@ -95,9 +95,52 @@ function! ToIdentifyUndotree(winid)
     return {'typename':typename,'supwin':supwinid}
 endfunction
 
+" Returns the statusline of the undotree window
+function! UndotreeStatusLine()
+    let statusline = ''
+
+    " 'Undotree' string
+    let statusline .= '%5*[Undotree]'
+
+    " Start truncating
+    let statusline .= '%1*%<'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Current line/Total lines][% of buffer]
+    let statusline .= '%5*[%l/%L][%p%%]'
+
+    return statusline
+endfunction
+
+" Returns the statusline of the undodiff window
+function! UndodiffStatusLine()
+    let statusline = ''
+
+    " 'Undodiff' string
+    let statusline .= '%5*[Undodiff]'
+
+    " Start truncating
+    let statusline .= '%1*%<'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Current line/Total lines][% of buffer]
+    let statusline .= '%5*[%l/%L][%p%%]'
+
+    return statusline
+endfunction
+
 " The undotree and diffpanel are a subwin group
 call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
-                          \'U', 'u', 4, 40, [1, 1],
+                          \[
+                          \    '%!UndotreeStatusLine()',
+                          \    '%!UndodiffStatusLine()'
+                          \],
+                          \'U', 'u', 5,
+                          \40, [1, 1],
                           \[25, 25], [-1, 10],
                           \function('ToOpenUndotree'),
                           \function('ToCloseUndotree'),

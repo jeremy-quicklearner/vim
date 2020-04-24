@@ -158,7 +158,7 @@ endfunction
 " subwins. Return information about the frozen windows' previous settings so
 " that they can later be thawed
 function! WinCommonFreezeAllWindowSizesOutsideSupwin(immunesupwinid)
-    let immunewinids = [a:immunesupwinid]
+    let immunewinids = [str2nr(a:immunesupwinid)]
     for subwinid in WinModelShownSubwinIdsBySupwinId(a:immunesupwinid)
         call add(immunewinids, str2nr(subwinid))
     endfor
@@ -248,6 +248,16 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
     call WinCommonThawWindowSizes(prefreeze)
 endfunction
 
+" Wrapper for WinStateOpenSubwinsByGroupType that freezes windows whose
+" dimensions shouldn't change
+function! WinCommonOpenSubwins(supwinid, grouptypename)
+    let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
+        let grouptype = g:subwingrouptype[a:grouptypename]
+        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
+    call WinCommonThawWindowSizes(prefreeze)
+    return winids
+endfunction
+
 " Closes all subwins for a given supwin with priority higher than a given, and
 " returns a list of group types closed. The model is unchanged.
 function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
@@ -255,21 +265,31 @@ function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
    \    a:supwinid,
    \    a:priority
    \)
-    for grouptypename in grouptypenames
+
+    " grouptypenames is reversed because Vim sometimes makes strange decisions
+    " when deciding which windows will fill the space left behind by a window
+    " that closes. Assuming that subwins in ascending priority open from the
+    " outside in (which is the intent underpinning the notion of subwin
+    " priorities), closing them in descending priority order means closing
+    " them from the inside out. This means that a subwin will never have to
+    " stretch to fill the space left behind - only the supwin will stretch.
+    " I don't fully understand why, but relaxing that constraint and allowing
+    " subwins to stretch causes strange behaviour with other supwins filling
+    " the space left by supwins closing after they have stretched.
+    for grouptypename in reverse(copy(grouptypenames))
         call WinCommonCloseSubwins(a:supwinid, grouptypename)
     endfor
     return grouptypenames
 endfunction
-
 
 " Reopens subwins that were closed by WinCommonCloseSubwinsWithHigherPriority
 " and updates the model with the new winids
 function! WinCommonReopenSubwins(supwinid, grouptypenames)
     for grouptypename in a:grouptypenames
         try
-            let winids = WinStateOpenSubwinsByGroupType(
+            let winids = WinCommonOpenSubwins(
            \    a:supwinid,
-           \    g:subwingrouptype[grouptypename]
+           \    grouptypename
            \)
             call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
             call WinModelDeafterimageSubwinsByGroup(a:supwinid, grouptypename)

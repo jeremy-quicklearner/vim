@@ -191,6 +191,8 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
             call setwinvar(winids[idx], '&winfixheight', 0)
         endif
 
+        call setwinvar(winids[idx], '&statusline', a:grouptype.statuslines[idx])
+
         call setloclist(winids[idx], [])
     endfor
 
@@ -245,6 +247,8 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
             call setwinvar(winids[idx], '&winfixheight', 0)
         endif
 
+        call setwinvar(winids[idx], '&statusline', a:grouptype.statuslines[idx])
+
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
         " loclists
@@ -289,6 +293,7 @@ function! WinStateAfterimageWindow(winid)
     let bufft = &ft
     let bufwrap = &wrap
     let bufpos = getpos('.')
+    let statusline = &statusline
 
     " Switch to a new hidden scratch buffer. This will be the afterimage buffer
     " noautocmd is used here because undotree has autocmds that fire when you
@@ -305,6 +310,7 @@ function! WinStateAfterimageWindow(winid)
     " Restore buffer options
     let &ft = bufft
     let &wrap = bufwrap
+    let &l:statusline = statusline
     call cursor(bufpos[1], bufpos[2], bufpos[3])
 
     " Return afterimage buffer ID

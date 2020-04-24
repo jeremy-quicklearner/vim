@@ -490,6 +490,7 @@ function! s:WinResolveModelToState()
             endif
         endfor
 
+        " TODO: Find out why this happens after equalization
         " Remove all flagged subwins from the state
         for supwinid in keys(toremove)
             for grouptypename in toremove[supwinid]
@@ -514,7 +515,7 @@ function! s:WinResolveModelToState()
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)
             catch /.*/
-                echom 'Resolver step 2.3 failed to add ' . grouptype . ' uberwin group'
+                echom 'Resolver step 2.3 failed to add ' . string(grouptype) . ' uberwin group'
             endtry
         endif
     endfor
@@ -524,7 +525,6 @@ function! s:WinResolveModelToState()
     for supwinid in WinModelSupwinIds()
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             if !WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
-                let grouptype = g:subwingrouptype[grouptypename]
                 if WinModelSubwinGroupTypeHasAfterimagingSubwin(grouptypename)
                     " Afterimaging subwins may be state-open in at most one supwin
                     " at a time. So if we're opening an afterimaging subwin, it
@@ -554,7 +554,7 @@ function! s:WinResolveModelToState()
                     endfor
                 endif
                 try
-                    let winids = WinStateOpenSubwinsByGroupType(supwinid, grouptype)
+                    let winids = WinCommonOpenSubwins(supwinid, grouptypename)
                     " This Model write in ResolveModelToState is unfortunate, but I
                     " see no sensible way to put it anywhere else
                     call WinModelChangeSubwinIds(supwinid, grouptypename, winids)

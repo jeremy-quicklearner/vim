@@ -56,9 +56,40 @@ function! ToIdentifyLoclist(winid)
     return {}
 endfunction
 
+function! LoclistFieldForStatusline(fieldname)
+    return SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
+endfunction
+
+" Returns the statusline of the location window
+function! LoclistStatusLine()
+    let statusline = ''
+
+    " 'Loclist' string
+    let statusline .= '%2*[Loclist]'
+
+    " Start truncating
+    let statusline .= '%<'
+
+    " Location list number
+    let statusline .= '%1*[%{LoclistFieldForStatusline("title")}]'
+
+    " Location list title (from the command that generated the list)
+    let statusline .= '%1*[%{LoclistFieldForStatusline("nr")}]'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Column][Current line/Total lines][% of buffer]
+    let statusline .= '%2*[%c][%l/%L][%p%%]'
+
+    return statusline
+endfunction
+
 " The location window is a subwin
 call WinAddSubwinGroupType('loclist', ['loclist'],
-                          \'L', 'l', 2, 50, [0],
+                          \['%!LoclistStatusLine()'],
+                          \'L', 'l', 2,
+                          \50, [0],
                           \[-1], [10],
                           \function('ToOpenLoclist'),
                           \function('ToCloseLoclist'),

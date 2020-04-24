@@ -41,6 +41,18 @@ function! WinDoMaybeLet(name, default)
    endfor
 endfunction
 
+" Add escape characters to a string so that it doesn't trigger any
+" evaluation when passed to the value of the statusline or tabline options
+function! SanitizeForStatusLine(arg, str)
+    let retstr = a:str
+
+    let retstr = substitute(retstr, ' ', '\ ', 'g')
+    let retstr = substitute(retstr, '-', '\-', 'g')
+    let retstr = substitute(retstr, '%', '%%', 'g')
+
+    return retstr
+endfunction
+
 " CursorHold callback infrastructure
 
 " Self-explanatory
