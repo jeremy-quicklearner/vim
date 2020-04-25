@@ -167,8 +167,8 @@ highlight JUTSeq            ctermfg=White   ctermbg=Black   cterm=none
 highlight JUTCurrent        ctermfg=Red     ctermbg=Black   cterm=none
 highlight JUTNext           ctermfg=Yellow  ctermbg=Black   cterm=none
 highlight JUTHead           ctermfg=Yellow  ctermbg=Black   cterm=none
-highlight JUTHelp           ctermfg=Red     ctermbg=Red     cterm=none
-highlight JUTHelpKey        ctermfg=Red     ctermbg=Red     cterm=none
-highlight JUTHelpTitle      ctermfg=Red     ctermbg=Red     cterm=none
+highlight JUTHelp           ctermfg=Green   ctermbg=Black   cterm=none
+highlight JUTHelpKey        ctermfg=Cyan    ctermbg=Black   cterm=none
+highlight JUTHelpTitle      ctermfg=Cyan    ctermbg=Black   cterm=none
 highlight JUTSavedSmall     ctermfg=Yellow  ctermbg=Black   cterm=none
 highlight JUTSavedBig       ctermfg=Yellow  ctermbg=Black   cterm=none

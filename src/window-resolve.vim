@@ -6,9 +6,7 @@ let s:curpos = {}
 
 " Internal conditions - flags used by different helpers to communicate with
 " each other
-let s:uberwinsaddedcond = 0
 let s:supwinsaddedcond = 0
-let s:subwinsaddedcond = 0
 
 " Input conditions - flags that influence the resolver's behaviour, set before
 " it runs
@@ -337,7 +335,6 @@ function! s:WinResolveStateToModel()
        \    []
        \)
     endfor
-    let s:uberwinsaddedcond = 1
     for supwinid in groupedmissingwininfo.supwin
         call WinModelAddSupwin(supwinid, -1, -1, -1)
         let s:supwinsaddedcond = 1
@@ -355,7 +352,6 @@ function! s:WinResolveStateToModel()
            \    winids,
            \    []
            \)
-           let s:subwinsaddedcond = 1
         endfor
     endfor
 endfunction
@@ -517,8 +513,9 @@ function! s:WinResolveModelToState()
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)
             catch /.*/
-                echom 'Resolver step 2.3 failed to add ' . string(grouptype) . ' uberwin group. Hiding.'
-                call WinModelHideSubwins(grouptypename)
+                echom 'Resolver step 2.3 failed to add ' . grouptypename . ' uberwin group to state:'
+                echohl ErrorMsg | echom v:exception | echohl None
+                call WinModelHideUberwins(grouptypename)
             endtry
         endif
     endfor
@@ -562,7 +559,8 @@ function! s:WinResolveModelToState()
                     " see no sensible way to put it anywhere else
                     call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
                 catch /.*/
-                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . '. Hiding.'
+                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':'
+                    echohl ErrorMsg | echom v:exception | echohl None
                     call WinModelHideSubwins(supwinid, grouptypename)
                 endtry
             endif
@@ -585,7 +583,8 @@ function! s:WinResolveRecordDimensions()
             let dims = WinStateGetWinDimensionsList(winids)
             call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
         catch /.*/
-            echom 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent'
+            echom 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent:'
+            echohl ErrorMsg | echom v:exception | echohl None
         endtry
     endfor
 
@@ -595,7 +594,8 @@ function! s:WinResolveRecordDimensions()
             let dim = WinStateGetWinDimensions(supwinid)
             call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
         catch
-            echom 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent'
+            echom 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent:'
+            echohl ErrorMsg | echom v:exception | echohl None
         endtry
 
     " STEP 4.3: Record all subwin dimensions in the model
@@ -606,7 +606,8 @@ function! s:WinResolveRecordDimensions()
                 let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
                 call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
             catch /.*/
-                echom 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent'
+                echom 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:'
+                echohl ErrorMsg | echom v:exception | echohl None
             endtry
         endfor
     endfor
@@ -627,10 +628,6 @@ function! WinResolve(arg)
     " STEP 0: Make sure the tab-specific model elements exist
     if !WinModelExists()
         call WinModelInit()
-        " A tab has been initialized. Run the tab-init pre-resolve callbacks
-        for TabInitCallback in WinModelTabInitPreResolveCallbacks()
-            call TabInitCallback()
-        endfor
     endif
 
     " If this is the first time running the resolver after entering a tab, run
@@ -642,11 +639,6 @@ function! WinResolve(arg)
         let t:winresolvetabenteredcond = 0
     endif
 
-    " Run the pre-resolve callbacks
-    for PreResolveCallback in WinModelPreResolveCallbacks()
-        call PreResolveCallback()
-    endfor
-
     " STEP 1: The state may have changed since the last WinResolve() call. Adapt the
     "         model to fit it.
     call s:WinResolveStateToModel()
@@ -657,29 +649,12 @@ function! WinResolve(arg)
     let s:curpos = WinCommonGetCursorPosition()
 
     " Run the conditional callbacks
-    if s:uberwinsaddedcond
-        for UberwinsAddedCallback in WinModelUberwinsAddedResolveCallbacks()
-            call UberwinsAddedCallback()
-        endfor
-        let s:uberwinsaddedcond = 0
-    endif
     if s:supwinsaddedcond
         for SupwinsAddedCallback in WinModelSupwinsAddedResolveCallbacks()
             call SupwinsAddedCallback()
         endfor
         let s:supwinsaddedcond = 0
     endif
-    if s:subwinsaddedcond
-        for SubwinsAddedCallback in WinModelSubwinsAddedResolveCallbacks()
-            call SubwinsAddedCallback()
-        endfor
-        let s:subwinsaddedcond = 0
-    endif
-
-    " Run the resolve callbacks
-    for ResolveCallback in WinModelResolveCallbacks()
-        call ResolveCallback()
-    endfor
 
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
@@ -699,11 +674,6 @@ function! WinResolve(arg)
     " Restore the cursor position from when the resolver started
     call WinCommonRestoreCursorPosition(s:curpos)
     let s:curpos = {}
-
-    " Run the post-resolve callbacks
-    for PostResolveCallback in WinModelPostResolveCallbacks()
-        call PostResolveCallback()
-    endfor
 
     let s:resolveIsRunning = 0
 endfunction

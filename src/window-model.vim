@@ -1,35 +1,11 @@
 " Window Model
 " See window.vim
 
-" g:tabinitpreresolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
 " g:tabenterpreresolvecallbacks = [
 "     <funcref>
 "     ...
 " ]
-" g:preresolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
-" g:uberwinsaddedresolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
 " g:supwinsaddedresolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
-" g:subwinsaddedresolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
-" g:resolvecallbacks = [
-"     <funcref>
-"     ...
-" ]
-" g:postresolvecallbacks = [
 "     <funcref>
 "     ...
 " ]
@@ -116,14 +92,8 @@
 " }
 
 " Resolver callbacks and group types are global
-let g:tabinitpreresolvecallbacks = []
 let g:tabenterpreresolvecallbacks = []
-let g:preresolvecallbacks = []
-let g:uberwinsaddedresolvecallbacks = []
 let g:supwinsaddedresolvecallbacks = []
-let g:subwinsaddedresolvecallbacks = []
-let g:resolvecallbacks = []
-let g:postresolvecallbacks = []
 let g:uberwingrouptype = {}
 let g:subwingrouptype = {}
 
@@ -153,60 +123,23 @@ function! s:AddTypedResolveCallback(type, callback)
         throw 'Resolve callback is not a function'
     endif
 
-    if index(g:preresolvecallbacks, a:callback) >= 0
+    if eval('index(g:' . a:type . 'resolvecallbacks, a:callback)') >= 0
         throw 'Resolve callback is already registered'
     endif
 
     execute 'call add(g:' . a:type . 'resolvecallbacks, a:callback)'
 endfunction
-" TODO: Clean up this mess
-function! WinModelAddTabInitPreResolveCallback(callback)
-    call s:AddTypedResolveCallback('tabinitpre', a:callback)
-endfunction
 function! WinModelAddTabEnterPreResolveCallback(callback)
     call s:AddTypedResolveCallback('tabenterpre', a:callback)
-endfunction
-function! WinModelAddPreResolveCallback(callback)
-    call s:AddTypedResolveCallback('pre', a:callback)
-endfunction
-function! WinModelAddUberwinsAddedResolveCallback(callback)
-    call s:AddTypedResolveCallback('uberwinsadded', a:callback)
 endfunction
 function! WinModelAddSupwinsAddedResolveCallback(callback)
     call s:AddTypedResolveCallback('supwinsadded', a:callback)
 endfunction
-function! WinModelAddSubwinsAddedResolveCallback(callback)
-    call s:AddTypedResolveCallback('subwinsadded', a:callback)
-endfunction
-function! WinModelAddResolveCallback(callback)
-    call s:AddTypedResolveCallback('', a:callback)
-endfunction
-function! WinModelAddPostResolveCallback(callback)
-    call s:AddTypedResolveCallback('post', a:callback)
-endfunction
-function! WinModelTabInitPreResolveCallbacks()
-    return g:tabinitpreresolvecallbacks
-endfunction
 function! WinModelTabEnterPreResolveCallbacks()
     return g:tabenterpreresolvecallbacks
 endfunction
-function! WinModelPreResolveCallbacks()
-    return g:preresolvecallbacks
- endfunction
-function! WinModelUberwinsAddedResolveCallbacks()
-    return g:uberwinsaddedresolvecallbacks
-endfunction
 function! WinModelSupwinsAddedResolveCallbacks()
     return g:supwinsaddedresolvecallbacks
-endfunction
-function! WinModelSubwinsAddedResolveCallbacks()
-    return g:subwinsaddedresolvecallbacks
-endfunction
-function! WinModelResolveCallbacks()
-    return g:resolvecallbacks
-endfunction
-function! WinModelPostResolveCallbacks()
-    return g:postresolvecallbacks
 endfunction
 
 " Uberwin group type manipulation
@@ -578,9 +511,8 @@ function! s:AssertWinExists(winid)
 endfunction
 
 " Given a window ID, return a dict that identifies it within the model
-" TODO: Do the lookups directly. The current algorithm is awful
 function! WinModelInfoById(winid)
-    if index(WinModelSupwinIds(), str2nr(a:winid)) != -1
+    if has_key(t:supwin, a:winid)
         return {
        \    'category': 'supwin',
        \    'id': a:winid,
@@ -590,7 +522,7 @@ function! WinModelInfoById(winid)
        \}
     endif
 
-    if index(WinModelSubwinIds(), str2nr(a:winid)) != -1
+    if has_key(t:subwin, str2nr(a:winid))
         return {
        \    'category': 'subwin',
        \    'supwin': t:subwin[a:winid].supwin,
@@ -602,24 +534,41 @@ function! WinModelInfoById(winid)
        \}
     endif
 
-    if index(WinModelUberwinIds(), str2nr(a:winid)) != -1
-        for grouptypename in keys(t:uberwin)
-            for typename in keys(t:uberwin[grouptypename].uberwin)
-                if t:uberwin[grouptypename].uberwin[typename].id == a:winid
-                    return {
-                   \    'category': 'uberwin',
-                   \    'grouptype': grouptypename,
-                   \    'typename': typename,
-                   \    'nr': t:uberwin[grouptypename].uberwin[typename].nr,
-                   \    'w': t:uberwin[grouptypename].uberwin[typename].w,
-                   \    'h': t:uberwin[grouptypename].uberwin[typename].h
-                   \}
-                endif
-            endfor
+    for grouptypename in keys(t:uberwin)
+        for typename in keys(t:uberwin[grouptypename].uberwin)
+            if t:uberwin[grouptypename].uberwin[typename].id == a:winid
+                return {
+               \    'category': 'uberwin',
+               \    'grouptype': grouptypename,
+               \    'typename': typename,
+               \    'nr': t:uberwin[grouptypename].uberwin[typename].nr,
+               \    'w': t:uberwin[grouptypename].uberwin[typename].w,
+               \    'h': t:uberwin[grouptypename].uberwin[typename].h
+               \}
+            endif
         endfor
-    endif
+    endfor
 
     return {'category': 'none', 'id': a:winid}
+endfunction
+
+" Given a supwin id, returns it. Given a subwin ID, returns the ID if the
+" supwin if the subwin. Given anything else, fails
+function! WinModelSupwinIdBySupwinOrSubwinId(winid)
+    let info = WinModelInfoById(a:winid)
+    if info.category ==# 'none'
+        throw 'Window with id ' . a:winid . ' is uncategorized'
+    endif
+    if info.category ==# 'uberwin'
+        throw 'Window with id ' . a:winid . ' is an uberwin'
+    endif
+    if info.category ==# 'supwin'
+        return a:winid
+    endif
+    if info.category ==# 'subwin'
+        return info.supwin
+    endif
+    throw 'Control should never reach here'
 endfunction
 
 " Given window info, return a statusline for that window. Returns an empty

@@ -1,15 +1,7 @@
 " Window user operations
 " See window.vim
-" TODO: Add validation to add/remove/show/hide
-"   - There's already validation but it fails with an ugly backtrace. Maybe
-"     just catch the assertions at the start by returning silently
 
 " Resolver callback registration
-
-" Register a callback to run after the resolver initializes a tab
-function! WinAddTabInitPreResolveCallback(callback)
-    call WinModelAddTabInitPreResolveCallback(a:callback)
-endfunction
 
 " Register a callback to run at the beginning of the resolver, when the
 " resolver runs for the first time after entering a tab
@@ -17,26 +9,10 @@ function! WinAddTabEnterPreResolveCallback(callback)
     call WinModelAddTabEnterPreResolveCallback(a:callback)
 endfunction
 
-" Register a callback to run at the beginning of the resolver
-function! WinAddPreResolveCallback(callback)
-    call WinModelAddPreResolveCallback(a:callback)
-endfunction
-
 " Register a callback to run partway through the resolver if new supwins have
 " been added to the model
 function! WinAddSupwinsAddedResolveCallback(callback)
     call WinModelAddSupwinsAddedResolveCallback(a:callback)
-endfunction
-
-" Register a callback to run partway through the resolver, when the model has
-" been adapted to the state
-function! WinAddResolveCallback(callback)
-    call WinModelAddResolveCallback(a:callback)
-endfunction
-
-" Register a callback to run at the end of the resolver
-function! WinAddPostResolveCallback(callback)
-    call WinModelAddPostResolveCallback(a:callback)
 endfunction
 
 " Group Types
@@ -115,7 +91,12 @@ function! WinUberwinFlagsStr()
 endfunction
 
 function! WinAddUberwinGroup(grouptypename, hidden)
-    call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
+    try
+        call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     " If we're adding the uberwin group as hidden, add it only to the model
     if a:hidden
@@ -172,7 +153,12 @@ function! WinRemoveUberwinGroup(grouptypename)
 endfunction
 
 function! WinHideUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+    try
+        call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     let grouptype = g:uberwingrouptype[a:grouptypename]
 
@@ -189,7 +175,12 @@ function! WinHideUberwinGroup(grouptypename)
 endfunction
 
 function! WinShowUberwinGroup(grouptypename)
-    call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
+    try
+        call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     let grouptype = g:uberwingrouptype[a:grouptypename]
 
@@ -231,7 +222,12 @@ function! WinSubwinFlags()
 endfunction
 
 function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
-    call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
+    try
+        call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     " If we're adding the subwin group as hidden, add it only to the model
     if a:hidden
@@ -267,9 +263,15 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
 endfunction
 
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
+    try
+        call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
+
     let info = WinCommonGetCursorPosition()
 
-        call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
         let grouptype = g:subwingrouptype[a:grouptypename]
 
         let removed = 0
@@ -291,7 +293,12 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
 endfunction
 
 function! WinHideSubwinGroup(supwinid, grouptypename)
-    call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    try
+        call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     let grouptype = g:subwingrouptype[a:grouptypename]
 
@@ -310,7 +317,12 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
 endfunction
 
 function! WinShowSubwinGroup(supwinid, grouptypename)
-    call WinModelAssertSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+    try
+        call WinModelAssertSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
 
     let grouptype = g:subwingrouptype[a:grouptypename]
 
@@ -431,7 +443,12 @@ endfunction
 " Movement between different categories of windows is restricted and sometimes
 " requires afterimaging and deafterimaging
 function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
-    call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    try
+        call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
     if WinModelUberwinGroupIsHidden(a:dstgrouptypename)
         call WinShowUberwinGroup(a:dstgrouptypename)
     endif
@@ -451,7 +468,12 @@ function! s:GoUberwinToSupwin(dstsupwinid)
 endfunction
 
 function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
-    call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    try
+        call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
     if WinModelUberwinGroupIsHidden(a:dstgrouptypename)
         call WinShowUberwinGroup(a:dstgrouptypename)
     endif
@@ -473,7 +495,12 @@ function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid)
 endfunction
 
 function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
-    call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    try
+        call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
     if WinModelSubwinGroupIsHidden(a:srcsupwinid, a:dstgrouptypename)
         call WinShowSubwinGroup(a:srcsupwinid, a:dstgrouptypename)
     endif
@@ -497,7 +524,7 @@ function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename)
     let winid = WinModelIdByInfo({
    \    'category': 'subwin',
    \    'supwin': a:srcsupwinid,
-   \    'grouptype': a:srcgrouptype,
+   \    'grouptype': a:srcgrouptypename,
    \    'typename': a:dsttypename
    \})
     call WinStateMoveCursorToWinid(winid)
@@ -505,6 +532,19 @@ endfunction
 
 " Move the cursor to a given uberwin
 function! WinGotoUberwin(dstgrouptype, dsttypename)
+    try
+        call WinModelAssertUberwinTypeExists(a:dstgrouptype, a:dsttypename)
+        call WinModelAssertUberwinGroupExists(a:dsttypename)
+    catch /.*/
+        echom 'Cannot go to uberwin ' . a:dstgrouptype . ':' . a:dsttypename . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
+
+    if WinModelUberwinGroupIsHidden(a:dstgrouptype)
+        call WinShowUberwinGroup(a:dstgrouptype)
+    endif
+
     let cur = WinCommonGetCursorPosition()
     
     " Moving from subwin to uberwin must be done via supwin
@@ -527,7 +567,15 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
 endfunction
 
 " Move the cursor to a given supwin
-function! WinGotoSupwin(dstsupwinid)
+function! WinGotoSupwin(dstwinid)
+    try
+        let dstsupwinid = WinModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
+    catch /.*/
+        echom 'Cannot go to supwin ' . a:dstwinid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
+
     let cur = WinCommonGetCursorPosition()
 
     if cur.win.category ==# 'subwin'
@@ -536,22 +584,36 @@ function! WinGotoSupwin(dstsupwinid)
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToSupwin(a:dstsupwinid)
+        call s:GoUberwinToSupwin(dstsupwinid)
         return
     endif
 
-    if cur.win.category ==# 'supwin' && cur.win.id != a:dstsupwinid
-        call s:GoSupwinToSupwin(cur.win.id,  a:dstsupwinid)
+    if cur.win.category ==# 'supwin' && cur.win.id != dstsupwinid
+        call s:GoSupwinToSupwin(cur.win.id,  dstsupwinid)
         return
     endif
 endfunction
 
 " Move the cursor to a given subwin
-function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
+function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
+    try
+        let dstsupwinid = WinModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
+        call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
+        call WinModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
+    catch /.*/
+        echom 'Cannot go to subwin ' . a:dstgrouptypename . ':' . a:dsttypename . ' of supwin ' . a:dstwinid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+        return
+    endtry
+
+    if WinModelSubwinGroupIsHidden(dstsupwinid, a:dstgrouptypename)
+        call WinShowSubwinGroup(dstsupwinid, a:dstgrouptypename)
+    endif
+
     let cur = WinCommonGetCursorPosition()
 
     if cur.win.category ==# 'subwin'
-        if cur.win.supwin ==# a:dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
+        if cur.win.supwin ==# dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
             call s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename)
             return
         endif
@@ -561,7 +623,7 @@ function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToSupwin(a:dstsupwinid)
+        call s:GoUberwinToSupwin(dstsupwinid)
         let cur = WinCommonGetCursorPosition()
     endif
 
@@ -569,8 +631,8 @@ function! WinGotoSubwin(dstsupwinid, dstgrouptypename, dsttypename)
         throw 'Cursor should be in a supwin now'
     endif
 
-    if cur.win.id !=# a:dstsupwinid
-        call s:GoSupwinToSupwin(cur.win.id, a:dstsupwinid)
+    if cur.win.id !=# dstsupwinid
+        call s:GoSupwinToSupwin(cur.win.id, dstsupwinid)
         let cur = WinCommonGetCursorPosition()
     endif
 

@@ -216,7 +216,9 @@ function! WinCommonReopenUberwins(grouptypenames)
             let dims = WinStateGetWinDimensionsList(winids)
             call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
         catch /.*/
-            echom 'WinCommonReopenUberwins failed to open ' . grouptypename . ' uberwin group'
+            echom 'WinCommonReopenUberwins failed to open ' . grouptypename . ' uberwin group:'
+            echohl ErrorMsg | echo v:exception | echohl None
+            call WinModelHideUberwins(a:grouptypename)
         endtry
     endfor
 endfunction
@@ -300,7 +302,10 @@ function! WinCommonReopenSubwins(supwinid, grouptypenames)
             let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
             call WinModelChangeSubwinGroupDimensions(a:supwinid, grouptypename, dims)
         catch /.*/
-            echom 'WinCommonReopenSubwins failed to open ' . grouptypename . ' subwin group for supwin ' . a:supwinid
+            echom 'WinCommonReopenSubwins failed to open ' . grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
+
+            echohl ErrorMsg | echo v:exception | echohl None
+            call WinModelHideSubwins(a:supwinid, a:grouptypename)
         endtry
     endfor
 endfunction

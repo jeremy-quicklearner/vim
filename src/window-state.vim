@@ -1,6 +1,9 @@
 " Window state manipulation functions
 " See window.vim
-" TODO: Use winsaveview() instead of getpos()
+" TODO: Preserve signs across afterimaging and deafterimaging
+" TODO: Preserve folds across deafterimaging
+" TODO: Preserve the value of foldcolumn across deafterimaging
+" TODO: Preserve the value of colorcolumn across deafterimaging
 
 function! WinStateGetWinidsByCurrentTab()
     let winids = []
@@ -9,7 +12,6 @@ function! WinStateGetWinidsByCurrentTab()
     endfor
     return winids
 endfunction
-
 
 function! WinStateWinExists(winid)
     return win_id2win(a:winid) != 0
@@ -39,11 +41,11 @@ function! WinStateGetCursorWinId()
 endfunction!
 
 function! WinStateGetCursorPosition()
-    return getpos('.')
+    return winsaveview()
 endfunction
 
 function! WinStateRestoreCursorPosition(pos)
-    call cursor(a:pos[1], a:pos[2], a:pos[3])
+    call winrestview(a:pos)
 endfunction
 
 function! WinStateGetWinDimensions(winid)
@@ -292,7 +294,7 @@ function! WinStateAfterimageWindow(winid)
     " Preserve some window options
     let bufft = &ft
     let bufwrap = &wrap
-    let bufpos = getpos('.')
+    let view = winsaveview()
     let statusline = &statusline
 
     " Switch to a new hidden scratch buffer. This will be the afterimage buffer
@@ -311,7 +313,7 @@ function! WinStateAfterimageWindow(winid)
     let &ft = bufft
     let &wrap = bufwrap
     let &l:statusline = statusline
-    call cursor(bufpos[1], bufpos[2], bufpos[3])
+    call winrestview(view)
 
     " Return afterimage buffer ID
     return winbufnr('')

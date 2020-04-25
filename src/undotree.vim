@@ -180,7 +180,7 @@ function! UpdateUndotreeSubwins()
 endfunction
 
 " Update the undotree subwins when new supwins are added
-call WinModelAddSupwinsAddedResolveCallback(function('UpdateUndotreeSubwins'))
+call WinAddSupwinsAddedResolveCallback(function('UpdateUndotreeSubwins'))
 
 " Update the undotree subwins after any changes
 augroup UndotreeWin
