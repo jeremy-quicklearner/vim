@@ -436,6 +436,8 @@ function! s:WinResolveModelToState()
     "           dimensions of other windows and make them inconsistent after
     "           they've been checked already. So if we close a window, we need
     "           to make another pass.
+    let preserveduberwins = {}
+    let preservedsubwins = {}
     let passneeded = 1
     while passneeded
         let passneeded = 0
@@ -447,6 +449,8 @@ function! s:WinResolveModelToState()
                 if uberwinsremoved ||
                \   !WinCommonUberwinGroupDimensionsMatch(grouptypename)
                     let grouptype = g:uberwingrouptype[grouptypename]
+                    let preserveduberwins[grouptypename] =
+                   \    WinCommonPreCloseAndReopenUberwins(grouptypename)
                     call WinStateCloseUberwinsByGroupType(grouptype)
                     let uberwinsremoved = 1
                     let passneeded = 1
@@ -488,11 +492,16 @@ function! s:WinResolveModelToState()
 
         " Remove all flagged subwins from the state
         for supwinid in keys(toremove)
+            if !has_key(preservedsubwins, supwinid)
+                let preservedsubwins[supwinid] = {}
+            endif
             " toremove[supwinid] is reversed so that we close subwins in
             " descending priority order. See comments in
             " WinCommonCloseSubwinsWithHigherPriority
             for grouptypename in reverse(copy(toremove[supwinid]))
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
+                    let preservedsubwins[supwinid][grouptypename] =
+                   \    WinCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
                     call WinCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1
                 endif
@@ -512,6 +521,12 @@ function! s:WinResolveModelToState()
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)
+                if has_key(preserveduberwins, grouptypename)
+                    call WinCommonPostCloseAndReopenUberwins(
+                   \    grouptypename,
+                   \    preserveduberwins[grouptypename]
+                   \)
+                endif
             catch /.*/
                 echom 'Resolver step 2.3 failed to add ' . grouptypename . ' uberwin group to state:'
                 echohl ErrorMsg | echom v:exception | echohl None
@@ -558,6 +573,14 @@ function! s:WinResolveModelToState()
                     " This Model write in ResolveModelToState is unfortunate, but I
                     " see no sensible way to put it anywhere else
                     call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
+                    if has_key(preservedsubwins, supwinid) &&
+                   \   has_key(preservedsubwins[supwinid], grouptypename)
+                       call WinCommonPostCloseAndReopenSubwins(
+                      \    supwinid,
+                      \    grouptypename,
+                      \    preservedsubwins[supwinid][grouptypename]
+                      \)
+                    endif
                 catch /.*/
                     echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':'
                     echohl ErrorMsg | echom v:exception | echohl None

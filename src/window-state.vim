@@ -1,7 +1,7 @@
 " Window state manipulation functions
 " See window.vim
-" TODO: Preserve signs across afterimaging and deafterimaging
-" TODO: Preserve folds across deafterimaging
+" TODO: Preserve cursor and scroll positions across deafterimaging if possible
+" TODO: Preserve folds across deafterimaging if possible
 " TODO: Preserve the value of foldcolumn across deafterimaging
 " TODO: Preserve the value of colorcolumn across deafterimaging
 
@@ -288,14 +288,27 @@ function! WinStateAfterimageWindow(winid)
     " called, and autocmds may fire on win_gotoid that change the state
     call WinStateMoveCursorToWinidSilently(a:winid)
 
-    " Preserve buffer contents
-    let bufcontents = getline(0, '$')
+    " Preserve cursor position
+    let view = winsaveview()
 
     " Preserve some window options
     let bufft = &ft
     let bufwrap = &wrap
-    let view = winsaveview()
     let statusline = &statusline
+
+    " Preserve signs, but also unplace them so that they don't show up if the
+    " real buffer is reused for another supwin
+    let signoutput = execute('sign place buffer=' . winbufnr(a:winid))
+    for signstr in split(signoutput, '\n')
+        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
+            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
+            execute 'sign unplace ' . signid
+        endif
+    endfor
+
+
+    " Preserve buffer contents
+    let bufcontents = getline(0, '$')
 
     " Switch to a new hidden scratch buffer. This will be the afterimage buffer
     " noautocmd is used here because undotree has autocmds that fire when you
@@ -309,10 +322,25 @@ function! WinStateAfterimageWindow(winid)
     " Restore buffer contents
     call setline(1, bufcontents)
 
+    " Restore signs
+    for signstr in split(signoutput, '\n')
+        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
+            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
+            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
+            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
+            execute 'sign place ' . signid .
+           \        ' line=' . signline .
+           \        ' name=' . signname .
+           \        ' buffer=' . winbufnr('')
+        endif
+    endfor
+
     " Restore buffer options
     let &ft = bufft
     let &wrap = bufwrap
     let &l:statusline = statusline
+
+    " Restore cursor and scroll position
     call winrestview(view)
 
     " Return afterimage buffer ID
@@ -330,4 +358,28 @@ function! WinStateCloseWindow(winid)
     
     let winnr = win_id2win(a:winid)
     execute winnr . 'close'
+endfunction
+
+function! WinStatePreCloseAndReopen(winid)
+    " Preserve signs
+    let signoutput = execute('sign place buffer=' . winbufnr(a:winid))
+
+    return {'sign': signoutput}
+endfunction
+
+function! WinStatePostCloseAndReopen(winid, preserved)
+    call WinStateMoveCursorToWinidSilently(a:winid)
+
+    " Restore signs
+    for signstr in split(a:preserved.sign, '\n')
+        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
+            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
+            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
+            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
+            execute 'sign place ' . signid .
+           \        ' line=' . signline .
+           \        ' name=' . signname .
+           \        ' buffer=' . winbufnr('')
+        endif
+    endfor
 endfunction

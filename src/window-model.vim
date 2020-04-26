@@ -522,7 +522,7 @@ function! WinModelInfoById(winid)
        \}
     endif
 
-    if has_key(t:subwin, str2nr(a:winid))
+    if has_key(t:subwin, a:winid)
         return {
        \    'category': 'subwin',
        \    'supwin': t:subwin[a:winid].supwin,

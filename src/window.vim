@@ -1,7 +1,10 @@
 " Window manipulation
+"
 " TODO: Fix sessions
-" TODO: Enable lazyredraw while user operations and the resolver are running.
+" TODO? Enable lazyredraw while user operations and the resolver are running.
 "       Optionally disable it because the drawing looks cool.
+" TODO: Audit all the user operations and common code for direct accesses to
+"       the state and model
 " TODO: Audit all the user operations for redundancy
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all files for lines longer than 80 characters

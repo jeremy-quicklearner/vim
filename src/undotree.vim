@@ -1,5 +1,8 @@
 " Undotree plugin manipulation
 
+" TODO? Keep trying to think of a way to preserve signs and foldlevels in
+"       undotree windows across deafterimaging
+
 " Cause UndotreeShow to open the undotree windows relative to the current
 " window, instead of relative to the whole tab
 let g:undotree_CustomUndotreeCmd = 'vertical 25 new'
@@ -12,10 +15,14 @@ let g:undotree_ShortIndicators = 1
 let g:undotree_HelpLine = 0
 
 " Use O for each node
+" Remember to change src/after/syntax.undotree.vim if you change this
 let g:undotree_TreeNodeShape = 'O'
 
 " Don't highlight anything in the target windows
 let g:undotree_HighlightChangedText = 0
+
+" Don't put signs in target windows to indicate which lines have changes
+let g:undotree_HighlightChangedWithSign = 0
 
 " Callback that opens the undotree windows for the current window
 function! ToOpenUndotree()

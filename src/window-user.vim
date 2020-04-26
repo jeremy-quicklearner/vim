@@ -152,6 +152,7 @@ function! WinRemoveUberwinGroup(grouptypename)
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
+" TODO: Use WinModelSupwinIdBySupwinOrSubwinId
 function! WinHideUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)

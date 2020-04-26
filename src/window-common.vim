@@ -195,30 +195,37 @@ endfunction
 " group types closed. The model is unchanged.
 function! WinCommonCloseUberwinsWithHigherPriority(priority)
     let grouptypenames = WinModelUberwinGroupTypeNamesByMinPriority(a:priority)
-    " grouptypenames is revsersed so that we close uberwins in descending
+    let preserved = []
+    " grouptypenames is reversed so that we close uberwins in descending
     " priority order. See comments in WinCommonCloseSubwinsWithHigherPriority
     for grouptypename in reverse(copy(grouptypenames))
+        let pre = WinCommonPreCloseAndReopenUberwins(grouptypename)
+        call add(preserved, {'grouptypename':grouptypename,'pre':pre})
         call WinStateCloseUberwinsByGroupType(g:uberwingrouptype[grouptypename])
     endfor
-    return grouptypenames
+    return reverse(copy(preserved))
 endfunction
 
 " Reopens uberwins that were closed by WinCommonCloseUberwinsWithHigherPriority
 " and updates the model with the new winids
-function! WinCommonReopenUberwins(grouptypenames)
-    for grouptypename in a:grouptypenames
+function! WinCommonReopenUberwins(preserved)
+    for grouptype in a:preserved
         try
             let winids = WinStateOpenUberwinsByGroupType(
-           \    g:uberwingrouptype[a:grouptypename]
+           \    g:uberwingrouptype[grouptype.grouptypename]
            \)
-            call WinModelChangeUberwinIds(grouptypename, winids)
+            call WinModelChangeUberwinIds(grouptype.grouptypename, winids)
+            call WinCommonPostCloseAndReopenUberwins(
+           \    grouptype.grouptypename,
+           \    grouptype.pre
+           \)
 
             let dims = WinStateGetWinDimensionsList(winids)
-            call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+            call WinModelChangeUberwinGroupDimensions(grouptype.grouptypename, dims)
         catch /.*/
-            echom 'WinCommonReopenUberwins failed to open ' . grouptypename . ' uberwin group:'
+            echom 'WinCommonReopenUberwins failed to open ' . grouptype.grouptypename . ' uberwin group:'
             echohl ErrorMsg | echo v:exception | echohl None
-            call WinModelHideUberwins(a:grouptypename)
+            call WinModelHideUberwins(grouptype.grouptypename)
         endtry
     endfor
 endfunction
@@ -236,7 +243,10 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
     let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
 
         if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
-            for subwinid in WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
+            for subwinid in WinModelSubwinIdsByGroupTypeName(
+           \    a:supwinid,
+           \    a:grouptypename
+           \)
                 call WinStateCloseWindow(subwinid)
             endfor
 
@@ -269,6 +279,7 @@ function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
    \    a:supwinid,
    \    a:priority
    \)
+    let preserved = []
 
     " grouptypenames is reversed because Vim sometimes makes strange decisions
     " when deciding which windows will fill the space left behind by a window
@@ -281,33 +292,109 @@ function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
     " subwins to stretch causes strange behaviour with other supwins filling
     " the space left by supwins closing after they have stretched.
     for grouptypename in reverse(copy(grouptypenames))
+        let pre = WinCommonPreCloseAndReopenSubwins(a:supwinid, grouptypename)
+        call add(preserved, {'grouptypename':grouptypename,'pre':pre})
         call WinCommonCloseSubwins(a:supwinid, grouptypename)
     endfor
-    return grouptypenames
+    return reverse(copy(preserved))
 endfunction
 
 " Reopens subwins that were closed by WinCommonCloseSubwinsWithHigherPriority
 " and updates the model with the new winids
-function! WinCommonReopenSubwins(supwinid, grouptypenames)
-    for grouptypename in a:grouptypenames
+function! WinCommonReopenSubwins(supwinid, preserved)
+    for grouptype in a:preserved
         try
             let winids = WinCommonOpenSubwins(
            \    a:supwinid,
-           \    grouptypename
+           \    grouptype.grouptypename
            \)
-            call WinModelChangeSubwinIds(a:supwinid, grouptypename, winids)
-            call WinModelDeafterimageSubwinsByGroup(a:supwinid, grouptypename)
+            call WinModelChangeSubwinIds(a:supwinid, grouptype.grouptypename, winids)
+            call WinCommonPostCloseAndReopenSubwins(
+           \    a:supwinid,
+           \    grouptype.grouptypename,
+           \    grouptype.pre
+           \)
+            call WinModelDeafterimageSubwinsByGroup(
+           \    a:supwinid,
+           \    grouptype.grouptypename
+           \)
 
             let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
             let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-            call WinModelChangeSubwinGroupDimensions(a:supwinid, grouptypename, dims)
+            call WinModelChangeSubwinGroupDimensions(
+           \    a:supwinid,
+           \    grouptype.grouptypename,
+           \    dims
+           \)
         catch /.*/
-            echom 'WinCommonReopenSubwins failed to open ' . grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
+            echom 'WinCommonReopenSubwins failed to open ' . grouptype.grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
 
             echohl ErrorMsg | echo v:exception | echohl None
-            call WinModelHideSubwins(a:supwinid, a:grouptypename)
+            call WinModelHideSubwins(a:supwinid, grouptype.grouptypename)
         endtry
     endfor
+endfunction
+
+function! WinCommonPreCloseAndReopenUberwins(grouptypename)
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+    let preserved = {}
+    let curwinid = WinStateGetCursorWinId()
+        for typename in g:uberwingrouptype[a:grouptypename].typenames
+            let winid = WinModelIdByInfo({
+           \    'category': 'uberwin',
+           \    'grouptype': a:grouptypename,
+           \    'typename': typename
+           \})
+            let preserved[typename] = WinStatePreCloseAndReopen(winid)
+        endfor
+    call WinStateMoveCursorToWinidSilently(curwinid)
+    return preserved
+endfunction
+
+function! WinCommonPostCloseAndReopenUberwins(grouptypename, preserved)
+    call WinModelAssertUberwinGroupExists(a:grouptypename)
+    let curwinid = WinStateGetCursorWinId()
+        for typename in keys(a:preserved)
+            let winid = WinModelIdByInfo({
+           \    'category': 'uberwin',
+           \    'grouptype': a:grouptypename,
+           \    'typename': typename
+           \})
+            call WinStatePostCloseAndReopen(winid, a:preserved[typename])
+        endfor
+    call WinStateMoveCursorToWinidSilently(curwinid)
+endfunction
+
+function! WinCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
+    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
+    let preserved = {}
+    let curwinid = WinStateGetCursorWinId()
+        for typename in g:subwingrouptype[a:grouptypename].typenames
+            let winid = WinModelIdByInfo({
+           \    'category': 'subwin',
+           \    'supwin': a:supwinid,
+           \    'grouptype': a:grouptypename,
+           \    'typename': typename
+           \})
+            let preserved[typename] = WinStatePreCloseAndReopen(winid)
+        endfor
+    call WinStateMoveCursorToWinidSilently(curwinid)
+    return preserved
+endfunction
+
+function! WinCommonPostCloseAndReopenSubwins(supwinid, grouptypename, preserved)
+    call WinModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
+    let curwinid = WinStateGetCursorWinId()
+        for typename in keys(a:preserved)
+            let winid = WinModelIdByInfo({
+           \    'category': 'subwin',
+           \    'supwin': a:supwinid,
+           \    'grouptype': a:grouptypename,
+           \    'typename': typename
+           \})
+            call WinStatePostCloseAndReopen(winid, a:preserved[typename])
+        endfor
+    call WinStateMoveCursorToWinidSilently(curwinid)
 endfunction
 
 " Closes and reopens all shown subwins of a given supwin with priority higher
@@ -493,7 +580,10 @@ function! s:DoWithout(curwin, callback, nouberwins, nosubwins)
     endif
 
     if type(a:curwin) ==# v:t_dict
-        call WinStateMoveCursorToWinid(WinModelIdByInfo(a:curwin))
+        let winid = WinModelIdByInfo(a:curwin)
+        if WinStateWinExists(winid)
+            call WinStateMoveCursorToWinid(winid)
+        endif
     endif
     call call(a:callback, [])
 
