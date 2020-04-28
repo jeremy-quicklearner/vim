@@ -1,14 +1,20 @@
 " Window manipulation
 "
+" TODO: Audit instances of echohl | echo and consider changing them to echom
+" TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
+"       sure if this is desirable - would they still be restored after
+"       location list contents change? Would different blobs of persisted
+"       state be stored for each location list? Maybe just leave it as the
+"       responsibility of files like loclist.vim and undotree.vim:w
 " TODO: Fix sessions
-" TODO? Enable lazyredraw while user operations and the resolver are running.
-"       Optionally disable it because the drawing looks cool.
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
 " TODO: Audit all the user operations for redundancy
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all files for lines longer than 80 characters
-"   - Do this at the very end
+" TODO: Audit all files for 'endfunction!'
+" TODO: Autoload everything
+" TODO: Put this infrastructure in its own plugin
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and

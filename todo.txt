@@ -15,6 +15,7 @@ Hard but I know how
 - Pre-8.1 version compatibility
 - Replace common big motions like H M L Ctrl-D and Ctrl-U with more animated versions
 - Add mapping to change instances of "false" to "true" and vice versa
+- Write that plugin that lets you scroll inside indented blocks while keeping the outside of the blocks at the top and bottom of the window
 
 I don't know how
 - Figure out why terminal windows keep spontaneously changing statuslines
@@ -27,3 +28,4 @@ I don't know how
 - Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
 - Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
 - See if there's a way to draw columns to the left of indented blocks
+- Write a custom foldtext

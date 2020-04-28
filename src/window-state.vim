@@ -1,9 +1,5 @@
 " Window state manipulation functions
 " See window.vim
-" TODO: Preserve cursor and scroll positions across deafterimaging if possible
-" TODO: Preserve folds across deafterimaging if possible
-" TODO: Preserve the value of foldcolumn across deafterimaging
-" TODO: Preserve the value of colorcolumn across deafterimaging
 
 function! WinStateGetWinidsByCurrentTab()
     let winids = []
@@ -282,13 +278,186 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     call call(ToClose, [])
 endfunction
 
+" TODO: Move this to the vim-sign-utils plugin
+function! s:PreserveSigns(winid)
+    return execute('sign place buffer=' . winbufnr(a:winid))
+endfunction
+
+" TODO: Move this to the vim-sign-utils plugin
+function! s:RestoreSigns(winid, signs)
+    for signstr in split(a:signs, '\n')
+        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
+            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
+            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
+            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
+            execute 'sign place ' . signid .
+           \        ' line=' . signline .
+           \        ' name=' . signname .
+           \        ' buffer=' . winbufnr(a:winid)
+        endif
+    endfor
+endfunction
+
+" TODO: Put these folding functions in their own plugin
+function! s:PreserveManualFolds()
+    " Output
+    let folds = {}
+
+    " Step 1: Find folds
+    " Stack contains the starting lines of folds whose ending lines have not
+    " yet been reached, indexed by their foldlevels. Element 0 has a dummy 0
+    " in it because a foldlevel of 0 means the line isn't folded
+    let foldstack = [0]
+
+    " Foldlevel of the previous line
+    let prevfl = 0
+    
+    " Traverse every line in the buffer
+    for linenr in range(0, line('$') + 1, 1)
+        " Pretend there are non-folded lines before and after the real ones
+        if linenr <=# 0 || linenr >= line('$') + 1
+            let foldlevel = 0
+        else
+            let foldlevel = foldlevel(linenr)
+        endif
+
+        if foldlevel <# 0
+            throw 'Negative foldlevel'
+        endif
+
+        " If the foldlevel has increased since the previous line, start new
+        " folds at the current line - one for each +1 on the foldlevel
+        if foldlevel ># prevfl
+            for newfl in range(prevfl + 1, foldlevel, 1)
+                call add(foldstack, linenr)
+            endfor
+
+        " If the foldlevel has decreased since the previous line, use that
+        " line to finish all folds that started since the foldlevel was as
+        " small as it is now. Also do this at the end of the buffer, where all
+        " folds need to end
+        elseif foldlevel <# prevfl
+            for biggerfl in range(prevfl, foldlevel + 1, -1)
+                if !has_key(folds, biggerfl)
+                    let folds[biggerfl] = []
+                endif
+                call add(folds[biggerfl], {
+               \    'start': remove(foldstack, biggerfl),
+               \    'end': linenr - 1
+               \})
+            endfor
+
+        " If the foldlevel hasn't changed since the previous line, continue
+        " the current fold
+        endif
+
+        let prevfl = foldlevel
+    endfor
+
+    " Step 2: Determine which folds are closed
+    " Vim's fold API cannot see inside closed folds, so we need to open all
+    " closed folds after noticing they are closed
+    let foldlevels = sort(copy(keys(folds)), 'n')
+    for foldlevel in foldlevels
+        for afold in folds[foldlevel]
+            " If a fold contains any line where foldclosed and foldclosedend
+            " don't match with the start and end of the fold, then that fold
+            " is open
+            let afold.closed = 1
+            for linenr in range(afold.start, afold.end, 1)
+                if foldclosed(linenr) !=# afold.start ||
+               \   foldclosedend(linenr) !=# afold.end
+                    let afold.closed = 0
+                    break
+                endif
+            endfor
+
+            " If a fold is closed, open it so that later iterations with
+            " higher foldlevels can inspect other folds inside
+            if afold.closed
+                execute afold.start . 'foldopen'
+            endif
+        endfor
+    endfor
+    
+    " Delete all folds so that the call to s:RestoreFolds starts with a clean
+    " slate
+    normal zE
+
+    " Restore the folds, since we opened all of them
+    call s:RestoreManualFolds(line('$'), folds)
+
+    return {'explen': line('$'), 'folds': folds}
+endfunction
+
+" TODO: Put these folding functions in their own plugin
+function! s:PreserveFolds()
+    if &foldmethod ==# 'manual'
+        return {'method':'manual','data':s:PreserveManualFolds()}
+    elseif &foldmethod ==# 'indent'
+        return {'method':'indent','data':''}
+    elseif &foldmethod ==# 'expr'
+        return {'method':'expr','data':&foldexpr}
+    elseif &foldmethod ==# 'marker'
+        return {'method':'marker','data':''}
+    elseif &foldmethod ==# 'syntax'
+        return {'method':'syntax','data':''}
+    elseif &foldmethos ==# 'diff'
+        return {'method':'diff','data':''}
+    else
+        throw 'Unknown foldmethod ' . &foldmethod
+    endif
+endfunction
+
+" TODO: Put these folding functions in their own plugin
+function! s:RestoreManualFolds(explen, folds)
+    if line('$') !=# a:explen
+        throw 'Length has changed since folds were preserved'
+    endif
+    for linenr in range(1, line('$'), 1)
+        if foldlevel(linenr) !=# 0
+            throw 'Folds already exist'
+        endif
+    endfor
+
+    for foldlevel in reverse(sort(copy(keys(a:folds)), 'n'))
+        for afold in a:folds[foldlevel]
+            execute afold.start . ',' . afold.end . 'fold'
+            if !afold.closed
+                execute afold.start . 'foldopen'
+            endif
+        endfor
+    endfor
+endfunction
+
+" TODO: Put these folding functions in their own plugin
+function! s:RestoreFolds(method, data)
+    if a:method ==# 'manual'
+        let &foldmethod = 'manual'
+        call s:RestoreManualFolds(a:data.explen, a:data.folds)
+    elseif a:method ==# 'indent'
+        let &foldmethod = 'indent'
+    elseif a:method ==# 'expr'
+        let &foldmethod = 'expr'
+        let &foldexpr = a:data
+    elseif a:method ==# 'marker'
+        let &foldmethod = 'marker'
+    elseif a:method ==# 'syntax'
+        let &foldmethod = 'syntax'
+    elseif a:method ==# 'diff'
+        let &foldmethod = 'diff'
+    else
+        throw 'Unknown foldmethod ' . &foldmethod
+    endif
+endfunction
+
 function! WinStateAfterimageWindow(winid)
     " Silent movement (noautocmd) is used here because we want to preserve the
     " state of the window exactly as it was when the function was first
     " called, and autocmds may fire on win_gotoid that change the state
     call WinStateMoveCursorToWinidSilently(a:winid)
 
-    " Preserve cursor position
+    " Preserve cursor and scroll position
     let view = winsaveview()
 
     " Preserve some window options
@@ -296,16 +465,27 @@ function! WinStateAfterimageWindow(winid)
     let bufwrap = &wrap
     let statusline = &statusline
 
+    " Preserve colorcolumn
+    let colorcol = &colorcolumn
+
+    " Preserve folds
+    try
+        let folds = s:PreserveFolds()
+    catch /.*/
+        echom 'Failed to preserve folds for window ' . a:winid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+        let folds = {'method':'manual','data':{}}
+    endtry
+
     " Preserve signs, but also unplace them so that they don't show up if the
     " real buffer is reused for another supwin
-    let signoutput = execute('sign place buffer=' . winbufnr(a:winid))
-    for signstr in split(signoutput, '\n')
+    let signs = s:PreserveSigns(a:winid)
+    for signstr in split(signs, '\n')
         if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
             let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
             execute 'sign unplace ' . signid
         endif
     endfor
-
 
     " Preserve buffer contents
     let bufcontents = getline(0, '$')
@@ -323,17 +503,18 @@ function! WinStateAfterimageWindow(winid)
     call setline(1, bufcontents)
 
     " Restore signs
-    for signstr in split(signoutput, '\n')
-        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
-            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
-            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
-            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
-            execute 'sign place ' . signid .
-           \        ' line=' . signline .
-           \        ' name=' . signname .
-           \        ' buffer=' . winbufnr('')
-        endif
-    endfor
+    call s:RestoreSigns(a:winid, signs)
+
+    " Restore folds
+    try
+        call s:RestoreFolds(folds.method, folds.data)
+    catch /.*/
+        echom 'Failed to restore folds for window ' . a:winid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+    endtry
+
+    " Restore colorcolumn
+    let &colorcolumn = colorcol
 
     " Restore buffer options
     let &ft = bufft
@@ -361,25 +542,58 @@ function! WinStateCloseWindow(winid)
 endfunction
 
 function! WinStatePreCloseAndReopen(winid)
-    " Preserve signs
-    let signoutput = execute('sign place buffer=' . winbufnr(a:winid))
+    call WinStateMoveCursorToWinidSilently(a:winid)
 
-    return {'sign': signoutput}
+    " Preserve cursor position
+    let view = winsaveview()
+
+    " Preserve colorcolumn
+    let colorcol = &colorcolumn
+
+    " Preserve foldcolumn
+    let foldcol = &foldcolumn
+
+    " Preserve folds
+    try
+        let fold = s:PreserveFolds()
+    catch /.*/
+        echom 'Failed to preserve folds for window ' . a:winid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+        let fold = {'method':'manual','data':{}}
+    endtry
+
+    " Preserve signs
+    let sign = s:PreserveSigns(a:winid)
+
+    return {
+   \    'view': view,
+   \    'sign': sign,
+   \    'fold': fold,
+   \    'foldcol': foldcol,
+   \    'colorcol': colorcol
+   \}
 endfunction
 
 function! WinStatePostCloseAndReopen(winid, preserved)
     call WinStateMoveCursorToWinidSilently(a:winid)
 
     " Restore signs
-    for signstr in split(a:preserved.sign, '\n')
-        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
-            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
-            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
-            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
-            execute 'sign place ' . signid .
-           \        ' line=' . signline .
-           \        ' name=' . signname .
-           \        ' buffer=' . winbufnr('')
-        endif
-    endfor
+    call s:RestoreSigns(a:winid, a:preserved.sign)
+
+    " Restore folds
+    try
+        call s:RestoreFolds(a:preserved.fold.method, a:preserved.fold.data)
+    catch /.*/
+        echom 'Failed to restore folds for window ' . a:winid . ':'
+        echohl ErrorMsg | echo v:exception | echohl None
+    endtry
+
+    " Restore foldcolumn
+    let &foldcolumn = a:preserved.foldcol
+
+    " Restore colorcolumn
+    let &colorcolumn = a:preserved.colorcol
+  
+    " Restore cursor and scroll position
+    call winrestview(a:preserved.view)
 endfunction

@@ -1,8 +1,5 @@
 " Undotree plugin manipulation
 
-" TODO? Keep trying to think of a way to preserve signs and foldlevels in
-"       undotree windows across deafterimaging
-
 " Cause UndotreeShow to open the undotree windows relative to the current
 " window, instead of relative to the whole tab
 let g:undotree_CustomUndotreeCmd = 'vertical 25 new'
@@ -33,6 +30,15 @@ function! ToOpenUndotree()
     let jtarget = win_getid()
 
     UndotreeShow
+    
+    " UndotreeShow does not directly cause the undotree to be drawn. Instead,
+    " it registers an autocmd that draws the tree when one of a set of events
+    " fires. The direct call to undotree#UndotreeUpdate() here makes sure that
+    " the undotree is drawn before ToOpenUndotree returns, which is required
+    " for signs and folds to be properly restored when the undotree window is
+    " closed and reopened.
+    noautocmd call win_gotoid(jtarget)
+    call undotree#UndotreeUpdate()
 
     let treeid = -1
     let diffid = -1

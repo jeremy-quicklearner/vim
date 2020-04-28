@@ -118,7 +118,8 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 
                 call WinModelAddUberwins(a:grouptypename, winids, dims)
             catch /.*/
-                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group'
+                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
+                echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
         " Reopen the uberwins we closed
@@ -152,7 +153,6 @@ function! WinRemoveUberwinGroup(grouptypename)
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
-" TODO: Use WinModelSupwinIdBySupwinOrSubwinId
 function! WinHideUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
@@ -198,7 +198,8 @@ function! WinShowUberwinGroup(grouptypename)
 
                 call WinModelShowUberwins(a:grouptypename, winids, dims)
             catch /.*/
-                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group'
+                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
+                echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
         " Reopen the uberwins we closed
@@ -251,7 +252,8 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
  
                 call WinModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
             catch /.*/
-                echom 'WinAddSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid
+                echom 'WinAddSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
+                echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
         " Reopen the subwins we closed
@@ -293,9 +295,10 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
-function! WinHideSubwinGroup(supwinid, grouptypename)
+function! WinHideSubwinGroup(winid, grouptypename)
     try
-        call WinModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
+        let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:winid)
+        call WinModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
         echohl ErrorMsg | echo v:exception | echohl None
         return
@@ -305,12 +308,12 @@ function! WinHideSubwinGroup(supwinid, grouptypename)
 
     let info = WinCommonGetCursorPosition()
 
-        call WinCommonCloseSubwins(a:supwinid, a:grouptypename)
+        call WinCommonCloseSubwins(supwinid, a:grouptypename)
 
-        call WinModelHideSubwins(a:supwinid, a:grouptypename)
+        call WinModelHideSubwins(supwinid, a:grouptypename)
 
         call WinCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
-       \    a:supwinid,
+       \    supwinid,
        \    grouptype.priority
        \)
 
@@ -341,7 +344,8 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
 
                 call WinModelShowSubwins(a:supwinid, a:grouptypename, winids, reldims)
             catch /.*/
-                echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid
+                echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
+                echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
         " Reopen the subwins we closed
@@ -690,13 +694,27 @@ function! WinGoRight()
     call s:GoInDirection('Right')
 endfunction
 
-" TODO: Add a replacement for <c-w>w
-"   - If in an uberwin, go to the first supwin and exit
-"   - If in a subwin, start from its supwin
-"   - If in a supwin, start where you are
-"   - Get list of supwins, find start supwin in it, go up one in the list. Go to
-"     first if it's the last
-"   - use GotoSupwin
+" TODO: Add DoWithoutUberwinsOrSubwins replacements for these wincmds
+"   - wincmd w
+"   - wincmd W
+"   - wincmd t
+"   - wincmd b
+"   - wincmd R
+"   - wincmd x
+"   - wincmd T
+"   - wincmd -
+"   - wincmd +
+"   - wincmd _
+"   - wincmd |
+"   - wincmd <
+"   - wincmd >
+
+" TODO: Add a replacement for <c-w>p
+"   - Save the source window info in the model as 'previous' at the start of
+"     s:GoInDirection and WinGoto[Uber|Sup|Sub]Win
+"   - Go there with WinGotoPrevious
+
+" TODO: Figure out preview windows
 
 " TODO: Something like WinDo but just for supwins
 "   - Save cursor position

@@ -118,9 +118,10 @@ endfunction
 function! WinCommonReselectCursorWindow(oldpos)
     let pos = a:oldpos
 
-    " If the cursor is in a nonexistent subwin, try to select its supwin
-    if pos.category ==# 'subwin' &&
-   \   !WinModelSubwinGroupExists(pos.supwin, pos.grouptype)
+    " If the cursor is in a nonexistent or hidden subwin, try to select its supwin
+    if pos.category ==# 'subwin' && (
+   \   !WinModelSubwinGroupExists(pos.supwin, pos.grouptype) ||
+   \   WinModelSubwinGroupIsHidden(pos.supwin, pos.grouptype))
         let pos = {'category':'supwin','id':pos.supwin}
     endif
 
@@ -130,10 +131,11 @@ function! WinCommonReselectCursorWindow(oldpos)
     endif
 
     " If we still have just a window ID, or if the cursor is in a nonexistent
-    " supwin or uberwin, try to select the first supwin
+    " supwin, nonexistent uberwin, or hidden uberwin, try to select the first supwin
     if pos.category ==# 'none' ||
    \   (pos.category ==# 'supwin' && !WinModelSupwinExists(pos.id)) ||
-   \   (pos.category ==# 'uberwin' && !WinModelUberwinGroupExists(pos.grouptype))
+   \   (pos.category ==# 'uberwin' && !WinModelUberwinGroupExists(pos.grouptype)) ||
+   \   (pos.category ==# 'uberwin' && WinModelUberwinGroupIsHidden(pos.grouptype))
         let firstsupwinid = WinCommonFirstSupwinId()
         if firstsupwinid
             let pos = {'category':'supwin','id':firstsupwinid}
