@@ -694,28 +694,6 @@ function! WinGoRight()
     call s:GoInDirection('Right')
 endfunction
 
-" TODO: Add DoWithoutUberwinsOrSubwins replacements for these wincmds
-"   - wincmd w
-"   - wincmd W
-"   - wincmd t
-"   - wincmd b
-"   - wincmd R
-"   - wincmd x
-"   - wincmd T
-"   - wincmd -
-"   - wincmd +
-"   - wincmd _
-"   - wincmd |
-"   - wincmd <
-"   - wincmd >
-
-" TODO: Add a replacement for <c-w>p
-"   - Save the source window info in the model as 'previous' at the start of
-"     s:GoInDirection and WinGoto[Uber|Sup|Sub]Win
-"   - Go there with WinGotoPrevious
-
-" TODO: Figure out preview windows
-
 " TODO: Something like WinDo but just for supwins
 "   - Save cursor position
 "   - For each Supwin, do a GotoSupwin and call the callback

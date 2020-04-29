@@ -1,12 +1,9 @@
 " Window manipulation
 "
-" TODO: Audit instances of echohl | echo and consider changing them to echom
-" TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
-"       sure if this is desirable - would they still be restored after
-"       location list contents change? Would different blobs of persisted
-"       state be stored for each location list? Maybe just leave it as the
-"       responsibility of files like loclist.vim and undotree.vim:w
+" TODO: Make the preview window an uberwin
+" TODO: Figure out what to do with all the ctrl-w commands
 " TODO: Fix sessions
+" TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
 " TODO: Audit all the user operations for redundancy
@@ -14,7 +11,12 @@
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
 " TODO: Autoload everything
-" TODO: Put this infrastructure in its own plugin
+" TODO: Move the whole window engine to a plugin
+" TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
+"       sure if this is desirable - would they still be restored after
+"       location list contents change? Would different blobs of persisted
+"       state be stored for each location list? Maybe just leave it as the
+"       responsibility of files like loclist.vim and undotree.vim:w
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and
@@ -86,18 +88,18 @@ set noequalalways
 
 " Window movement should use the user operations
 command! -nargs=0 -complete=command GoLeft call WinGoLeft()
-command! -nargs=0 -complete=command GoDown call WinGoDown()
-command! -nargs=0 -complete=command GoUp call WinGoUp()
-command! -nargs=0 -complete=command GoRight call WinGoRight()
 nnoremap <silent> <c-w>h :GoLeft<cr>
 vnoremap <silent> <c-w>h :GoLeft<cr>
 tnoremap <silent> <c-w>h :GoLeft<cr>
+command! -nargs=0 -complete=command GoDown call WinGoDown()
 nnoremap <silent> <c-w>j :GoDown<cr>
 vnoremap <silent> <c-w>j :GoDown<cr>
 tnoremap <silent> <c-w>j :GoDown<cr>
+command! -nargs=0 -complete=command GoUp call WinGoUp()
 nnoremap <silent> <c-w>k :GoUp<cr>
 vnoremap <silent> <c-w>k :GoUp<cr>
 tnoremap <silent> <c-w>k :GoUp<cr>
+command! -nargs=0 -complete=command GoRight call WinGoRight()
 nnoremap <silent> <c-w>l :GoRight<cr>
 vnoremap <silent> <c-w>l :GoRight<cr>
 tnoremap <silent> <c-w>l :GoRight<cr>
