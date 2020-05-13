@@ -152,6 +152,10 @@ function! s:WinResolveStateToModel()
     "           doesn't execute when the cursor is inside them
     " If any terminal window is listed in the model as an uberwin, mark that
     " uberwin group hidden in the model and relist the window as a supwin
+    " If there are multiple uberwins in this group and only one of them is a
+    " terminal window, then this change renders that uberwin group incomplete
+    " and the non-terminal windows will be ignored in STEP 1.4, then cleaned
+    " up in STEP 2.1
     for grouptypename in WinModelShownUberwinGroupTypeNames()
         for typename in WinModelUberwinTypeNamesByGroupTypeName(grouptypename)
             let winid = WinModelIdByInfo({
@@ -170,6 +174,10 @@ function! s:WinResolveStateToModel()
     
     " If any terminal window is listed in the model as a subwin, mark that
     " subwin group hidden in the model and relist the window as a supwin
+    " If there are multiple subwins in this group and only one of them is a
+    " terminal window, then this change renders that subwin group incomplete
+    " and the non-terminal windows will be ignored in STEP 1.4, then cleaned
+    " up in STEP 2.1
     for supwinid in WinModelSupwinIds()
         for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             for typename in WinModelSubwinTypeNamesByGroupTypeName(grouptypename)
@@ -189,16 +197,6 @@ function! s:WinResolveStateToModel()
         endfor
     endfor
     
-    " If any supwin is terminal window with shown subwins, mark them as
-    " hidden in the model
-    for supwinid in WinModelSupwinIds()
-        if WinStateWinExists(supwinid) && WinStateWinIsTerminal(supwinid)
-            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-                call WinModelHideSubwins(supwinid, grouptypename)
-            endfor
-        endif
-    endfor
-
     " STEP 1.2: If any window in the model isn't in the state, remove it from
     "           the model
     " If any uberwin group in the model isn't fully represented in the state,
@@ -354,6 +352,20 @@ function! s:WinResolveStateToModel()
            \)
         endfor
     endfor
+
+    " STEP 1.5: Supwins that have become terminal windows need to have their
+    " subwins hidden, but this must be done after STEP 1.4 which would add the
+    " subwins back
+    " If any supwin is a terminal window with shown subwins, mark them as
+    " hidden in the model
+    for supwinid in WinModelSupwinIds()
+        if WinStateWinExists(supwinid) && WinStateWinIsTerminal(supwinid)
+            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                call WinModelHideSubwins(supwinid, grouptypename)
+            endfor
+        endif
+    endfor
+
 endfunction
 
 " STEP 2: Adjust the state so that it matches the model

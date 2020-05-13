@@ -548,7 +548,7 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
-function! s:DoWithout(curwin, callback, nouberwins, nosubwins)
+function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
     if a:nosubwins
         let closedsubwingroupsbysupwin = {}
 
@@ -587,7 +587,7 @@ function! s:DoWithout(curwin, callback, nouberwins, nosubwins)
             call WinStateMoveCursorToWinid(winid)
         endif
     endif
-    call call(a:callback, [])
+    call call(a:callback, a:args)
 
     if a:nouberwins
         call WinCommonReopenUberwins(closeduberwingroups)
@@ -604,16 +604,16 @@ function! s:DoWithout(curwin, callback, nouberwins, nosubwins)
         call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
     endif
 endfunction
-function! WinCommonDoWithoutUberwins(callback)
-    call s:DoWithout(0, a:callback, 1, 0)
+function! WinCommonDoWithoutUberwins(callback, args)
+    call s:DoWithout(0, a:callback, a:args, 1, 0)
 endfunction
 
-function! WinCommonDoWithoutSubwins(curwin, callback)
-    call s:DoWithout(a:curwin, a:callback, 0, 1)
+function! WinCommonDoWithoutSubwins(curwin, callback, args)
+    call s:DoWithout(a:curwin, a:callback, a:args, 0, 1)
 endfunction
 
-function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback)
-    call s:DoWithout(a:curwin, a:callback, 1, 1)
+function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args)
+    call s:DoWithout(a:curwin, a:callback, a:args, 1, 1)
 endfunction
 
 function! s:Nop()
@@ -622,7 +622,7 @@ endfunction
 " Closes and reopens all shown subwins in the current tab, afterimaging the
 " afterimaging ones that need it
 function! WinCommonCloseAndReopenAllShownSubwins(curwin)
-     call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'))
+     call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'), [])
 endfunction
 
 " Returns a statusline-friendly string that will evaluate to the correct

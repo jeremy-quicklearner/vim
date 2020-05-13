@@ -363,87 +363,38 @@ function! WinNonDefaultStatusLine()
     return WinModelStatusLineByInfo(info)
 endfunction
 
-" Window resizing
-function! WinEqualizeSupwins()
+" Execute a Ctrl-W command under various conditions specified by flags
+function! WinDoCmdWithFlags(cmd,
+                          \ count,
+                          \ preservecursor,
+                          \ ifuberwindonothing, ifsubwingotosupwin,
+                          \ dowithoutuberwins, dowithoutsubwins)
     let info = WinCommonGetCursorPosition()
-        call WinCommonDoWithoutSubwins(info.win, function('WinStateEqualizeWindows'))
-    call WinCommonRestoreCursorPosition(info)
+
+    if info.win.category ==# 'uberwin' && a:ifuberwindonothing
+        return
+    endif
+
+    if info.win.category ==# 'subwin' && a:ifsubwingotosupwin
+        call WinGotoSupwin(info.win.supwin)
+    endif
+
+    if a:dowithoutuberwins && a:dowithoutsubwins
+        call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateWincmd'), [a:cmd])
+    elseif a:dowithoutuberwins
+        call WinCommonDoWithoutUberwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
+    elseif a:dowithoutsubwins
+        call WinCommonDoWithoutSubwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
+    else
+        call WinStateWinCmd(a:count, a:cmd)
+    endif
+
+    if a:preservecursor
+        call WinCommonRestoreCursorPosition(info)
+    endif
 endfunction
 
-function! WinZoomCurrentSupwin()
-    let info = WinCommonGetCursorPosition()
-        if info.win.category ==# 'uberwin'
-            return
-        endif
-
-        if info.win.category ==# 'subwin'
-            let tozoom = info.win.supwin
-        elseif info.win.category ==# 'supwin'
-            let tozoom = info.win.id
-        else
-            return
-        endif
-
-        let zoomedgrouptypenames = []
-        for supwinid in WinModelSupwinIds()
-            if supwinid ==# tozoom
-                let zoomedgrouptypenames = WinCommonCloseSubwinsWithHigherPriority(
-               \    tozoom,
-               \    -1
-               \)
-                continue
-            endif
-            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-                call WinHideSubwinGroup(supwinid, grouptypename)
-            endfor
-        endfor
-
-        call WinStateMoveCursorToWinid(tozoom)
-        call WinStateZoomCurrentWindow()
-        call WinCommonReopenSubwins(tozoom, zoomedgrouptypenames)
-
-    call WinCommonRestoreCursorPosition(info)
-endfunction
-
-" Window rearranging
-function! WinRotateSupwins()
-    let info = WinCommonGetCursorPosition()
-        if info.win.category ==# 'uberwin'
-            echom 'Cannot rotate an uberwin'
-        endif
-        if info.win.category ==# 'subwin'
-            call WinGotoSupwin(info.win.supwin)
-        endif
-        call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateRotateWindows'))
-    call WinCommonRestoreCursorPosition(info)
-endfunction
-
-function! s:MoveCurrentSupwinToEdge(edge)
-    let info = WinCommonGetCursorPosition()
-        let curwin = info.win
-        if info.win.category ==# 'uberwin'
-            echom 'Cannot move an uberwin'
-            return
-        endif
-        if info.win.category ==# 'subwin'
-            call WinGotoSupwin(info.win.supwin)
-            let curwin = WinCommonGetCursorPosition().win
-        endif
-        call WinCommonDoWithoutUberwinsOrSubwins(curwin, function('WinStateMoveCurrentWindowTo' . a:edge . 'Edge'))
-    call WinCommonRestoreCursorPosition(info)
-endfunction
-function! WinMoveSupwinToLeftEdge()
-    call s:MoveCurrentSupwinToEdge('Left')
-endfunction
-function! WinMoveSupwinToBottomEdge()
-    call s:MoveCurrentSupwinToEdge('Bottom')
-endfunction
-function! WinMoveSupwinToTopEdge()
-    call s:MoveCurrentSupwinToEdge('Top')
-endfunction
-function! WinMoveSupwinToRightEdge()
-    call s:MoveCurrentSupwinToEdge('Right')
-endfunction
+" Navigation
 
 " Movement between different categories of windows is restricted and sometimes
 " requires afterimaging and deafterimaging
@@ -551,6 +502,7 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
     endif
 
     let cur = WinCommonGetCursorPosition()
+    call WinModelSetPreviousWinInfo(cur.win)
     
     " Moving from subwin to uberwin must be done via supwin
     if cur.win.category ==# 'subwin'
@@ -568,7 +520,7 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
         return
     endif
 
-    throw 'Cursor window is neither supwin nor uberwin'
+    throw 'Cursor window is neither subwin nor supwin nor uberwin'
 endfunction
 
 " Move the cursor to a given supwin
@@ -582,6 +534,7 @@ function! WinGotoSupwin(dstwinid)
     endtry
 
     let cur = WinCommonGetCursorPosition()
+    call WinModelSetPreviousWinInfo(cur.win)
 
     if cur.win.category ==# 'subwin'
         call s:GoSubwinToSupwin(cur.win.supwin)
@@ -616,6 +569,7 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     endif
 
     let cur = WinCommonGetCursorPosition()
+    call WinModelSetPreviousWinInfo(cur.win)
 
     if cur.win.category ==# 'subwin'
         if cur.win.supwin ==# dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
@@ -644,6 +598,35 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
 endfunction
 
+function! s:GotoByInfo(info)
+    if a:info.category ==# 'uberwin'
+        call WinGotoUberwin(a:info.grouptype, a:info.typename)
+        return
+    endif
+    if a:info.category ==# 'supwin'
+        call WinGotoSupwin(a:info.id)
+        return
+    endif
+    if a:info.category ==# 'subwin'
+        call WinGotoSubwin(a:info.supwin, a:info.grouptype, a:info.typename)
+        return
+    endif
+    throw 'Cannot go to window with category ' . a:info.category
+endfunction
+
+function! WinGotoPrevious()
+    let dst = WinModelPreviousWinInfo()
+    if !WinModelIdByInfo(dst)
+        return
+    endif
+    
+    let src = WinCommonGetCursorPosition().win
+
+    call s:GotoByInfo(dst)
+
+    call WinModelSetPreviousWinInfo(src)
+endfunction
+
 function! s:GoInDirection(direction)
     let srcwinid = WinStateGetCursorWinId()
     let curwinid = srcwinid
@@ -651,7 +634,8 @@ function! s:GoInDirection(direction)
     let dstwinid = 0
     while 1
         let prvwinid = curwinid
-        execute 'call WinStateMoveCursor' . a:direction . 'Silently()'
+        call WinStateSilentWincmd(1, a:direction)
+
         let curwinid = WinStateGetCursorWinId()
         let curwininfo = WinModelInfoById(curwinid)
  
@@ -676,28 +660,82 @@ endfunction
 
 " Move the cursor to the supwin on the left
 function! WinGoLeft()
-    call s:GoInDirection('Left')
+    call s:GoInDirection('h')
 endfunction
 
 " Move the cursor to the supwin below
 function! WinGoDown()
-    call s:GoInDirection('Down')
+    call s:GoInDirection('j')
 endfunction
 
 " Move the cursor to the supwin above
 function! WinGoUp()
-    call s:GoInDirection('Up')
+    call s:GoInDirection('k')
 endfunction
 
 " Move the cursor to the supwin to the right
 function! WinGoRight()
-    call s:GoInDirection('Right')
+    call s:GoInDirection('l')
 endfunction
 
-" TODO: Something like WinDo but just for supwins
-"   - Save cursor position
-"   - For each Supwin, do a GotoSupwin and call the callback
-"   - Restore cursor position
-" TODO: Once the supwin-specific WinDo is working, audit every use of every
-"       variant of windo in src and decide whether to replace it with the new
-"       one
+" Run a command in every supwin
+function! SupwinDo(command, range)
+    let info = WinCommonGetCursorPosition()
+        for supwinid in WinModelSupwinIds()
+            call WinGotoSupwin(supwinid)
+            execute a:range . a:command
+        endfor
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+function! s:ExpandCurrentSupwin(vertical, horizontal)
+    let info = WinCommonGetCursorPosition()
+        if info.win.category ==# 'uberwin'
+            return
+        endif
+
+        if info.win.category ==# 'subwin'
+            let tozoom = info.win.supwin
+        elseif info.win.category ==# 'supwin'
+            let tozoom = info.win.id
+        else
+            return
+        endif
+
+        let zoomedgrouptypenames = []
+        for supwinid in WinModelSupwinIds()
+            if supwinid ==# tozoom
+                let zoomedgrouptypenames = WinCommonCloseSubwinsWithHigherPriority(
+               \    tozoom,
+               \    -1
+               \)
+                continue
+            endif
+            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                call WinHideSubwinGroup(supwinid, grouptypename)
+            endfor
+        endfor
+
+        call WinStateMoveCursorToWinid(tozoom)
+        if a:horizontal
+            call WinStateWincmd('|')
+        endif
+        if a:vertical
+            call WinStateWincmd('_')
+        endif
+        call WinCommonReopenSubwins(tozoom, zoomedgrouptypenames)
+
+    call WinCommonRestoreCursorPosition(info)
+endfunction
+
+function! WinExpandCurrentSupwinHorizontal()
+    call s:ExpandCurrentSupwin(1, 0)
+endfunction
+
+function! WinExpandCurrentSupwinVertical()
+    call s:ExpandCurrentSupwin(0, 1)
+endfunction
+
+function! WinExpandCurrentSupwin()
+    call s:ExpandCurrentSupwin(1, 1)
+endfunction

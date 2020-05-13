@@ -78,7 +78,7 @@ function! SetSpecificStatusLine()
 endfunction
 
 function! CorrectAllStatusLines(arg)
-    call WinDo('call SetSpecificStatusLine()', '')
+    Windofast call SetSpecificStatusLine()
 endfunction
 
 " Register the above function to be called on the next CursorHold event

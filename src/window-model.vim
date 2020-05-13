@@ -42,6 +42,13 @@
 "     }
 "     ...
 " }
+" t:prevwin = {
+"     category: <'uberwin'|'supwin'|'subwin'|'none'>
+"     grouptypename: <grouptypename>
+"     grouptype: <grouptype>
+"     supwin: <winid>
+"     id: <winid>
+" }
 " t:uberwin = {
 "     <grouptypename>: {
 "         hidden: <0|1>
@@ -112,6 +119,7 @@ function! WinModelInit()
     if WinModelExists()
         return
     endif
+    let t:prevwin = {'category':'none','id':0}
     let t:uberwin = {}
     let t:supwin = {}
     let t:subwin = {}
@@ -372,6 +380,19 @@ function! WinModelAddSubwinGroupType(name, typenames, statuslines,
     \    'toClose': a:toClose,
     \    'toIdentify': a:toIdentify
     \}
+endfunction
+
+" Previous window info manipulation
+function! WinModelPreviousWinInfo()
+    call s:AssertWinModelExists()
+    return t:prevwin
+endfunction
+
+function! WinModelSetPreviousWinInfo(info)
+    if !WinModelIdByInfo(a:info)
+        throw "Attempted to set previous window to one that doesn't exist in model"
+    endif
+    let t:prevwin = a:info
 endfunction
 
 " General Getters

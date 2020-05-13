@@ -1,7 +1,11 @@
 " Window manipulation
 "
+" TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
+"       sure if this is desirable - would they still be restored after
+"       location list contents change? Would different blobs of persisted
+"       state be stored for each location list? Maybe just leave it as the
+"       responsibility of files like loclist.vim and undotree.vim:w
 " TODO: Make the preview window an uberwin
-" TODO: Figure out what to do with all the ctrl-w commands
 " TODO: Fix sessions
 " TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
@@ -12,11 +16,7 @@
 " TODO: Audit all files for 'endfunction!'
 " TODO: Autoload everything
 " TODO: Move the whole window engine to a plugin
-" TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
-"       sure if this is desirable - would they still be restored after
-"       location list contents change? Would different blobs of persisted
-"       state be stored for each location list? Maybe just leave it as the
-"       responsibility of files like loclist.vim and undotree.vim:w
+" TODO: Move subwin and uberwin group definitions to their own plugins
 
 " This infrastructure is here because I want to make sure groups of related
 " windows (such as windows and their location windows) stay together, and
@@ -55,6 +55,12 @@
 "       the Resolve function
 " There is also a place for helpers common to the resolve function and user
 " operations.
+"
+" Many of Vim's native window commands (such as <c-w>z and <c-w>=) have
+" undesirable effects when invoked on windows that are managed by this
+" infrastructure. So I've remapped them all to use User Operations instead
+" of their default behaviour. These mappings are architecturally separate from
+" the window engine.
 
 " Model
 source <sfile>:p:h/window-model.vim
@@ -86,56 +92,6 @@ augroup END
 " Don't equalize window sizes when windows are closed
 set noequalalways
 
-" Window movement should use the user operations
-command! -nargs=0 -complete=command GoLeft call WinGoLeft()
-nnoremap <silent> <c-w>h :GoLeft<cr>
-vnoremap <silent> <c-w>h :GoLeft<cr>
-tnoremap <silent> <c-w>h :GoLeft<cr>
-command! -nargs=0 -complete=command GoDown call WinGoDown()
-nnoremap <silent> <c-w>j :GoDown<cr>
-vnoremap <silent> <c-w>j :GoDown<cr>
-tnoremap <silent> <c-w>j :GoDown<cr>
-command! -nargs=0 -complete=command GoUp call WinGoUp()
-nnoremap <silent> <c-w>k :GoUp<cr>
-vnoremap <silent> <c-w>k :GoUp<cr>
-tnoremap <silent> <c-w>k :GoUp<cr>
-command! -nargs=0 -complete=command GoRight call WinGoRight()
-nnoremap <silent> <c-w>l :GoRight<cr>
-vnoremap <silent> <c-w>l :GoRight<cr>
-tnoremap <silent> <c-w>l :GoRight<cr>
+" Remapped native window commands
+source <sfile>:p:h/window-mappings.vim
 
-" In non-terminal windows, rebind CTRL-H|J|K|L for less awkward movement
-nnoremap <silent> <c-h> :GoLeft<cr>
-nnoremap <silent> <c-j> :GoDown<cr>
-nnoremap <silent> <c-k> :GoUp<cr>
-nnoremap <silent> <c-l> :GoRight<cr>
-
-" Window resizing and moving using the user operations
-command! -nargs=0 -complete=command WinEqualize call WinEqualizeSupwins()
-command! -nargs=0 -complete=command WinRotate call WinRotateSupwins()
-command! -nargs=0 -complete=command WinZoom call WinZoomCurrentSupwin()
-command! -nargs=0 -complete=command WinMoveToLeftEdge call WinMoveSupwinToLeftEdge()
-command! -nargs=0 -complete=command WinMoveToBottomEdge call WinMoveSupwinToBottomEdge()
-command! -nargs=0 -complete=command WinMoveToTopEdge call WinMoveSupwinToTopEdge()
-command! -nargs=0 -complete=command WinMoveToRightEdge call WinMoveSupwinToRightEdge()
-nnoremap <silent> <c-w>= :WinEqualize<cr>
-vnoremap <silent> <c-w>= :WinEqualize<cr>
-tnoremap <silent> <c-w>= :WinEqualize<cr>
-nnoremap <silent> <c-w>r :WinRotate<cr>
-vnoremap <silent> <c-w>r :WinRotate<cr>
-tnoremap <silent> <c-w>r :WinRotate<cr>
-nnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
-vnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
-tnoremap <silent> <c-w>H :WinMoveToLeftEdge<cr>
-nnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
-vnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
-tnoremap <silent> <c-w>J :WinMoveToBottomEdge<cr>
-nnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
-vnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
-tnoremap <silent> <c-w>K :WinMoveToTopEdge<cr>
-nnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
-vnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
-tnoremap <silent> <c-w>L :WinMoveToRightEdge<cr>
-nnoremap <silent> <c-w>z :WinZoom<cr>
-vnoremap <silent> <c-w>z :WinZoom<cr>
-tnoremap <silent> <c-w>z :WinZoom<cr>

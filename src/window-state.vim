@@ -1,6 +1,7 @@
 " Window state manipulation functions
 " See window.vim
 
+" General Getters
 function! WinStateGetWinidsByCurrentTab()
     let winids = []
     for winnr in range(1, winnr('$'))
@@ -30,18 +31,6 @@ endfunction
 
 function! WinStateWinIsTerminal(winid)
     return WinStateWinExists(a:winid) && getwinvar(a:winid, '&buftype') ==# 'terminal'
-endfunction
-
-function! WinStateGetCursorWinId()
-    return win_getid()
-endfunction!
-
-function! WinStateGetCursorPosition()
-    return winsaveview()
-endfunction
-
-function! WinStateRestoreCursorPosition(pos)
-    call winrestview(a:pos)
 endfunction
 
 function! WinStateGetWinDimensions(winid)
@@ -87,6 +76,18 @@ function! WinStateGetWinRelativeDimensionsList(winids, offset)
     return dim
 endfunction
 
+" Cursor position preserve/restore
+function! WinStateGetCursorWinId()
+    return win_getid()
+endfunction!
+function! WinStateGetCursorPosition()
+    return winsaveview()
+endfunction
+function! WinStateRestoreCursorPosition(pos)
+    call winrestview(a:pos)
+endfunction
+
+" Dimension freezing
 function! WinStateFreezeWindowSize(winid)
     let prefreeze = {
    \    'w': getwinvar(a:winid, '&winfixwidth'),
@@ -102,6 +103,15 @@ function! WinStateThawWindowSize(winid, prefreeze)
     call setwinvar(a:winid, '&winfixheight', a:prefreeze.h)
 endfunction
 
+" Generic Ctrl-W commands
+function! WinStateWincmd(count, cmd)
+    execute a:count . 'wincmd ' . a:cmd
+endfunction
+function! WinStateSilentWincmd(count, cmd)
+    noautocmd execute a:count . 'wincmd ' . a:cmd
+endfunction
+
+" Navigation
 function! WinStateMoveCursorToWinid(winid)
     call WinStateAssertWinExists(a:winid)
     call win_gotoid(a:winid)
@@ -110,55 +120,6 @@ endfunction
 function! WinStateMoveCursorToWinidSilently(winid)
     call WinStateAssertWinExists(a:winid)
     noautocmd call win_gotoid(a:winid)
-endfunction
-
-function! WinStateMoveCursorLeftSilently()
-    noautocmd wincmd h
-endfunction
-
-function! WinStateMoveCursorDownSilently()
-    noautocmd wincmd j
-endfunction
-
-function! WinStateMoveCursorUpSilently()
-    noautocmd wincmd k
-endfunction
-
-function! WinStateMoveCursorRightSilently()
-    noautocmd wincmd l
-endfunction
-
-function! WinStateEqualizeWindows()
-    wincmd =
-endfunction
-
-function! WinStateZoomCurrentWindow()
-    wincmd |
-    wincmd _
-endfunction
-
-function! WinStateRotateWindows()
-    wincmd r
-endfunction
-
-function! WinStateMoveCurrentWindowToLeftEdge()
-    wincmd H
-    call WinStateEqualizeWindows()
-endfunction
-
-function! WinStateMoveCurrentWindowToBottomEdge()
-    wincmd J
-    call WinStateEqualizeWindows()
-endfunction
-
-function! WinStateMoveCurrentWindowToTopEdge()
-    wincmd K
-    call WinStateEqualizeWindows()
-endfunction
-
-function! WinStateMoveCurrentWindowToRightEdge()
-    wincmd L
-    call WinStateEqualizeWindows()
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -541,6 +502,7 @@ function! WinStateCloseWindow(winid)
     execute winnr . 'close'
 endfunction
 
+" Preserve/Restore for individual windows
 function! WinStatePreCloseAndReopen(winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
 
