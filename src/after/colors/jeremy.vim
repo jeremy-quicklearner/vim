@@ -144,8 +144,8 @@ highlight User3             ctermbg=Green   ctermfg=Black   cterm=none
 highlight User4             ctermbg=Yellow  ctermfg=Black   cterm=none
 highlight User5             ctermbg=Magenta ctermfg=Black   cterm=none
 highlight User6             ctermbg=Cyan    ctermfg=Black   cterm=none
+highlight User7             ctermbg=Red     ctermfg=Black   cterm=none
 
-highlight User7             ctermbg=Black   ctermfg=Green   cterm=none
 highlight User8             ctermbg=Black   ctermfg=Yellow  cterm=none
 
 highlight User9             ctermbg=Red     ctermfg=Red     cterm=none

@@ -15,7 +15,7 @@ noremap <c-w><up> <nop>
 noremap <c-w><right> <nop>
 
 " Use Ctrl-W z to fill the whole screen with the surrent supwin
-call WinMappingMapSpecialCmd(['z'], 'WinZoom',  'WinExpandCurrentSupwin', 1, 1, 0, 1)
+call WinMappingMapSpecialCmd(['z'], 'WinZoom', 0, 1, 'WinResizeCurrentSupwin', 1, 1, 0, 1)
 
 " Use Ctrl-h|j|k|l for window movement from normal mode
 nnoremap <silent> <c-h> :WinGoLeft<cr>

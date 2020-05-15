@@ -30,9 +30,9 @@ endfunction
 " priority:    uberwins will be opened in order of ascending priority
 " widths:      Widths of uberwins. -1 means variable width.
 " heights:     Heights of uberwins. -1 means variable height.
-" toOpen:      Function that opens uberwins of these types and returns their window
-"              IDs.
-" toClose:     Function that closes the the uberwins of this group type.
+" toOpen:      Function that opens uberwins of this group type and returns their
+"              window IDs.
+" toClose:     Function that closes the uberwins of this group type.
 " toIdentify:  Function that, when called in an uberwin of a type from this group
 "              type, returns the type name. Returns an empty string if called from
 "              any other window
@@ -380,13 +380,13 @@ function! WinDoCmdWithFlags(cmd,
     endif
 
     if a:dowithoutuberwins && a:dowithoutsubwins
-        call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateWincmd'), [a:cmd])
+        call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
     elseif a:dowithoutuberwins
         call WinCommonDoWithoutUberwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
     elseif a:dowithoutsubwins
         call WinCommonDoWithoutSubwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
     else
-        call WinStateWinCmd(a:count, a:cmd)
+        call WinStateWincmd(a:count, a:cmd)
     endif
 
     if a:preservecursor
@@ -614,7 +614,10 @@ function! s:GotoByInfo(info)
     throw 'Cannot go to window with category ' . a:info.category
 endfunction
 
-function! WinGotoPrevious()
+function! WinGotoPrevious(count)
+    if a:count !=# 0 && a:count % 2 ==# 0
+        return
+    endif
     let dst = WinModelPreviousWinInfo()
     if !WinModelIdByInfo(dst)
         return
@@ -627,55 +630,57 @@ function! WinGotoPrevious()
     call WinModelSetPreviousWinInfo(src)
 endfunction
 
-function! s:GoInDirection(direction)
-    let srcwinid = WinStateGetCursorWinId()
-    let curwinid = srcwinid
-    let prvwinid = 0
-    let dstwinid = 0
-    while 1
-        let prvwinid = curwinid
-        call WinStateSilentWincmd(1, a:direction)
+function! s:GoInDirection(count, direction)
+    for iter in range(a:count)
+        let srcwinid = WinStateGetCursorWinId()
+        let curwinid = srcwinid
+        let prvwinid = 0
+        let dstwinid = 0
+        while 1
+            let prvwinid = curwinid
+            call WinStateSilentWincmd(1, a:direction)
 
-        let curwinid = WinStateGetCursorWinId()
-        let curwininfo = WinModelInfoById(curwinid)
+            let curwinid = WinStateGetCursorWinId()
+            let curwininfo = WinModelInfoById(curwinid)
  
-        if curwininfo.category ==# 'supwin'
-            let dstwinid = curwinid
-            break
-        endif
-        if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid
-            let dstwinid = curwininfo.supwin
-            break
-        endif
-        if curwinid == prvwinid
-            break
-        endif
-    endwhile
+            if curwininfo.category ==# 'supwin'
+                let dstwinid = curwinid
+                break
+            endif
+            if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid
+                let dstwinid = curwininfo.supwin
+                break
+            endif
+            if curwinid == prvwinid
+                break
+            endif
+        endwhile
 
-    call WinStateMoveCursorToWinidSilently(srcwinid)
-    if dstwinid
-        call WinGotoSupwin(dstwinid)
-    endif
+        call WinStateMoveCursorToWinidSilently(srcwinid)
+        if dstwinid
+            call WinGotoSupwin(dstwinid)
+        endif
+    endfor
 endfunction
 
 " Move the cursor to the supwin on the left
-function! WinGoLeft()
-    call s:GoInDirection('h')
+function! WinGoLeft(count)
+    call s:GoInDirection(a:count, 'h')
 endfunction
 
 " Move the cursor to the supwin below
-function! WinGoDown()
-    call s:GoInDirection('j')
+function! WinGoDown(count)
+    call s:GoInDirection(a:count, 'j')
 endfunction
 
 " Move the cursor to the supwin above
-function! WinGoUp()
-    call s:GoInDirection('k')
+function! WinGoUp(count)
+    call s:GoInDirection(a:count, 'k')
 endfunction
 
 " Move the cursor to the supwin to the right
-function! WinGoRight()
-    call s:GoInDirection('l')
+function! WinGoRight(count)
+    call s:GoInDirection(a:count, 'l')
 endfunction
 
 " Run a command in every supwin
@@ -688,25 +693,29 @@ function! SupwinDo(command, range)
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
-function! s:ExpandCurrentSupwin(vertical, horizontal)
+function! s:ResizeCurrentSupwin(count, vertical, horizontal)
+    let cmdcount = a:count
+    if a:count ==# 0
+        let cmdcount = ''
+    endif
     let info = WinCommonGetCursorPosition()
         if info.win.category ==# 'uberwin'
             return
         endif
 
         if info.win.category ==# 'subwin'
-            let tozoom = info.win.supwin
+           let toresize = {'category':'supwin','id':info.win.supwin}
         elseif info.win.category ==# 'supwin'
-            let tozoom = info.win.id
+            let toresize = info.win
         else
             return
         endif
 
         let zoomedgrouptypenames = []
         for supwinid in WinModelSupwinIds()
-            if supwinid ==# tozoom
+            if supwinid ==# toresize.id
                 let zoomedgrouptypenames = WinCommonCloseSubwinsWithHigherPriority(
-               \    tozoom,
+               \    toresize.id,
                \    -1
                \)
                 continue
@@ -716,26 +725,26 @@ function! s:ExpandCurrentSupwin(vertical, horizontal)
             endfor
         endfor
 
-        call WinStateMoveCursorToWinid(tozoom)
+        call WinStateMoveCursorToWinid(toresize.id)
         if a:horizontal
-            call WinStateWincmd('|')
+           call WinCommonDoWithoutUberwins(toresize, function('WinStateWincmd'), [cmdcount, '|'])
         endif
         if a:vertical
-            call WinStateWincmd('_')
+            call WinCommonDoWithoutUberwins(toresize, function('WinStateWincmd'), [cmdcount, '_'])
         endif
-        call WinCommonReopenSubwins(tozoom, zoomedgrouptypenames)
+        call WinCommonReopenSubwins(toresize.id, zoomedgrouptypenames)
 
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
-function! WinExpandCurrentSupwinHorizontal()
-    call s:ExpandCurrentSupwin(1, 0)
+function! WinResizeCurrentSupwinHorizontal(count)
+    call s:ResizeCurrentSupwin(a:count, 1, 0)
 endfunction
 
-function! WinExpandCurrentSupwinVertical()
-    call s:ExpandCurrentSupwin(0, 1)
+function! WinResizeCurrentSupwinVertical(count)
+    call s:ResizeCurrentSupwin(a:count, 0, 1)
 endfunction
 
-function! WinExpandCurrentSupwin()
-    call s:ExpandCurrentSupwin(1, 1)
+function! WinResizeCurrentSupwin(count)
+    call s:ResizeCurrentSupwin(a:count, 1, 1)
 endfunction

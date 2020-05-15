@@ -604,8 +604,8 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
         call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
     endif
 endfunction
-function! WinCommonDoWithoutUberwins(callback, args)
-    call s:DoWithout(0, a:callback, a:args, 1, 0)
+function! WinCommonDoWithoutUberwins(curwin, callback, args)
+    call s:DoWithout(a:curwin, a:callback, a:args, 1, 0)
 endfunction
 
 function! WinCommonDoWithoutSubwins(curwin, callback, args)

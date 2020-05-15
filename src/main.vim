@@ -18,6 +18,7 @@ source <sfile>:p:h/plugin.vim
 " Specific categories of functionality get their own files
 " Files that define Uberwindow/Subwindow groups are together
 source <sfile>:p:h/quickfix.vim
+source <sfile>:p:h/preview.vim
 source <sfile>:p:h/loclist.vim
 source <sfile>:p:h/undotree.vim
 

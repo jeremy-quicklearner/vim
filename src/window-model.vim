@@ -704,7 +704,7 @@ function! s:ValidateNewWinids(winids, explen)
     " Validate the number of winids
     if a:explen > -1
         if len(a:winids) != a:explen
-            throw 'expected ' . a:explen . ' winids but ' len(a:winids) . ' provided'
+            throw 'expected ' . a:explen . ' winids but ' . len(a:winids) . ' provided'
         endif
     endif
 
