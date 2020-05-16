@@ -2,17 +2,7 @@
 " See window.vim
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine, to a custom command that does play well with the window
-" engine. The form {nr}<c-w><cmd> is supported, but the form <c-w>{nr}<cmd>,
-" which is undocumented in Vim's help, is not.
-"
-" TODO: z{nr}<cr> - the only alias of a <c-w> command that does not start with <c-w>
-" TODO? Support the <c-w>{nr}<cmd> of the commands. This would be tricky - it
-"       would need to be done with an <expr> mapping triggered on a plain <c-w>,
-"       with an expression that that reads keystrokes until one of them is a
-"       non-digit. If that last keystroke is a window command that was remapped by
-"       s:MapCmd then the expression evaluates to the custom Ex command from
-"       s:MapCmd with the digits prepended. Otherwise it evaluates to the
-"       keystrokes that were typed (including the <c-r> at the start)
+" engine.
 
 " Map a command of the form <c-w><cmd> to run an Ex command with a count
 function! s:MapCmd(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapininsertmode, mapinterminalmode)
@@ -73,6 +63,31 @@ function! WinMappingMapSpecialCmd(cmds, exCmdName, defaultcount, allow0, handler
     endfor
 endfunction
 
+" This <expr> mapping maps <c-w>{nr}{cmd} to {nr}<c-w>{cmd}, recursively so
+" that all the other mappings defined in this file apply as well
+function! WinMappingParseInfixCount()
+    let input = ''
+    while input =~# '^\d*$'
+        let input .= nr2char(getchar())
+    endwhile
+    return input[:-2] . "\<c-w>" . input[-1:-1]
+endfunction
+map <expr> <c-w> WinMappingParseInfixCount()
+
+" z{nr}<cr> is the only alias of a <c-w> command that does not start with <c-w>
+function! WinMappingParseZNrCr()
+    let input = ''
+    while input =~# '^\d*$'
+        let input .= nr2char(getchar())
+    endwhile
+    if input[-1:-1] !=# "\<cr>"
+       return ''
+    endif
+    return input[:-2] . "\<c-w>_"
+endfunction
+nmap <expr> z WinMappingParseZNrCr()
+vmap <expr> z WinMappingParseZNrCr()
+
 " Special-treatment command mappings
 
 " Movement commands are special because they need to skip over subwins and
@@ -80,7 +95,7 @@ endfunction
 call WinMappingMapSpecialCmd(['h','<left>','<c-h>','<bs>'],'WinGoLeft',          1,0,'WinGoLeft',                       1,1,0,1)
 call WinMappingMapSpecialCmd(['j','<down>','<c-j>'],       'WinGoDown',          1,0,'WinGoDown',                       1,1,0,1)
 call WinMappingMapSpecialCmd(['k','<up>','<c-k>'],         'WinGoUp',            1,0,'WinGoUp',                         1,1,0,1)
-call WinMappingMapSpecialCmd(['l','<right>','<c-h>'],      'WinGoRight',         1,0,'WinGoRight',                      1,1,0,1)
+call WinMappingMapSpecialCmd(['l','<right>','<c-l>'],      'WinGoRight',         1,0,'WinGoRight',                      1,1,0,1)
 call WinMappingMapSpecialCmd(['_'],                        'WinResizeHorizontal',0,1,'WinResizeCurrentSupwinHorizontal',1,1,0,1)
 call WinMappingMapSpecialCmd(['\|'],                       'WinResizeVertical',  0,1,'WinResizeCurrentSupwinVertical',  1,1,0,1)
 call WinMappingMapSpecialCmd(['p','<c-p>'],                'WinGotoPrevious',    1,1,'WinGotoPrevious',                 1,1,0,1)

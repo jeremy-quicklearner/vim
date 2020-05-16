@@ -96,8 +96,9 @@
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
-" TODO: Autoload everything
+" TODO: Move the CursorHold callback infrastructure to a plugin
 " TODO: Move the whole window engine to a plugin
+" TODO: Autoload everything
 " TODO: Move subwin and uberwin group definitions to their own plugins
 
 " Model
