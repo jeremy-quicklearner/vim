@@ -314,7 +314,7 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
     " subwin, freeze the height and width of every window except the
     " supwin of the subwin being closed and its other subwins.
     let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
-
+    try
         if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
             for subwinid in WinModelSubwinIdsByGroupTypeName(
            \    a:supwinid,
@@ -332,7 +332,9 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
             call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
         endif
 
-    call WinCommonThawWindowSizes(prefreeze)
+    finally
+        call WinCommonThawWindowSizes(prefreeze)
+    endtry
 endfunction
 
 " Wrapper for WinStateOpenSubwinsByGroupType that freezes windows whose

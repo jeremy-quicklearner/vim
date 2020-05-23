@@ -27,6 +27,16 @@ function! ToOpenUndotree()
         throw 'Undotree window is already open'
     endif
 
+    " Before opening the tree window, make sure there's enough room.
+    " We need at least 27 columns - 25 for the tree content, one for the
+    " vertical divider, and one for the supwin.
+    " We also need enough room to then open the diff window. We need
+    " at least 12 rows - one for the diff content, one for the tree
+    " statusline, and at least one for the tree
+    if winwidth(0) <# 27 || winheight(0) <# 12
+        throw 'Not enough room'
+    endif
+
     let jtarget = win_getid()
 
     UndotreeShow

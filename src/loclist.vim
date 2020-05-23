@@ -11,6 +11,13 @@ function! ToOpenLoclist()
         throw 'Window ' . supwinid . ' already has location window ' . locwinid
     endif
 
+    " Before opening the location window, make sure there's enough room. We
+    " need at least 12 rows - 10 for the loclist content, one for the supwin
+    " statusline, and one for the supwin.
+    if winheight(0) <# 12
+        throw 'Not enough room'
+    endif
+
     " Open the location window
     lopen
 
@@ -37,8 +44,16 @@ function! ToCloseLoclist()
         return
     endif
 
+    " When closing the location list, we want the supwin above it to fill the
+    " space
+    let oldsb = &splitbelow
+    let &splitbelow = 1
+
     " Close the location window
     lclose
+
+    " Restore splitbelow
+    let &splitbelow = oldsb
 endfunction
 
 " Callback that returns {'typename':'loclist','supwin':<id>} if the supplied

@@ -118,13 +118,8 @@ call WinCmdDefineSpecialCmd('WinGoDown',          'WinGoDown'                   
 call WinCmdDefineSpecialCmd('WinGoUp',            'WinGoUp'                         )
 call WinCmdDefineSpecialCmd('WinGoRight',         'WinGoRight'                      )
 
-" Resizing commands are special because they mustn't resize uberwins or
-" subwins
-" TODO: Try despecializing them. Maybe with the new common logic, it'll work.
-call WinCmdDefineSpecialCmd('WinResizeHorizontal','WinResizeCurrentSupwinHorizontal')
-call WinCmdDefineSpecialCmd('WinResizeVertical',  'WinResizeCurrentSupwinVertical'  )
-
 " WinZoom is special because it has no native equivalent
+" TODO: broken for a reason I don't understand yet
 call WinCmdDefineSpecialCmd('WinZoom',            'WinResizeCurrentSupwin'          )
 
 let s:allNonSpecialCmds = {
@@ -143,6 +138,8 @@ let s:allNonSpecialCmds = {
 \   'WinMoveToNewTab':    'T',
 \   'WinMoveToRightEdge': 'L',
 \   'WinMoveToTopEdge':   'K',
+\   'WinResizeHorizontal':'_',
+\   'WinResizeVertical':  '|',
 \   'WinReverseGoNext':   'W',
 \   'WinReverseRotate':   'R',
 \   'WinRotate':          'r'
@@ -158,6 +155,8 @@ let s:cmdsWithPreserveCursorPos = [
 \   'WinMoveToLeftEdge',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
+\   'WinResizeHorizontal',
+\   'WinResizeVertical',
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
@@ -175,10 +174,13 @@ let s:cmdsWithUberwinNop = [
 \   'WinMoveToNewTab',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
+\   'WinResizeHorizontal',
+\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
+" TODO: Maybe this list needs to be a lot smaller
 let s:cmdsWithSubwinToSupwin = [
 \   'WinCloseOthers',
 \   'WinDecreaseHeight',
@@ -225,6 +227,8 @@ let s:cmdsWithoutSubwins = [
 \   'WinMoveToLeftEdge',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
+\   'WinResizeHorizontal',
+\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'

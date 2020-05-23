@@ -94,7 +94,10 @@
 "       location list contents change? Would different blobs of persisted
 "       state be stored for each location list? Maybe just leave it as the
 "       responsibility of files like loclist.vim and undotree.vim:w
+" TODO: Run the resolver on WinResize
+" TODO: Check whether the new use of splitbelow removes the need for freezing
 " TODO: Thoroughly test everything in window-mapping.vim
+" TODO: Add a demo mode for fun that does lots of redrawing
 " TODO: Make the Option window an uberwin
 " TODO: Make the Command-line window an uberwin?
 " TODO: Figure out why terminal windows keep breaking the resolver and
@@ -103,6 +106,8 @@
 " TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
+" TODO: Audit the common code for functions that are not common to the
+"       resolver and user operations
 " TODO: Audit all the user operations for redundancy
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit all files for lines longer than 80 characters

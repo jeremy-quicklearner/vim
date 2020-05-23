@@ -356,14 +356,14 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
         try
             try
                 let winids = WinCommonOpenSubwins(a:supwinid, a:grouptypename)
+                let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+                let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+                call WinModelShowSubwins(a:supwinid, a:grouptypename, winids, reldims)
+
             catch /.*/
                 echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
                 echohl ErrorMsg | echom v:exception | echohl None
             endtry
-
-            let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
-            let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-            call WinModelShowSubwins(a:supwinid, a:grouptypename, winids, reldims)
 
         " Reopen the subwins we closed
         finally
@@ -385,6 +385,11 @@ function! WinNonDefaultStatusLine()
 endfunction
 
 " Execute a Ctrl-W command under various conditions specified by flags
+" WARNING! This particular user operation is not guaranteed to leave the state
+" and model consistent. It is designed to be used only by the Commands and
+" Mappings, which ensure consistency by passing carefully-chosen flags
+" TODO: Look at suppressing unwanted error messages, like the 'not enough
+" room' messages from resizing
 function! WinDoCmdWithFlags(cmd,
                           \ count,
                           \ preservecursor,
@@ -768,14 +773,6 @@ function! s:ResizeCurrentSupwin(count, vertical, horizontal)
         call WinCommonReopenSubwins(toresize.id, zoomedgrouptypenames)
 
     call WinCommonRestoreCursorPosition(info)
-endfunction
-
-function! WinResizeCurrentSupwinHorizontal(count)
-    call s:ResizeCurrentSupwin(a:count, 1, 0)
-endfunction
-
-function! WinResizeCurrentSupwinVertical(count)
-    call s:ResizeCurrentSupwin(a:count, 0, 1)
 endfunction
 
 function! WinResizeCurrentSupwin(count)
