@@ -156,6 +156,24 @@ function! WinCommonReselectCursorWindow(oldpos)
     return pos
 endfunction
 
+" Freeze the width and height of all nonsupwins. Return information about the
+" frozen windows' previous settings so that they can later be thawed
+function! WinCommonFreezeAllNonSupwinSizes()
+    let immunewinids = []
+    for supwinid in WinModelSupwinIds()
+        call add(immunewinids, str2nr(supwinid))
+    endfor
+
+    let prefreeze = {}
+    for winid in WinStateGetWinidsByCurrentTab()
+        if index(immunewinids, str2nr(winid)) < 0
+            let prefreeze[winid] = WinStateFreezeWindowSize(winid)
+        endif
+    endfor
+    
+    return prefreeze
+endfunction
+
 " Freeze the width and height of all windows except for a given supwin and its
 " subwins. Return information about the frozen windows' previous settings so
 " that they can later be thawed
@@ -176,7 +194,8 @@ function! WinCommonFreezeAllWindowSizesOutsideSupwin(immunesupwinid)
 endfunction
 
 " Thaw the height and width of all windows that were frozen with
-" WinCommonFreezeAllWindowSizesOutsideSupwin()
+" WinCommonFreezeAllWindowSizesOutsideSupwin() or
+" WinCommonFreezeAllNonSupwinSizes()
 function! WinCommonThawWindowSizes(prefreeze)
     for winid in keys(a:prefreeze)
         call WinStateThawWindowSize(winid, a:prefreeze[winid])
@@ -193,6 +212,60 @@ function! WinCommonRestoreCursorPosition(info)
     call WinStateRestoreCursorPosition(a:info.cur)
 endfunction
 
+" Wrapper for WinStateCloseUberwinsByGroupType that freezes windows whose
+" dimensions shouldn't change
+function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
+    " When windows are closed, Vim needs to choose which other windows to
+    " expand to fill the free space. Sometimes Vim makes choices I don't like, such
+    " as expanding other uberwins. So before closing the uberwin,
+    " freeze the height and width of every window outside the uberwin group
+    let prefreeze = WinCommonFreezeAllNonSupwinSizes()
+        let grouptype = g:uberwingrouptype[a:grouptypename]
+        call WinStateCloseUberwinsByGroupType(grouptype)
+    call WinCommonThawWindowSizes(prefreeze)
+endfunction
+
+" Wrapper for WinStateOpenUberwinsByGroupType that freezes windows whose
+" dimensions shouldn't change and ensures no windows get bigger
+function! WinCommonOpenUberwins(grouptypename)
+    let prefreeze = WinCommonFreezeAllNonSupwinSizes()
+    try
+        " Remember dimensions of all windows on screen before the uberwin
+        " opens
+        let otherwinids = WinStateGetWinidsByCurrentTab()
+        let dims = WinStateGetWinDimensionsList(otherwinids)
+        let windims = {}
+        for idx in range(len(otherwinids))
+            let windims[otherwinids[idx]] = dims[idx]
+        endfor
+
+        " Open the uberwin
+        let grouptype = g:uberwingrouptype[a:grouptypename]
+        let winids = WinStateOpenUberwinsByGroupType(grouptype)
+
+        " When windows are opened, Vim needs to choose which other windows to
+        " shrink to make room. Sometimes Vim makes choices I don't like, such
+        " as equalizing windows along the way. So if any window's width or
+        " height has increased, change it back
+        for otherwinid in keys(windims)
+            let olddims = windims[otherwinid]
+            let newdims = WinStateGetWinDimensions(otherwinid)
+            if olddims.w <# newdims.w
+                call WinStateMoveCursorToWinid(otherwinid)
+                call WinStateWincmd(olddims.w, '|')
+            endif
+            if olddims.h <# newdims.h
+                call WinStateMoveCursorToWinid(otherwinid)
+                call WinStateWincmd(olddims.h, '_')
+            endif
+        endfor
+
+    finally
+        call WinCommonThawWindowSizes(prefreeze)
+    endtry
+    return winids
+endfunction
+
 " Closes all uberwins with priority higher than a given, and returns a list of
 " group types closed. The model is unchanged.
 function! WinCommonCloseUberwinsWithHigherPriority(priority)
@@ -203,7 +276,7 @@ function! WinCommonCloseUberwinsWithHigherPriority(priority)
     for grouptypename in reverse(copy(grouptypenames))
         let pre = WinCommonPreCloseAndReopenUberwins(grouptypename)
         call add(preserved, {'grouptypename':grouptypename,'pre':pre})
-        call WinStateCloseUberwinsByGroupType(g:uberwingrouptype[grouptypename])
+        call WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     endfor
     return reverse(copy(preserved))
 endfunction
@@ -213,9 +286,7 @@ endfunction
 function! WinCommonReopenUberwins(preserved)
     for grouptype in a:preserved
         try
-            let winids = WinStateOpenUberwinsByGroupType(
-           \    g:uberwingrouptype[grouptype.grouptypename]
-           \)
+            let winids = WinCommonOpenUberwins(grouptype.grouptypename)
             call WinModelChangeUberwinIds(grouptype.grouptypename, winids)
             call WinCommonPostCloseAndReopenUberwins(
            \    grouptype.grouptypename,
@@ -268,9 +339,14 @@ endfunction
 " dimensions shouldn't change
 function! WinCommonOpenSubwins(supwinid, grouptypename)
     let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
+    try
         let grouptype = g:subwingrouptype[a:grouptypename]
         let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
-    call WinCommonThawWindowSizes(prefreeze)
+
+    finally
+        call WinCommonThawWindowSizes(prefreeze)
+    endtry
+
     return winids
 endfunction
 
@@ -292,7 +368,7 @@ function! WinCommonCloseSubwinsWithHigherPriority(supwinid, priority)
     " stretch to fill the space left behind - only the supwin will stretch.
     " I don't fully understand why, but relaxing that constraint and allowing
     " subwins to stretch causes strange behaviour with other supwins filling
-    " the space left by supwins closing after they have stretched.
+    " the space left by subwins closing after they have stretched.
     for grouptypename in reverse(copy(grouptypenames))
         let pre = WinCommonPreCloseAndReopenSubwins(a:supwinid, grouptypename)
         call add(preserved, {'grouptypename':grouptypename,'pre':pre})
@@ -549,14 +625,9 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
 endfunction
 
 function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
-    if a:nosubwins
-        let closedsubwingroupsbysupwin = {}
-
-        let supwinids = WinModelSupwinIds()
-        if empty(supwinids)
-            return
-        endif
-
+    let supwinids = WinModelSupwinIds()
+    let closedsubwingroupsbysupwin = {}
+    if a:nosubwins && !empty(supwinids)
         let startwith = supwinids[0]
 
         " If the cursor is in a supwin, start with it
@@ -577,23 +648,25 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
         endfor
     endif
 
-    if a:nouberwins
-        let closeduberwingroups = WinCommonCloseUberwinsWithHigherPriority(-1)
-    endif
-
-    if type(a:curwin) ==# v:t_dict
-        let winid = WinModelIdByInfo(a:curwin)
-        if WinStateWinExists(winid)
-            call WinStateMoveCursorToWinid(winid)
+    try
+        let closeduberwingroups = []
+        if a:nouberwins
+            let closeduberwingroups = WinCommonCloseUberwinsWithHigherPriority(-1)
         endif
-    endif
-    call call(a:callback, a:args)
+        try
+            if type(a:curwin) ==# v:t_dict
+                let winid = WinModelIdByInfo(a:curwin)
+                if WinStateWinExists(winid)
+                    call WinStateMoveCursorToWinid(winid)
+                endif
+            endif
+            call call(a:callback, a:args)
 
-    if a:nouberwins
-        call WinCommonReopenUberwins(closeduberwingroups)
-    endif
+        finally
+            call WinCommonReopenUberwins(closeduberwingroups)
+        endtry
 
-    if a:nosubwins
+    finally
         for supwinid in supwinids
             call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
             let dims = WinStateGetWinDimensions(supwinid)
@@ -602,7 +675,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
             call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
         endfor
         call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
-    endif
+    endtry
 endfunction
 function! WinCommonDoWithoutUberwins(curwin, callback, args)
     call s:DoWithout(a:curwin, a:callback, a:args, 1, 0)

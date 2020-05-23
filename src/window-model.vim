@@ -1122,7 +1122,7 @@ function! WinModelChangeSupwinDimensions(supwinid, nr, w, h)
     let t:supwin[a:supwinid].h = a:h
 endfunction
 
-" Subwin manipulation
+" Subwin group manipulation
 function! WinModelSubwinGroupExists(supwinid, grouptypename)
     call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     call WinModelAssertSupwinExists(a:supwinid)

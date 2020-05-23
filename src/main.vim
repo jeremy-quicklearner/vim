@@ -16,9 +16,11 @@ source <sfile>:p:h/window.vim
 source <sfile>:p:h/plugin.vim
 
 " Specific categories of functionality get their own files
-" Files that define Uberwindow/Subwindow groups are together
-source <sfile>:p:h/quickfix.vim
+" Files that define Uberwindow group types are together
+source <sfile>:p:h/help.vim
 source <sfile>:p:h/preview.vim
+source <sfile>:p:h/quickfix.vim
+" Files that define Subwindow group types are together
 source <sfile>:p:h/loclist.vim
 source <sfile>:p:h/undotree.vim
 
@@ -28,7 +30,7 @@ source <sfile>:p:h/undotree.vim
 source <sfile>:p:h/statusline.vim
 source <sfile>:p:h/tabline.vim
 
-" Broader categories get their own files
+" Broader categories of functionality get their own files
 source <sfile>:p:h/cosmetic.vim
 source <sfile>:p:h/formatting.vim
 

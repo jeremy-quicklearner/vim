@@ -56,16 +56,17 @@
 "     3 The User Operations - A collection of functions that manipulate the model
 "       and state under the assumption that they are already consistent with each
 "       other
-"     4 The Mappings - Exactly what it sounds like - a collection of mappings
-"       and custom commands that replace native Vim commands with calls to
-"       User Operations.
+"     4 The Commands - A collection of custom commands that make calls to the
+"       user operations
+"     5 The Mappings - A collection of mappings that replace native Vim window
+"       operations with invocations of the custom commands
 "
 " If the State were to be mutated by *only* the user operations, it would
 " always be consistent with the model. Alas, that is not an assumption we can
 " make. All it takes to ruin the consistency is a single invocation of 'wincmd r'
-" in a plugin. That's why there's a fifth component:
+" in a plugin. That's why there's a sixth component:
 "
-"     5 The Resolver - an algorithm which runs on the CursorHold autocmd event and
+"     6 The Resolver - an algorithm which runs on the CursorHold autocmd event and
 "       guarantees on completion that the model and state are consistent with
 "       each other, even if they were inconsistent when the resolver started
 "
@@ -79,16 +80,26 @@
 " Consumers of this system are definitions of uberwin and subwin group types
 " (i.e. calls to the WinAddUberwinGroupType and WinAddSubwinGroupType user
 " operations).
-" 
+"
+" The mappings may interact in unwelcome ways with other scripts, so they are
+" TODO optional. If they are enabled, they have some side effects such as:
+"  - All window commands, even ones cancelled partway through with <esc> or
+"    <c-c>, kick you out of visual mode TODO: See if there's some way to
+"    restore the native behaviour
+"  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
+"    TODO: Despecializing WinResizeHorizontal may fix this
+"
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
 "       state be stored for each location list? Maybe just leave it as the
 "       responsibility of files like loclist.vim and undotree.vim:w
-" TODO: Make the Help window an uberwin
+" TODO: Thoroughly test everything in window-mapping.vim
 " TODO: Make the Option window an uberwin
-" TODO: Make the Command-line window an uberwin
-" TODO: Fix sessions
+" TODO: Make the Command-line window an uberwin?
+" TODO: Figure out why terminal windows keep breaking the resolver and
+"       statuslines
+" TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
@@ -111,6 +122,8 @@ source <sfile>:p:h/window-common.vim
 source <sfile>:p:h/window-resolve.vim
 " User Operations
 source <sfile>:p:h/window-user.vim
+" Commands
+source <sfile>:p:h/window-commands.vim
 " Mappings
 source <sfile>:p:h/window-mappings.vim
 

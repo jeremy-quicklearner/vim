@@ -49,6 +49,10 @@ highlight SpellCap          ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellLocal        ctermfg=Red     ctermbg=Black   cterm=none
 highlight SpellRare         ctermfg=Red     ctermbg=Black   cterm=none
 
+" Ignored stuff is black-on-black - invisible unless highlighted using visual
+" mode
+highlight Ignore            ctermfg=Black   ctermbg=Black   cterm=none
+
 " Search-related stuff is yellow so it stands out, but not as much as the cursor
 highlight IncSearch         ctermfg=Black   ctermbg=Yellow  cterm=none
 highlight Search            ctermfg=Black   ctermbg=Yellow  cterm=none
@@ -155,7 +159,6 @@ highlight Debug             ctermfg=Red     ctermbg=Red     cterm=none
 highlight SpecialComment    ctermfg=Red     ctermbg=Red     cterm=none
 highlight Tag               ctermfg=Red     ctermbg=Red     cterm=none
 highlight Underlined        ctermfg=Red     ctermbg=Red     cterm=none
-highlight Ignore            ctermfg=Red     ctermbg=Red     cterm=none
 
 " Highlight groups relinked in src/after/syntax/undotree.vim
 highlight JUTNode           ctermfg=Magenta ctermbg=Black   cterm=none

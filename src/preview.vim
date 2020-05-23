@@ -23,8 +23,17 @@ function! ToOpenPreview()
         endif
     endfor
 
-    noautocmd execute 'topleft ' . &previewheight . 'split '
-    silent execute 'buffer ' . t:j_preview.bufnr
+    noautocmd execute 'topleft ' . &previewheight . 'split'
+    call WinStateWincmd(&previewheight, '_')
+
+    " If the file being previewed is already open in another Vim instance,
+    " this command throws
+    try
+       silent execute 'buffer ' . t:j_preview.bufnr
+    catch /.*/
+       echohl ErrorMsg | echo v:exception | echohl None
+    endtry
+
     let winid = win_getid()
     call WinStatePostCloseAndReopen(winid, t:j_preview)
     set previewwindow
@@ -103,10 +112,11 @@ call WinAddUberwinGroupType('preview', ['preview'],
                            \function('ToIdentifyPreview'))
 
 " Mappings
-function! WinGotoPreview()
+function! WinGotoPreview(count)
     call WinGotoUberwin('preview', 'preview')
 endfunction
-call WinMappingMapSpecialCmd(['P'], 'WinGotoPreview', 1, 0, 'WinGotoPreview', 1,1,0,1)
+call WinCmdDefineSpecialCmd('WinGotoPreview', 'WinGotoPreview')
+call WinMappingMapCmd(['P'], 'WinGotoPreview', 0, 1,1,1)
 
 nnoremap <silent> <leader>pc :call WinRemoveUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>ps :call WinShowUberwinGroup('preview')<cr>

@@ -460,10 +460,9 @@ function! s:WinResolveModelToState()
             if WinCommonUberwinGroupExistsInState(grouptypename)
                 if uberwinsremoved ||
                \   !WinCommonUberwinGroupDimensionsMatch(grouptypename)
-                    let grouptype = g:uberwingrouptype[grouptypename]
                     let preserveduberwins[grouptypename] =
                    \    WinCommonPreCloseAndReopenUberwins(grouptypename)
-                    call WinStateCloseUberwinsByGroupType(grouptype)
+                    call WinCommonCloseUberwinsByGroupTypeName(grouptypename)
                     let uberwinsremoved = 1
                     let passneeded = 1
                 endif
@@ -527,9 +526,8 @@ function! s:WinResolveModelToState()
     " add it to the state
     for grouptypename in WinModelShownUberwinGroupTypeNames()
         if !WinCommonUberwinGroupExistsInState(grouptypename)
-            let grouptype = g:uberwingrouptype[grouptypename]
             try
-                let winids = WinStateOpenUberwinsByGroupType(grouptype)
+                let winids = WinCommonOpenUberwins(grouptypename)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)
@@ -587,11 +585,11 @@ function! s:WinResolveModelToState()
                     call WinModelChangeSubwinIds(supwinid, grouptypename, winids)
                     if has_key(preservedsubwins, supwinid) &&
                    \   has_key(preservedsubwins[supwinid], grouptypename)
-                       call WinCommonPostCloseAndReopenSubwins(
-                      \    supwinid,
-                      \    grouptypename,
-                      \    preservedsubwins[supwinid][grouptypename]
-                      \)
+                        call WinCommonPostCloseAndReopenSubwins(
+                       \    supwinid,
+                       \    grouptypename,
+                       \    preservedsubwins[supwinid][grouptypename]
+                       \)
                     endif
                 catch /.*/
                     echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':'

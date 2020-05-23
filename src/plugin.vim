@@ -22,7 +22,7 @@ autocmd VimEnter *
 " Load plugins
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
-Plug 'benknoble/vim-auto-origami'
+Plug 'benknoble/vim-auto-origami', {'on': 'AutoOrigamiFoldColumn'}
 Plug 'mbbill/undotree', {'on': 'UndotreeShow'}
 Plug 'jeremy-quicklearner/vim-sign-utils', {'on': ['PlaceUtilSigns', 'UnplaceUtilSigns']}
 call plug#end()

@@ -343,10 +343,7 @@ function! s:PreserveManualFolds()
     
     " Delete all folds so that the call to s:RestoreFolds starts with a clean
     " slate
-    normal zE
-
-    " Restore the folds, since we opened all of them
-    call s:RestoreManualFolds(line('$'), folds)
+    normal! zE
 
     return {'explen': line('$'), 'folds': folds}
 endfunction

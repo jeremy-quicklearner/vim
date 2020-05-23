@@ -15,13 +15,13 @@ noremap <c-w><up> <nop>
 noremap <c-w><right> <nop>
 
 " Use Ctrl-W z to fill the whole screen with the surrent supwin
-call WinMappingMapSpecialCmd(['z'], 'WinZoom', 0, 1, 'WinResizeCurrentSupwin', 1, 1, 0, 1)
+call WinMappingMapCmd(['z'], 'WinZoom', 1, 1, 1, 1)
 
 " Use Ctrl-h|j|k|l for window movement from normal mode
-nnoremap <silent> <c-h> :WinGoLeft<cr>
-nnoremap <silent> <c-j> :WinGoDown<cr>
-nnoremap <silent> <c-k> :WinGoUp<cr>
-nnoremap <silent> <c-l> :WinGoRight<cr>
+nnoremap <silent> <c-h> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoLeft'<cr>
+nnoremap <silent> <c-j> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoDown'<cr>
+nnoremap <silent> <c-k> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoUp'<cr>
+nnoremap <silent> <c-l> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoRight'<cr>
 
 " Faster scrolling
 nnoremap <c-e> 2<c-e>
