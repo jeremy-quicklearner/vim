@@ -82,22 +82,20 @@
 " operations).
 "
 " The mappings may interact in unwelcome ways with other scripts, so they are
-" TODO optional. If they are enabled, they have some side effects such as:
+" TODO optional. If they are enabled, they have some minor side effects such as:
 "  - All window commands, even ones cancelled partway through with <esc> or
-"    <c-c>, kick you out of visual mode TODO: See if there's some way to
-"    restore the native behaviour
+"    <c-c>, kick you out of visual mode
+"    TODO? Fix
 "  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
-"    TODO: Despecializing WinResizeHorizontal may fix this
+"    TODO? Fix
 "
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
 "       state be stored for each location list? Maybe just leave it as the
 "       responsibility of files like loclist.vim and undotree.vim:w
+" TODO: Figure out why folds keep appearing in the help window
 " TODO: Run the resolver on WinResize
-" TODO: Check whether the new use of splitbelow removes the need for freezing
-" TODO: Thoroughly test everything in window-mapping.vim
-" TODO: Add a demo mode for fun that does lots of redrawing
 " TODO: Make the Option window an uberwin
 " TODO: Make the Command-line window an uberwin?
 " TODO: Figure out why terminal windows keep breaking the resolver and

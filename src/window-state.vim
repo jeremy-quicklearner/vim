@@ -1,6 +1,16 @@
 " Window state manipulation functions
 " See window.vim
 
+" Just for fun - lots of extra redrawing
+if !exists('g:windraw')
+    let g:windraw = 0
+endif
+function! s:MaybeRedraw()
+    if g:windraw
+        redraw
+    endif
+endfunction
+
 " General Getters
 function! WinStateGetWinidsByCurrentTab()
     let winids = []
@@ -85,6 +95,7 @@ function! WinStateGetCursorPosition()
 endfunction
 function! WinStateRestoreCursorPosition(pos)
     call winrestview(a:pos)
+    call s:MaybeRedraw()
 endfunction
 
 " Dimension freezing
@@ -106,20 +117,24 @@ endfunction
 " Generic Ctrl-W commands
 function! WinStateWincmd(count, cmd)
     execute a:count . 'wincmd ' . a:cmd
+    call s:MaybeRedraw()
 endfunction
 function! WinStateSilentWincmd(count, cmd)
     noautocmd execute a:count . 'wincmd ' . a:cmd
+    call s:MaybeRedraw()
 endfunction
 
 " Navigation
 function! WinStateMoveCursorToWinid(winid)
     call WinStateAssertWinExists(a:winid)
     call win_gotoid(a:winid)
+    call s:MaybeRedraw()
 endfunction
 
 function! WinStateMoveCursorToWinidSilently(winid)
     call WinStateAssertWinExists(a:winid)
     noautocmd call win_gotoid(a:winid)
+    call s:MaybeRedraw()
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -155,6 +170,7 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
         call setloclist(winids[idx], [])
     endfor
 
+    call s:MaybeRedraw()
     return winids
 endfunction
 
@@ -171,6 +187,7 @@ function! WinStateCloseUberwinsByGroupType(grouptype)
     endif
 
     call call(ToClose, [])
+    call s:MaybeRedraw()
 endfunction
 
 " From a given window, open windows using the toOpen function from a group type and
@@ -216,6 +233,7 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
         endif
     endfor
 
+    call s:MaybeRedraw()
     return winids
 endfunction
 
@@ -237,6 +255,7 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
 
     call win_gotoid(a:supwinid)
     call call(ToClose, [])
+    call s:MaybeRedraw()
 endfunction
 
 " TODO: Move this to the vim-sign-utils plugin
@@ -414,6 +433,7 @@ function! WinStateAfterimageWindow(winid)
     " state of the window exactly as it was when the function was first
     " called, and autocmds may fire on win_gotoid that change the state
     call WinStateMoveCursorToWinidSilently(a:winid)
+    call s:MaybeRedraw()
 
     " Preserve cursor and scroll position
     let view = winsaveview()
@@ -434,6 +454,7 @@ function! WinStateAfterimageWindow(winid)
         echohl ErrorMsg | echo v:exception | echohl None
         let folds = {'method':'manual','data':{}}
     endtry
+    call s:MaybeRedraw()
 
     " Preserve signs, but also unplace them so that they don't show up if the
     " real buffer is reused for another supwin
@@ -444,6 +465,7 @@ function! WinStateAfterimageWindow(winid)
             execute 'sign unplace ' . signid
         endif
     endfor
+    call s:MaybeRedraw()
 
     " Preserve buffer contents
     let bufcontents = getline(0, '$')
@@ -456,12 +478,15 @@ function! WinStateAfterimageWindow(winid)
     setlocal bufhidden=hide
     setlocal noswapfile
     setlocal nobuflisted
+    call s:MaybeRedraw()
 
     " Restore buffer contents
     call setline(1, bufcontents)
+    call s:MaybeRedraw()
 
     " Restore signs
     call s:RestoreSigns(a:winid, signs)
+    call s:MaybeRedraw()
 
     " Restore folds
     try
@@ -470,17 +495,21 @@ function! WinStateAfterimageWindow(winid)
         echom 'Failed to restore folds for window ' . a:winid . ':'
         echohl ErrorMsg | echo v:exception | echohl None
     endtry
+    call s:MaybeRedraw()
 
     " Restore colorcolumn
     let &colorcolumn = colorcol
+    call s:MaybeRedraw()
 
     " Restore buffer options
     let &ft = bufft
     let &wrap = bufwrap
     let &l:statusline = statusline
+    call s:MaybeRedraw()
 
     " Restore cursor and scroll position
     call winrestview(view)
+    call s:MaybeRedraw()
 
     " Return afterimage buffer ID
     return winbufnr('')
@@ -497,11 +526,13 @@ function! WinStateCloseWindow(winid)
     
     let winnr = win_id2win(a:winid)
     execute winnr . 'close'
+    call s:MaybeRedraw()
 endfunction
 
 " Preserve/Restore for individual windows
 function! WinStatePreCloseAndReopen(winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
+    call s:MaybeRedraw()
 
     " Preserve cursor position
     let view = winsaveview()
@@ -520,9 +551,11 @@ function! WinStatePreCloseAndReopen(winid)
         echohl ErrorMsg | echo v:exception | echohl None
         let fold = {'method':'manual','data':{}}
     endtry
+    call s:MaybeRedraw()
 
     " Preserve signs
     let sign = s:PreserveSigns(a:winid)
+    call s:MaybeRedraw()
 
     return {
    \    'view': view,
@@ -535,9 +568,11 @@ endfunction
 
 function! WinStatePostCloseAndReopen(winid, preserved)
     call WinStateMoveCursorToWinidSilently(a:winid)
+    call s:MaybeRedraw()
 
     " Restore signs
     call s:RestoreSigns(a:winid, a:preserved.sign)
+    call s:MaybeRedraw()
 
     " Restore folds
     try
@@ -546,13 +581,17 @@ function! WinStatePostCloseAndReopen(winid, preserved)
         echom 'Failed to restore folds for window ' . a:winid . ':'
         echohl ErrorMsg | echo v:exception | echohl None
     endtry
+    call s:MaybeRedraw()
 
     " Restore foldcolumn
     let &foldcolumn = a:preserved.foldcol
+    call s:MaybeRedraw()
 
     " Restore colorcolumn
     let &colorcolumn = a:preserved.colorcol
+    call s:MaybeRedraw()
   
     " Restore cursor and scroll position
     call winrestview(a:preserved.view)
+    call s:MaybeRedraw()
 endfunction

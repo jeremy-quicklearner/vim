@@ -27,7 +27,6 @@
 " TODO: Test WinReverseGoNext
 " TODO: Test WinReverseRotate
 " TODO: Test WinRotate
-" TODO: Test WinZoom
 
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
     if a:range ==# 0
@@ -107,20 +106,16 @@ endfunction
 " Going to the previous window requires special accounting in the user
 " operations because window engine code is always moving the cursor all over
 " the place and Vim's internal 'previous window' means nothing to the user
-call WinCmdDefineSpecialCmd('WinGotoPrevious',    'WinGotoPrevious'                 )
+call WinCmdDefineSpecialCmd('WinGotoPrevious','WinGotoPrevious')
 
 " Movement commands are special because if the starting point is an uberwin,
 " using DoWithoutUberwins would change the starting point to be the first
 " supwin. But DoWithoutUberwins would be necessary because we don't want to
 " move to Uberwins. So use custom logic.
-call WinCmdDefineSpecialCmd('WinGoLeft',          'WinGoLeft'                       )
-call WinCmdDefineSpecialCmd('WinGoDown',          'WinGoDown'                       )
-call WinCmdDefineSpecialCmd('WinGoUp',            'WinGoUp'                         )
-call WinCmdDefineSpecialCmd('WinGoRight',         'WinGoRight'                      )
-
-" WinZoom is special because it has no native equivalent
-" TODO: broken for a reason I don't understand yet
-call WinCmdDefineSpecialCmd('WinZoom',            'WinResizeCurrentSupwin'          )
+call WinCmdDefineSpecialCmd('WinGoLeft',  'WinGoLeft' )
+call WinCmdDefineSpecialCmd('WinGoDown',  'WinGoDown' )
+call WinCmdDefineSpecialCmd('WinGoUp',    'WinGoUp'   )
+call WinCmdDefineSpecialCmd('WinGoRight', 'WinGoRight')
 
 let s:allNonSpecialCmds = {
 \   'WinCloseOthers':     'o',
@@ -180,7 +175,6 @@ let s:cmdsWithUberwinNop = [
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
-" TODO: Maybe this list needs to be a lot smaller
 let s:cmdsWithSubwinToSupwin = [
 \   'WinCloseOthers',
 \   'WinDecreaseHeight',

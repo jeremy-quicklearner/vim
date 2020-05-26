@@ -45,7 +45,9 @@ function! ToCloseLoclist()
     endif
 
     " When closing the location list, we want the supwin above it to fill the
-    " space
+    " space left. If there is also a supwin below, Vim may choose to fill the
+    " space with that one instead of the one above. Setting splitbelow causes
+    " Vim to always pick the supwin above via some undocumented behaviour.
     let oldsb = &splitbelow
     let &splitbelow = 1
 

@@ -28,7 +28,6 @@
 " TODO: Test WinReverseGoNext
 " TODO: Test WinReverseRotate
 " TODO: Test WinRotate
-" TODO: Test WinZoom
 
 " Process v:count and v:count1 into a single count
 function! WinMappingProcessCounts(allow0)

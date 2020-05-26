@@ -629,6 +629,9 @@ endfunction
 function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
     let supwinids = WinModelSupwinIds()
     let closedsubwingroupsbysupwin = {}
+    for supwinid in supwinids
+        let closedsubwingroupsbysupwin[supwinid] = []
+    endfor
     if a:nosubwins && !empty(supwinids)
         let startwith = supwinids[0]
 

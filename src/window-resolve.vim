@@ -221,7 +221,6 @@ function! s:WinResolveStateToModel()
     " If any supwin in the model isn't in the state, remove it and its subwins
     " from the model
     let modelsupwinids = WinModelSupwinIds()
-    let modelsubwinids = WinModelSubwinIds()
     for modelsupwinid in modelsupwinids
         if !WinStateWinExists(modelsupwinid)
             call WinModelRemoveSupwin(modelsupwinid)

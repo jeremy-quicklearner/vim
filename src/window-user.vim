@@ -114,13 +114,14 @@ function! WinAddUberwinGroup(grouptypename, hidden)
         try
             try
                 let winids = WinCommonOpenUberwins(a:grouptypename)
+                let dims = WinStateGetWinDimensionsList(winids)
+                call WinModelAddUberwins(a:grouptypename, winids, dims)
+
             catch /.*/
                 echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
                 echohl ErrorMsg | echom v:exception | echohl None
+                call WinAddUberwinGroup(a:grouptypename, 1)
             endtry
-
-            let dims = WinStateGetWinDimensionsList(winids)
-            call WinModelAddUberwins(a:grouptypename, winids, dims)
 
         " Reopen the uberwins we closed
         finally
@@ -199,13 +200,13 @@ function! WinShowUberwinGroup(grouptypename)
         try
             try
                 let winids = WinCommonOpenUberwins(a:grouptypename)
+                let dims = WinStateGetWinDimensionsList(winids)
+                call WinModelShowUberwins(a:grouptypename, winids, dims)
             catch /.*/
-                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
+                echom 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
                 echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
-            let dims = WinStateGetWinDimensionsList(winids)
-            call WinModelShowUberwins(a:grouptypename, winids, dims)
 
         " Reopen the uberwins we closed
         finally
@@ -256,14 +257,14 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
         try
             try
                 let winids = WinCommonOpenSubwins(a:supwinid, a:grouptypename)
+                let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+                let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+                call WinModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
             catch /.*/
                 echom 'WinAddSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
                 echohl ErrorMsg | echom v:exception | echohl None
+                call WinAddSubwinGroup(a:supwinid, a:grouptypename, 1)
             endtry
-
-            let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
-            let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-            call WinModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
 
         " Reopen the subwins we closed
         finally
@@ -388,8 +389,6 @@ endfunction
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. It is designed to be used only by the Commands and
 " Mappings, which ensure consistency by passing carefully-chosen flags
-" TODO: Look at suppressing unwanted error messages, like the 'not enough
-" room' messages from resizing
 function! WinDoCmdWithFlags(cmd,
                           \ count,
                           \ preservecursor,
@@ -729,52 +728,4 @@ function! SupwinDo(command, range)
             execute a:range . a:command
         endfor
     call WinCommonRestoreCursorPosition(info)
-endfunction
-
-function! s:ResizeCurrentSupwin(count, vertical, horizontal)
-    let cmdcount = a:count
-    if a:count ==# 0
-        let cmdcount = ''
-    endif
-    let info = WinCommonGetCursorPosition()
-        if info.win.category ==# 'uberwin'
-            return
-        endif
-
-        if info.win.category ==# 'subwin'
-           let toresize = {'category':'supwin','id':info.win.supwin}
-        elseif info.win.category ==# 'supwin'
-            let toresize = info.win
-        else
-            return
-        endif
-
-        let zoomedgrouptypenames = []
-        for supwinid in WinModelSupwinIds()
-            if supwinid ==# toresize.id
-                let zoomedgrouptypenames = WinCommonCloseSubwinsWithHigherPriority(
-               \    toresize.id,
-               \    -1
-               \)
-                continue
-            endif
-            for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-                call WinHideSubwinGroup(supwinid, grouptypename)
-            endfor
-        endfor
-
-        call WinStateMoveCursorToWinid(toresize.id)
-        if a:horizontal
-           call WinCommonDoWithoutUberwins(toresize, function('WinStateWincmd'), [cmdcount, '|'])
-        endif
-        if a:vertical
-            call WinCommonDoWithoutUberwins(toresize, function('WinStateWincmd'), [cmdcount, '_'])
-        endif
-        call WinCommonReopenSubwins(toresize.id, zoomedgrouptypenames)
-
-    call WinCommonRestoreCursorPosition(info)
-endfunction
-
-function! WinResizeCurrentSupwin(count)
-    call s:ResizeCurrentSupwin(a:count, 1, 1)
 endfunction
