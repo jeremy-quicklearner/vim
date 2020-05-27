@@ -388,7 +388,8 @@ endfunction
 " Execute a Ctrl-W command under various conditions specified by flags
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. It is designed to be used only by the Commands and
-" Mappings, which ensure consistency by passing carefully-chosen flags
+" Mappings, which ensure consistency by passing carefully-chosen flags (and
+" sometimes relying on the resolver)
 function! WinDoCmdWithFlags(cmd,
                           \ count,
                           \ preservecursor,
@@ -440,8 +441,8 @@ function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
     endif
     let winid = WinModelIdByInfo({
    \    'category': 'uberwin',
-   \    'grouptype': a:grouptypename,
-   \    'typename': a:typename
+   \    'grouptype': a:dstgrouptypename,
+   \    'typename': a:dsttypename
    \})
     call WinStateMoveCursorToWinid(winid)
 endfunction
@@ -548,7 +549,7 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToUberwin(a:dstgrouptypename, a:dsttypename)
+        call s:GoUberwinToUberwin(a:dstgrouptype, a:dsttypename)
         return
     endif
 
@@ -718,6 +719,32 @@ endfunction
 " Move the cursor to the supwin to the right
 function! WinGoRight(count)
     call s:GoInDirection(a:count, 'l')
+endfunction
+
+" Close all windows except for either a given supwin, or the supwin of a given
+" subwin
+function! WinOnly(count)
+    if type(a:count) ==# v:t_string && empty(a:count)
+        let winid = WinStateGetCursorWinId()
+        let thecount = WinStateGetWinnrByWinid(winid)
+    else
+        let thecount = a:count
+    endif
+
+    let winid = WinStateGetWinidByWinnr(thecount)
+
+    let info = WinModelInfoById(winid)
+    if info.category ==# 'uberwin'
+        throw 'Cannot invoke WinOnly from uberwin'
+        return
+    endif
+    if info.category ==# 'subwin'
+        let info = WinModelInfoById(info.supwin)
+    endif
+
+    call s:GotoByInfo(info)
+
+    call WinStateWincmd('', 'o')
 endfunction
 
 " Run a command in every supwin

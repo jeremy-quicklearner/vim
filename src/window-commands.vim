@@ -2,7 +2,6 @@
 " See window.vim
 " This file defines several custom commands that call user operations
 
-" TODO: Test WinCloseOthers
 " TODO: Test WinDecreaseHeight
 " TODO: Test WinDecreaseWidth
 " TODO: Test WinEqualize
@@ -108,6 +107,11 @@ endfunction
 " the place and Vim's internal 'previous window' means nothing to the user
 call WinCmdDefineSpecialCmd('WinGotoPrevious','WinGotoPrevious')
 
+" WinOnly is special because if it isn't, its counted version can land in a
+" subwin and close all other windows (including the subwin's supwin) leaving
+" the subwin dangling, which will cause the resolver to exit the tab
+call WinCmdDefineSpecialCmd('WinOnly', 'WinOnly')
+
 " Movement commands are special because if the starting point is an uberwin,
 " using DoWithoutUberwins would change the starting point to be the first
 " supwin. But DoWithoutUberwins would be necessary because we don't want to
@@ -118,7 +122,6 @@ call WinCmdDefineSpecialCmd('WinGoUp',    'WinGoUp'   )
 call WinCmdDefineSpecialCmd('WinGoRight', 'WinGoRight')
 
 let s:allNonSpecialCmds = {
-\   'WinCloseOthers':     'o',
 \   'WinDecreaseHeight':  '-',
 \   'WinDecreaseWidth':   '<',
 \   'WinEqualize':        '=',
@@ -140,7 +143,6 @@ let s:allNonSpecialCmds = {
 \   'WinRotate':          'r'
 \} 
 let s:cmdsWithPreserveCursorPos = [
-\   'WinCloseOthers',
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinEqualize',
@@ -156,7 +158,6 @@ let s:cmdsWithPreserveCursorPos = [
 \   'WinRotate'
 \]
 let s:cmdsWithUberwinNop = [
-\   'WinCloseOthers',
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinExchange',
@@ -176,7 +177,6 @@ let s:cmdsWithUberwinNop = [
 \   'WinRotate'
 \]
 let s:cmdsWithSubwinToSupwin = [
-\   'WinCloseOthers',
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinExchange',

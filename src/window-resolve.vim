@@ -680,7 +680,7 @@ function! WinResolve(arg)
     " may not have existed until now
     let s:curpos = WinCommonGetCursorPosition()
 
-    " Run the conditional callbacks
+    " Run the supwin-added callbacks
     if s:supwinsaddedcond
         for SupwinsAddedCallback in WinModelSupwinsAddedResolveCallbacks()
             call SupwinsAddedCallback()

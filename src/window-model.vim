@@ -486,7 +486,8 @@ endfunction
 " Returns which flag to show for a given supwin due to a given subwin group
 " type's existence, hiddenness, etc.
 function! WinModelSubwinFlagByGroup(supwinid, grouptypename)
-    if !WinModelSupwinExists(a:supwinid) ||
+    if !WinModelExists() ||
+   \   !WinModelSupwinExists(a:supwinid) ||
    \   !WinModelSubwinGroupExists(a:supwinid, a:grouptypename)
         return ''
     endif
@@ -595,7 +596,9 @@ endfunction
 " Given window info, return a statusline for that window. Returns an empty
 " string if the window should have the default statusline
 function! WinModelStatusLineByInfo(info)
-    call s:AssertWinModelExists()
+    if !WinModelExists()
+        return ''
+    endif
 
     if a:info.category ==# 'supwin' || a:info.category ==# 'none'
         return ''

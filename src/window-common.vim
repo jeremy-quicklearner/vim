@@ -26,6 +26,7 @@ endfunction
 
 " Returns false if the dimensions in the model of any uberwin in a shown group of
 " a given type are dummies or inconsistent with the state. True otherwise.
+
 function! WinCommonUberwinGroupDimensionsMatch(grouptypename)
     for typename in WinModelUberwinTypeNamesByGroupTypeName(a:grouptypename)
         let mdims = WinModelUberwinDimensions(a:grouptypename, typename)
@@ -88,6 +89,9 @@ function! WinCommonFirstSupwinId()
     let minsupwinnr = 0
     let minsupwinid = 0
     for supwinid in WinModelSupwinIds()
+        if !WinStateWinExists(supwinid)
+            continue
+        endif
         let winnr = WinStateGetWinnrByWinid(supwinid)
         if minsupwinnr ==# 0 || minsupwinnr < winnr
             let minsupwinnr = winnr
@@ -101,7 +105,7 @@ endfunction
 " group
 function! WinCommonFirstUberwinInfo()
     let grouptypenames = WinModelShownUberwinGroupTypeNames()
-    if !grouptypenames
+    if empty(grouptypenames)
         return {'category':'none','id':0}
     endif
     let grouptypename = grouptypenames[0]
@@ -153,6 +157,39 @@ function! WinCommonReselectCursorWindow(oldpos)
     if pos.category ==# 'none'
         throw "No windows exist. Cannot select a window for the cursor."
     endif
+
+    " At this point, a window has been chosen based only on the model. But if
+    " the model and state are inconsistent, the window may not be open in the
+    " state.
+    let winexistsinstate = WinStateWinExists(WinModelIdByInfo(pos))
+
+    " If a non-open subwin was selected, select its supwin
+    if !winexistsinstate && pos.category ==# 'subwin'
+        let pos = {'category':'supwin','id':pos.supwin}
+        let winexistsinstate = WinStateWinExists(WinModelIdByInfo(pos))
+    endif
+
+    " If a non-open supwin was selected. select the first supwin
+    if !winexistsinstate && pos.category ==# 'supwin'
+        let firstsupwinid = WinCommonFirstSupwinId()
+        if firstsupwinid
+            let pos = {'category':'supwin','id':firstsupwinid}
+        endif
+        let winexistsinstate = WinStateWinExists(WinModelIdByInfo(pos))
+    endif
+
+    " If we still haven't selected an open supwin, there are no open supwins.
+    " Select the first uberwin.
+    if !winexistsinstate 
+        let pos = WinCommonFirstUberwinInfo()
+        let winexistsinstate = WinStateWinExists(WinModelIdByInfo(pos))
+    endif
+
+    " If we still have no window ID, then we're out of ideas
+    if !winexistsinstate
+        throw "No windows from the model are open in the state. Cannot select a window for the cursor."
+    endif
+
     return pos
 endfunction
 
@@ -408,7 +445,6 @@ function! WinCommonReopenSubwins(supwinid, preserved)
            \)
         catch /.*/
             echom 'WinCommonReopenSubwins failed to open ' . grouptype.grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
-
             echohl ErrorMsg | echo v:exception | echohl None
             call WinModelHideSubwins(a:supwinid, grouptype.grouptypename)
         endtry
@@ -621,8 +657,7 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
                     \)
 
     else
-        echom string(finalpos)
-        throw 'Cursor final position is neither uberwin nor supwin nor subwin'
+       throw 'Cursor final position ' . string(finalpos) . ' is neither uberwin nor supwin nor subwin'
     endif
 endfunction
 

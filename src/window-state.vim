@@ -34,6 +34,12 @@ function! WinStateGetWinnrByWinid(winid)
     return win_id2win(a:winid)
 endfunction
 
+function! WinStateGetWinidByWinnr(winnr)
+    let winid = win_getid(a:winnr)
+    call WinStateAssertWinExists(winid)
+    return winid
+endfunction
+
 function! WinStateGetBufnrByWinid(winid)
     call WinStateAssertWinExists(a:winid)
     return winbufnr(a:winid)
@@ -388,8 +394,8 @@ endfunction
 
 " TODO: Put these folding functions in their own plugin
 function! s:RestoreManualFolds(explen, folds)
-    if line('$') !=# a:explen
-        throw 'Length has changed since folds were preserved'
+    if line('$') <# a:explen
+        throw 'Buffer contents have shrunk since folds were preserved'
     endif
     for linenr in range(1, line('$'), 1)
         if foldlevel(linenr) !=# 0

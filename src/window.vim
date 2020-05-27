@@ -94,7 +94,9 @@
 "       location list contents change? Would different blobs of persisted
 "       state be stored for each location list? Maybe just leave it as the
 "       responsibility of files like loclist.vim and undotree.vim:w
-" TODO: Figure out why folds keep appearing in the help window
+" TODO? Figure out why folds keep appearing in the help window on
+"       WinShowUberwin. Haven't seen this happen in some time - maybe it's
+"       fixed?
 " TODO: Run the resolver on WinResize
 " TODO: Make the Option window an uberwin
 " TODO: Make the Command-line window an uberwin?

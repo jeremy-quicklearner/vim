@@ -3,7 +3,6 @@
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine to one of the custom commands from window-commands.vim
 
-" TODO: Test WinCloseOthers
 " TODO: Test WinDecreaseHeight
 " TODO: Test WinDecreaseWidth
 " TODO: Test WinEqualize
@@ -157,8 +156,8 @@ endfunction
 
 " Command mappings
 " Window commands that aren't in this list will not be remapped
-let s:allNonSpecialCmds = {
-\   'WinCloseOthers':     ['o','<c-o>'                ],
+let s:allCmds = {
+\   'WinOnly':            ['o','<c-o>'                ],
 \   'WinDecreaseHeight':  ['-'                        ],
 \   'WinDecreaseWidth':   ['<'                        ],
 \   'WinEqualize':        ['='                        ],
@@ -197,13 +196,13 @@ nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHor
 vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
 
 
-let s:cmdsWithNormalModeMapping = keys(s:allNonSpecialCmds)
-let s:cmdsWithVisualModeMapping = keys(s:allNonSpecialCmds)
-let s:cmdsWithTerminalModeMapping = keys(s:allNonSpecialCmds)
+let s:cmdsWithNormalModeMapping = keys(s:allCmds)
+let s:cmdsWithVisualModeMapping = keys(s:allCmds)
+let s:cmdsWithTerminalModeMapping = keys(s:allCmds)
 
-for cmdname in keys(s:allNonSpecialCmds)
+for cmdname in keys(s:allCmds)
     call WinMappingMapCmd(
-   \    s:allNonSpecialCmds[cmdname], cmdname,
+   \    s:allCmds[cmdname], cmdname,
    \    index(s:cmdsWithAllow0,              cmdname) >=# 0,
    \    index(s:cmdsWithNormalModeMapping,   cmdname) >=# 0,
    \    index(s:cmdsWithVisualModeMapping,   cmdname) >=# 0,
