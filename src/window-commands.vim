@@ -2,10 +2,6 @@
 " See window.vim
 " This file defines several custom commands that call user operations
 
-" TODO: Test WinDecreaseHeight
-" TODO: Test WinDecreaseWidth
-" TODO: Test WinEqualize
-" TODO: Test WinExchange
 " TODO: Test WinGoDown
 " TODO: Test WinGoFirst
 " TODO: Test WinGoLast
@@ -102,6 +98,11 @@ function! WinCmdDefineSpecialCmd(cmdname, handler)
    \        '"' . a:handler . '")'
 endfunction
 
+" Exchanging supwins is special because if the operation is invoked from a
+" subwin, the cursor should be restored to the corresponding subwin of the
+" exchanged window
+call WinCmdDefineSpecialCmd('WinExchange','WinExchange')
+
 " Going to the previous window requires special accounting in the user
 " operations because window engine code is always moving the cursor all over
 " the place and Vim's internal 'previous window' means nothing to the user
@@ -125,7 +126,6 @@ let s:allNonSpecialCmds = {
 \   'WinDecreaseHeight':  '-',
 \   'WinDecreaseWidth':   '<',
 \   'WinEqualize':        '=',
-\   'WinExchange':        'x',
 \   'WinGoFirst':         't',
 \   'WinGoLast':          'b',
 \   'WinGoNext':          'w',
@@ -160,7 +160,6 @@ let s:cmdsWithPreserveCursorPos = [
 let s:cmdsWithUberwinNop = [
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
-\   'WinExchange',
 \   'WinGoLast',
 \   'WinGoNext',
 \   'WinIncreaseHeight',
@@ -179,7 +178,6 @@ let s:cmdsWithUberwinNop = [
 let s:cmdsWithSubwinToSupwin = [
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
-\   'WinExchange',
 \   'WinGoFirst',
 \   'WinGoLast',
 \   'WinGoNext',
@@ -195,7 +193,6 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinRotate'
 \]
 let s:cmdsWithoutUberwins = [
-\   'WinExchange',
 \   'WinGoFirst',
 \   'WinGoLast',
 \   'WinGoNext',
@@ -211,7 +208,6 @@ let s:cmdsWithoutSubwins = [
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinEqualize',
-\   'WinExchange',
 \   'WinGoFirst',
 \   'WinGoLast',
 \   'WinGoNext',

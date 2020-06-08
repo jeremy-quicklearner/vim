@@ -171,7 +171,10 @@ call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
 
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
-function! UpdateUndotreeSubwins()
+function! UpdateUndotreeSubwins(arg)
+    if !WinModelExists()
+        return
+    endif
     let info = WinCommonGetCursorPosition()
         for supwinid in WinModelSupwinIds()
             " Special case: When a supwin is closed while it has a live undotree, the
@@ -202,14 +205,9 @@ function! UpdateUndotreeSubwins()
     call WinCommonRestoreCursorPosition(info)
 endfunction
 
-" Update the undotree subwins when new supwins are added
-call WinAddSupwinsAddedResolveCallback(function('UpdateUndotreeSubwins'))
-
-" Update the undotree subwins after any changes
-augroup UndotreeWin
-    autocmd!
-    autocmd TextChanged * call UpdateUndotreeSubwins()
-augroup END
+" Update the undotree subwins after each resolver run, when the state and
+" model are consistent
+call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 1, 10, 1, 1)
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by

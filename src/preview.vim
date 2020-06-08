@@ -55,6 +55,13 @@ function! ToClosePreview()
         throw 'Preview window is not open'
     endif
 
+    " pclose fails if the preview window is the last window, so use :quit
+    " instead
+    if winnr('$') ==# 1 && tabpagenr('$') ==# 1
+        quit
+        return
+    endif
+
     let t:j_preview = WinStatePreCloseAndReopen(previewwinid)
     let t:j_preview.bufnr = winbufnr(previewwinid)
 

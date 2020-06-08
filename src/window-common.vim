@@ -701,6 +701,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
                 endif
             endif
             call call(a:callback, a:args)
+            let info = WinCommonGetCursorPosition()
 
         finally
             call WinCommonReopenUberwins(closeduberwingroups)
@@ -714,7 +715,8 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
             call WinCommonAfterimageSubwinsBySupwin(supwinid)
             call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
         endfor
-        call WinCommonUpdateAfterimagingByCursorWindow(a:curwin)
+        call WinCommonRestoreCursorPosition(info)
+        call WinCommonUpdateAfterimagingByCursorWindow(info.win)
     endtry
 endfunction
 function! WinCommonDoWithoutUberwins(curwin, callback, args)

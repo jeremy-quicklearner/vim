@@ -1,5 +1,7 @@
 " Window user operations
 " See window.vim
+"
+" TODO: Write dimensions after user operations
 
 " Resolver callback registration
 
@@ -87,7 +89,14 @@ endfunction
 
 " For tabline generation
 function! WinUberwinFlagsStr()
-    return WinModelUberwinFlagsStr()
+    " Due to a bug in Vim, this function sometimes throws E315 in terminal
+    " windows
+    try
+        return WinModelUberwinFlagsStr()
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return ''
+    endtry
 endfunction
 
 function! WinAddUberwinGroup(grouptypename, hidden)
@@ -227,9 +236,18 @@ endfunction
 " For supwins' statusline generation
 function! WinSubwinFlags()
     let flagsstr = ''
-    for grouptypename in WinModelSubwinGroupTypeNames()
-        let flagsstr .= WinCommonSubwinFlagStrByGroup(grouptypename)
-    endfor
+
+    " Due to a bug in Vim, these functions sometimes throws E315 in terminal
+    " windows
+    try
+        for grouptypename in WinModelSubwinGroupTypeNames()
+            let flagsstr .= WinCommonSubwinFlagStrByGroup(grouptypename)
+        endfor
+    catch /.*/
+        echohl ErrorMsg | echo v:exception | echohl None
+        return ''
+    endtry
+
     return flagsstr
 endfunction
 
@@ -338,9 +356,10 @@ function! WinHideSubwinGroup(winid, grouptypename)
     endtry
 endfunction
 
-function! WinShowSubwinGroup(supwinid, grouptypename)
+function! WinShowSubwinGroup(srcid, grouptypename)
     try
-        call WinModelAssertSubwinGroupIsHidden(a:supwinid, a:grouptypename)
+        let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:srcid)
+        call WinModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
         echohl ErrorMsg | echo v:exception | echohl None
         return
@@ -353,30 +372,30 @@ function! WinShowSubwinGroup(supwinid, grouptypename)
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
-        let highertypes = WinCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+        let highertypes = WinCommonCloseSubwinsWithHigherPriority(supwinid, grouptype.priority)
         try
             try
-                let winids = WinCommonOpenSubwins(a:supwinid, a:grouptypename)
-                let supwinnr = WinStateGetWinnrByWinid(a:supwinid)
+                let winids = WinCommonOpenSubwins(supwinid, a:grouptypename)
+                let supwinnr = WinStateGetWinnrByWinid(supwinid)
                 let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call WinModelShowSubwins(a:supwinid, a:grouptypename, winids, reldims)
+                call WinModelShowSubwins(supwinid, a:grouptypename, winids, reldims)
 
             catch /.*/
-                echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
+                echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . supwinid . ':'
                 echohl ErrorMsg | echom v:exception | echohl None
             endtry
 
         " Reopen the subwins we closed
         finally
-            call WinCommonReopenSubwins(a:supwinid, highertypes)
+            call WinCommonReopenSubwins(supwinid, highertypes)
         endtry
 
     finally
         call WinCommonRestoreCursorPosition(info)
     endtry
 
-    let dims = WinStateGetWinDimensions(a:supwinid)
-    call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
+    let dims = WinStateGetWinDimensions(supwinid)
+    call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
 " Retrieve subwins and supwins' statuslines from the model
@@ -405,13 +424,15 @@ function! WinDoCmdWithFlags(cmd,
         call WinGotoSupwin(info.win.supwin)
     endif
 
+    let cmdinfo = WinCommonGetCursorPosition()
+
     try
         if a:dowithoutuberwins && a:dowithoutsubwins
-            call WinCommonDoWithoutUberwinsOrSubwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
         elseif a:dowithoutuberwins
-            call WinCommonDoWithoutUberwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutUberwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
         elseif a:dowithoutsubwins
-            call WinCommonDoWithoutSubwins(info.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
         else
             call WinStateWincmd(a:count, a:cmd)
         endif
@@ -745,6 +766,32 @@ function! WinOnly(count)
     call s:GotoByInfo(info)
 
     call WinStateWincmd('', 'o')
+endfunction
+
+" Exchange the current supwin (or current subwin's supwin) with a different
+" supwin
+function! WinExchange(count)
+    let info = WinCommonGetCursorPosition()
+
+    if info.win.category ==# 'uberwin'
+        return
+    endif
+
+    if info.win.category ==# 'subwin'
+        call WinGotoSupwin(info.win.supwin)
+    endif
+
+    let cmdinfo = WinCommonGetCursorPosition()
+
+    try
+        call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, 'x'])
+        if info.win.category ==# 'subwin'
+            call WinGotoSubwin(WinStateGetCursorWinId(), info.win.grouptype, info.win.typename)
+        endif
+    catch /.*/
+        echohl ErrorMsg | echom v:exception | echohl None
+    endtry
+
 endfunction
 
 " Run a command in every supwin

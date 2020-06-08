@@ -57,6 +57,12 @@ endfunction
 
 " Self-explanatory
 function! EnsureCallbackListsExist()
+    if !exists('g:cursorHoldCallbacks')
+        let g:cursorHoldCallbacks = []
+    endif
+    if !exists('g:cursorHoldCascadingCallbacks')
+        let g:cursorHoldCascadingCallbacks = []
+    endif
     if !exists('t:cursorHoldCallbacks')
         let t:cursorHoldCallbacks = []
     endif
@@ -79,10 +85,26 @@ endfunction
 " The callback will only called once, on the next CursorHold event, unless
 " permanent is true. In that case, the callback will be called for every
 " CursorHold event from now on
-function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent)
+function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent, global)
     "TODO: Validate params
     call EnsureCallbackListsExist()
-    if a:cascade
+    if a:cascade && a:global
+        call add(g:cursorHoldCascadingCallbacks, {
+       \    'callback': a:callback,
+       \    'data': a:data,
+       \    'priority': a:priority,
+       \    'permanent': a:permanent
+       \})
+        call sort(g:cursorHoldCascadingCallbacks, function('ComparePriorities'))
+    elseif !a:cascade && a:global
+        call add(g:cursorHoldCallbacks, {
+       \    'callback': a:callback,
+       \    'data': a:data,
+       \    'priority': a:priority,
+       \    'permanent': a:permanent
+       \})
+        call sort(g:cursorHoldCascadingCallbacks, function('ComparePriorities'))
+    elseif a:cascade && !a:global
         call add(t:cursorHoldCascadingCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
@@ -90,7 +112,7 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'permanent': a:permanent
        \})
         call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
-    else
+    elseif !a:cascade && !a:global
         call add(t:cursorHoldCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
@@ -98,30 +120,56 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'permanent': a:permanent
        \})
         call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
+    else
+        throw "Control should never reach here"
     endif
 endfunction
 
 " Run the registered callbacks
 function! RunCursorHoldCallbacks(cascading)
     call EnsureCallbackListsExist()
-    let newCallbacks = []
 
     if a:cascading
-        let callbacks = t:cursorHoldCascadingCallbacks
+        let callbacks = g:cursorHoldCascadingCallbacks + t:cursorHoldCascadingCallbacks
     else
-        let callbacks = t:cursorHoldCallbacks
+        let callbacks = g:cursorHoldCallbacks + t:cursorHoldCallbacks
     endif
 
     for callback in callbacks
         call callback.callback(callback.data)
-        if callback.permanent
-            call add(newCallbacks, callback)
-        endif
     endfor
 
     if a:cascading
+        let newCallbacks = []
+        for callback in g:cursorHoldCascadingCallbacks
+            if callback.permanent
+                call add(newCallbacks, callback)
+            endif
+        endfor
+        let g:cursorHoldCascadingCallbacks = newCallbacks
+
+        let newCallbacks = []
+        for callback in t:cursorHoldCascadingCallbacks
+            if callback.permanent
+                call add(newCallbacks, callback)
+            endif
+        endfor
         let t:cursorHoldCascadingCallbacks = newCallbacks
     else
+        let newCallbacks = []
+        for callback in g:cursorHoldCallbacks
+            if callback.permanent
+                call add(newCallbacks, callback)
+            endif
+        endfor
+        let g:cursorHoldCallbacks = newCallbacks
+
+        let newCallbacks = []
+        for callback in t:cursorHoldCallbacks
+            if callback.permanent
+                call add(newCallbacks, callback)
+            endif
+        endfor
         let t:cursorHoldCallbacks = newCallbacks
     endif
 
@@ -138,7 +186,9 @@ function! HandleTerminalEnter()
     call feedkeys("\<c-\>\<c-n>")
 
     " Register a callback that goes back to terminal-job mode
-    call RegisterCursorHoldCallback(function('feedkeys'), 'i', 0, 100, 0)
+    " TODO: Fix the bug where extra I's get inserted if the same shell is open
+    " in two windows
+    call RegisterCursorHoldCallback(function('feedkeys'), 'i', 0, 100, 0, 0)
 endfunction
 
 augroup CursorHoldCallbacks

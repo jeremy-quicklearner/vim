@@ -99,9 +99,13 @@
 "       fixed?
 " TODO: Run the resolver on WinResize
 " TODO: Make the Option window an uberwin
+" TODO: Think of a way to avoid creating a new buffer every time a subwin is
+"       afterimaged
 " TODO: Make the Command-line window an uberwin?
 " TODO: Figure out why terminal windows keep breaking the resolver and
 "       statuslines
+"       - It's got to do with an internal bug in Vim. Maybe it can be
+"         mitigated?
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
@@ -132,12 +136,8 @@ source <sfile>:p:h/window-commands.vim
 " Mappings
 source <sfile>:p:h/window-mappings.vim
 
-" Set up the window engine for a tab
+" Run the resolver whenever a tab is created
 function! s:InitTab()
-    " The resolver should run after any changes to the state
-    call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1)
-
-    " Also run the resolver immediately
     let t:winresolvetabenteredcond = 1
     call WinResolve([])
 endfunction
@@ -147,6 +147,9 @@ augroup Window
     autocmd!
     autocmd VimEnter,TabNew * call s:InitTab()
 augroup END
+
+" The resolver should run after any changes to the state
+call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1, 1)
 
 " Don't equalize window sizes when windows are closed
 set noequalalways

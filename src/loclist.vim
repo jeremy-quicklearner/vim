@@ -23,7 +23,12 @@ function! ToOpenLoclist()
 
     " lopen also moves the cursor to the location window, so return the
     " current window ID
-    return [win_getid()]
+    let locwinid = win_getid()
+
+    " Go back to the supwin
+    call win_gotoid(supwinid)
+
+    return [locwinid]
 endfunction
 
 " Callback that closes the location list for the current window
