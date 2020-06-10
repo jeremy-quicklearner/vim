@@ -97,6 +97,10 @@
 " TODO? Figure out why folds keep appearing in the help window on
 "       WinShowUberwin. Haven't seen this happen in some time - maybe it's
 "       fixed?
+" TODO? Add lots of info-level and config-level logging to the user operations
+" TODO? Add lots of debug-level logging to the resolver
+" TODO? Add lots of verbose-level logging to the common code
+"
 " TODO: Run the resolver on WinResize
 " TODO: Make the Option window an uberwin
 " TODO: Think of a way to avoid creating a new buffer every time a subwin is
@@ -107,7 +111,6 @@
 "       - It's got to do with an internal bug in Vim. Maybe it can be
 "         mitigated?
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
-" TODO: Audit instances of echohl | echo and consider changing them to echom
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
 " TODO: Audit the common code for functions that are not common to the

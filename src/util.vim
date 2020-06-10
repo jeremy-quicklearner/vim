@@ -4,6 +4,47 @@
 let mapleader = "-"
 let maplocalleader = "-"
 
+" A simple logging system
+let g:j_loglevels = [
+\   'critical',
+\   'error',
+\   'warning',
+\   'config',
+\   'info',
+\   'debug',
+\   'verbose'
+\]
+let g:j_loglevel_data = {
+\   'critical':{'hl':'ErrorMsg',  'prefix':'CRT'},
+\   'error':   {'hl':'ErrorMsg',  'prefix':'ERR'},
+\   'warning': {'hl':'WarningMsg','prefix':'WRN'},
+\   'config':  {'hl':'WarningMsg','prefix':'CNF'},
+\   'info':    {'hl':'Normal',    'prefix':'INF'},
+\   'debug':   {'hl':'Normal',    'prefix':'DBG'},
+\   'verbose': {'hl':'Normal',    'prefix':'VRB'}
+\}
+function! SetLogLevel(loglevel)
+    if index(g:j_loglevels, a:loglevel) <# 0
+        throw 'Invalid log level ' . a:loglevel
+    endif
+    let g:j_loglevel = a:loglevel
+endfunction
+function! EchomLog(loglevel, msg)
+    if index(g:j_loglevels, a:loglevel) <# 0
+        throw 'Invalid log level ' . a:loglevel
+    endif
+    if index(g:j_loglevels, a:loglevel) ># index(g:j_loglevels, g:j_loglevel)
+        return
+    endif
+    execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
+    echom '[' . g:j_loglevel_data[a:loglevel].prefix . '] ' . a:msg
+    " TODO: go back to the previous echohl instead of None
+    echohl None
+endfunction
+if !exists('g:j_loglevel')
+    let g:j_loglevel = 'error'
+endif
+
 " https://vim.fandom.com/wiki/Windo_and_restore_current_window
 " Just like windo, but restore the current window when done.
 function! WinDo(command, range)

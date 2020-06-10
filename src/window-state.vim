@@ -456,8 +456,8 @@ function! WinStateAfterimageWindow(winid)
     try
         let folds = s:PreserveFolds()
     catch /.*/
-        echom 'Failed to preserve folds for window ' . a:winid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', 'Failed to preserve folds for window ' . a:winid . ':'))
+        call EchomLog('warning', v:exception)
         let folds = {'method':'manual','data':{}}
     endtry
     call s:MaybeRedraw()
@@ -498,8 +498,8 @@ function! WinStateAfterimageWindow(winid)
     try
         call s:RestoreFolds(folds.method, folds.data)
     catch /.*/
-        echom 'Failed to restore folds for window ' . a:winid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', 'Failed to restore folds for window ' . a:winid . ':')
+        call EchomLog('warning', v:exception)
     endtry
     call s:MaybeRedraw()
 
@@ -553,8 +553,8 @@ function! WinStatePreCloseAndReopen(winid)
     try
         let fold = s:PreserveFolds()
     catch /.*/
-        echom 'Failed to preserve folds for window ' . a:winid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', 'Failed to preserve folds for window ' . a:winid . ':')
+        call EchomLog('warning', v:exception)
         let fold = {'method':'manual','data':{}}
     endtry
     call s:MaybeRedraw()
@@ -584,8 +584,8 @@ function! WinStatePostCloseAndReopen(winid, preserved)
     try
         call s:RestoreFolds(a:preserved.fold.method, a:preserved.fold.data)
     catch /.*/
-        echom 'Failed to restore folds for window ' . a:winid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', 'Failed to restore folds for window ' . a:winid . ':')
+        call EchomLog('warning', v:exception)
     endtry
     call s:MaybeRedraw()
 

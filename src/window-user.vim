@@ -94,7 +94,7 @@ function! WinUberwinFlagsStr()
     try
         return WinModelUberwinFlagsStr()
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', v:exception)
         return ''
     endtry
 endfunction
@@ -103,7 +103,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     try
         call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -127,8 +127,8 @@ function! WinAddUberwinGroup(grouptypename, hidden)
                 call WinModelAddUberwins(a:grouptypename, winids, dims)
 
             catch /.*/
-                echom 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                call EchomLog('warning', v:exception)
                 call WinAddUberwinGroup(a:grouptypename, 1)
             endtry
 
@@ -170,7 +170,7 @@ function! WinHideUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -194,7 +194,7 @@ function! WinShowUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -212,8 +212,8 @@ function! WinShowUberwinGroup(grouptypename)
                 let dims = WinStateGetWinDimensionsList(winids)
                 call WinModelShowUberwins(a:grouptypename, winids, dims)
             catch /.*/
-                echom 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                call EchomLog('warning', v:exception)
             endtry
 
 
@@ -244,7 +244,7 @@ function! WinSubwinFlags()
             let flagsstr .= WinCommonSubwinFlagStrByGroup(grouptypename)
         endfor
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', v:exception)
         return ''
     endtry
 
@@ -255,7 +255,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     try
         call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -279,8 +279,8 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
                 let reldims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
                 call WinModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
             catch /.*/
-                echom 'WinAddSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'WinAddSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . a:supwinid . ':')
+                call EchomLog('warning', v:exception)
                 call WinAddSubwinGroup(a:supwinid, a:grouptypename, 1)
             endtry
 
@@ -301,7 +301,7 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
     try
         call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -335,7 +335,7 @@ function! WinHideSubwinGroup(winid, grouptypename)
         let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:winid)
         call WinModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -361,7 +361,7 @@ function! WinShowSubwinGroup(srcid, grouptypename)
         let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:srcid)
         call WinModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -381,8 +381,8 @@ function! WinShowSubwinGroup(srcid, grouptypename)
                 call WinModelShowSubwins(supwinid, a:grouptypename, winids, reldims)
 
             catch /.*/
-                echom 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . supwinid . ':'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . supwinid . ':')
+                call EchomLog('warning', v:exception)
             endtry
 
         " Reopen the subwins we closed
@@ -437,7 +437,7 @@ function! WinDoCmdWithFlags(cmd,
             call WinStateWincmd(a:count, a:cmd)
         endif
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('warning', v:exception)
     endtry
 
     if a:preservecursor
@@ -453,7 +453,7 @@ function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
     try
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -479,7 +479,7 @@ function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
     try
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -507,7 +507,7 @@ function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
     try
         call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -546,8 +546,8 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
         call WinModelAssertUberwinTypeExists(a:dstgrouptype, a:dsttypename)
         call WinModelAssertUberwinGroupExists(a:dsttypename)
     catch /.*/
-        echom 'Cannot go to uberwin ' . a:dstgrouptype . ':' . a:dsttypename . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', 'Cannot go to uberwin ' . a:dstgrouptype . ':' . a:dsttypename . ':')
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -582,8 +582,8 @@ function! WinGotoSupwin(dstwinid)
     try
         let dstsupwinid = WinModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
     catch /.*/
-        echom 'Cannot go to supwin ' . a:dstwinid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', 'Cannot go to supwin ' . a:dstwinid . ':')
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -613,8 +613,8 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
         call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
         call WinModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
     catch /.*/
-        echom 'Cannot go to subwin ' . a:dstgrouptypename . ':' . a:dsttypename . ' of supwin ' . a:dstwinid . ':'
-        echohl ErrorMsg | echo v:exception | echohl None
+        call EchomLog('error', 'Cannot go to subwin ' . a:dstgrouptypename . ':' . a:dsttypename . ' of supwin ' . a:dstwinid . ':')
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -789,7 +789,7 @@ function! WinExchange(count)
             call WinGotoSubwin(WinStateGetCursorWinId(), info.win.grouptype, info.win.typename)
         endif
     catch /.*/
-        echohl ErrorMsg | echom v:exception | echohl None
+        call EchomLog('error', v:exception)
     endtry
 
 endfunction

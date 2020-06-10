@@ -27,11 +27,11 @@ function! ToOpenPreview()
     call WinStateWincmd(&previewheight, '_')
 
     " If the file being previewed is already open in another Vim instance,
-    " this command throws
+    " this command throws ( but works )
     try
        silent execute 'buffer ' . t:j_preview.bufnr
     catch /.*/
-       echohl ErrorMsg | echo v:exception | echohl None
+       call EchomLog('warning', v:exception)
     endtry
 
     let winid = win_getid()

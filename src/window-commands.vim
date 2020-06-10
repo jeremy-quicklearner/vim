@@ -49,7 +49,7 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
-        echohl ErrorMsg | echom v:exception | echohl None
+        call EchomLog('error', v:exception)
         return
     endtry
 
@@ -68,7 +68,7 @@ function! WinCmdRunSpecialCmd(cmdname, range, count, handler)
 
         call Handler(opcount)
     catch /.*/
-        echohl ErrorMsg | echom v:exception | echohl None
+        call EchomLog('warning', v:exception)
         return
     endtry
 endfunction

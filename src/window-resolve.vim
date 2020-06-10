@@ -537,8 +537,8 @@ function! s:WinResolveModelToState()
                    \)
                 endif
             catch /.*/
-                echom 'Resolver step 2.3 failed to add ' . grouptypename . ' uberwin group to state:'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'Resolver step 2.3 failed to add ' . grouptypename . ' uberwin group to state:')
+                call EchomLog('warning', v:exception)
                 call WinModelHideUberwins(grouptypename)
             endtry
         endif
@@ -591,8 +591,8 @@ function! s:WinResolveModelToState()
                        \)
                     endif
                 catch /.*/
-                    echom 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':'
-                    echohl ErrorMsg | echom v:exception | echohl None
+                    call EchomLog('warning', 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':')
+                    call EchomLog('warning', v:exception)
                     call WinModelHideSubwins(supwinid, grouptypename)
                 endtry
             endif
@@ -615,8 +615,8 @@ function! s:WinResolveRecordDimensions()
             let dims = WinStateGetWinDimensionsList(winids)
             call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
         catch /.*/
-            echom 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent:'
-            echohl ErrorMsg | echom v:exception | echohl None
+            call EchomLog('warning', 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent:')
+            call EchomLog('warning', v:exception)
         endtry
     endfor
 
@@ -626,8 +626,8 @@ function! s:WinResolveRecordDimensions()
             let dim = WinStateGetWinDimensions(supwinid)
             call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
         catch
-            echom 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent:'
-            echohl ErrorMsg | echom v:exception | echohl None
+            call EchomLog('warning', 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent:')
+            call EchomLog('warning', v:exception)
         endtry
 
     " STEP 4.3: Record all subwin dimensions in the model
@@ -638,8 +638,8 @@ function! s:WinResolveRecordDimensions()
                 let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
                 call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
             catch /.*/
-                echom 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:'
-                echohl ErrorMsg | echom v:exception | echohl None
+                call EchomLog('warning', 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:')
+                call EchomLog('warning', v:exception)
             endtry
         endfor
     endfor
