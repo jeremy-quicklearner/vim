@@ -95,6 +95,7 @@ function! SanitizeForStatusLine(arg, str)
 endfunction
 
 " CursorHold callback infrastructure
+let s:callbacksRunning = 0
 
 " Self-explanatory
 function! EnsureCallbackListsExist()
@@ -126,8 +127,14 @@ endfunction
 " The callback will only called once, on the next CursorHold event, unless
 " permanent is true. In that case, the callback will be called for every
 " CursorHold event from now on
+" If global is truthy, the callback will execute even if the user switches to
+" another tab before the next CursorHold event. Otherwise, the callback will
+" run on the next CursorHold event that triggers in the current tab
 function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent, global)
     "TODO: Validate params
+    if s:callbacksRunning
+       throw 'Cannot register a CursorHold callback as part of running a different CursorHold callback'
+    endif
     call EnsureCallbackListsExist()
     if a:cascade && a:global
         call add(g:cursorHoldCascadingCallbacks, {
@@ -136,7 +143,6 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'priority': a:priority,
        \    'permanent': a:permanent
        \})
-        call sort(g:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     elseif !a:cascade && a:global
         call add(g:cursorHoldCallbacks, {
        \    'callback': a:callback,
@@ -144,7 +150,6 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'priority': a:priority,
        \    'permanent': a:permanent
        \})
-        call sort(g:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     elseif a:cascade && !a:global
         call add(t:cursorHoldCascadingCallbacks, {
        \    'callback': a:callback,
@@ -152,7 +157,6 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'priority': a:priority,
        \    'permanent': a:permanent
        \})
-        call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     elseif !a:cascade && !a:global
         call add(t:cursorHoldCallbacks, {
        \    'callback': a:callback,
@@ -160,7 +164,6 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'priority': a:priority,
        \    'permanent': a:permanent
        \})
-        call sort(t:cursorHoldCascadingCallbacks, function('ComparePriorities'))
     else
         throw "Control should never reach here"
     endif
@@ -176,6 +179,7 @@ function! RunCursorHoldCallbacks(cascading)
         let callbacks = g:cursorHoldCallbacks + t:cursorHoldCallbacks
     endif
 
+    call sort(callbacks, function('ComparePriorities'))
     for callback in callbacks
         call callback.callback(callback.data)
     endfor
@@ -213,7 +217,6 @@ function! RunCursorHoldCallbacks(cascading)
         endfor
         let t:cursorHoldCallbacks = newCallbacks
     endif
-
 endfunction
 
 function! HandleTerminalEnter()

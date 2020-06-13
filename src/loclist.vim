@@ -19,14 +19,15 @@ function! ToOpenLoclist()
     endif
 
     " Open the location window
-    lopen
+    noautocmd lopen
+    let &syntax = 'qf'
 
     " lopen also moves the cursor to the location window, so return the
     " current window ID
     let locwinid = win_getid()
 
     " Go back to the supwin
-    call win_gotoid(supwinid)
+    noautocmd call win_gotoid(supwinid)
 
     return [locwinid]
 endfunction

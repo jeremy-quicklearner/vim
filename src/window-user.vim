@@ -2,6 +2,7 @@
 " See window.vim
 "
 " TODO: Write dimensions after user operations
+" TODO: Add infrastructure for post-user-operation callbacks
 
 " Resolver callback registration
 
@@ -115,26 +116,31 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 
     let info = WinCommonGetCursorPosition()
     try
-
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let grouptype = g:uberwingrouptype[a:grouptypename]
-        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        let windims = WinCommonPreserveDimensions()
         try
+            " Each uberwin must be, at the time it is opened, the one with the
+            " highest priority. So close all uberwins with higher priority.
+            let grouptype = g:uberwingrouptype[a:grouptypename]
+            let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
             try
-                let winids = WinCommonOpenUberwins(a:grouptypename)
-                let dims = WinStateGetWinDimensionsList(winids)
-                call WinModelAddUberwins(a:grouptypename, winids, dims)
+                try
+                    let winids = WinCommonOpenUberwins(a:grouptypename)
+                    let dims = WinStateGetWinDimensionsList(winids)
+                    call WinModelAddUberwins(a:grouptypename, winids, dims)
 
-            catch /.*/
-                call EchomLog('warning', 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
-                call EchomLog('warning', v:exception)
-                call WinAddUberwinGroup(a:grouptypename, 1)
+                catch /.*/
+                    call EchomLog('warning', 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                    call EchomLog('warning', v:exception)
+                    call WinAddUberwinGroup(a:grouptypename, 1)
+                endtry
+
+            " Reopen the uberwins we closed
+            finally
+                call WinCommonReopenUberwins(highertypes)
             endtry
 
-        " Reopen the uberwins we closed
         finally
-            call WinCommonReopenUberwins(highertypes)
+            call WinCommonRestoreMaxDimensions(windims)
         endtry
 
         " Opening an uberwin changes how much space is available to supwins
@@ -202,24 +208,29 @@ function! WinShowUberwinGroup(grouptypename)
 
     let info = WinCommonGetCursorPosition()
     try
-
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        let windims = WinCommonPreserveDimensions()
         try
+            " Each uberwin must be, at the time it is opened, the one with the
+            " highest priority. So close all uberwins with higher priority.
+            let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
             try
-                let winids = WinCommonOpenUberwins(a:grouptypename)
-                let dims = WinStateGetWinDimensionsList(winids)
-                call WinModelShowUberwins(a:grouptypename, winids, dims)
-            catch /.*/
-                call EchomLog('warning', 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
-                call EchomLog('warning', v:exception)
+                try
+                    let winids = WinCommonOpenUberwins(a:grouptypename)
+                    let dims = WinStateGetWinDimensionsList(winids)
+                    call WinModelShowUberwins(a:grouptypename, winids, dims)
+                catch /.*/
+                    call EchomLog('warning', 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                    call EchomLog('warning', v:exception)
+                endtry
+
+
+            " Reopen the uberwins we closed
+            finally
+                call WinCommonReopenUberwins(highertypes)
             endtry
-
-
-        " Reopen the uberwins we closed
+        
         finally
-            call WinCommonReopenUberwins(highertypes)
+            call WinCommonRestoreMaxDimensions(windims)
         endtry
 
         " Opening an uberwin changes how much space is available to supwins
@@ -692,6 +703,12 @@ function! s:GoInDirection(count, direction)
     endif
     for iter in range(thecount)
         let srcwinid = WinStateGetCursorWinId()
+        let srcinfo = WinModelInfoById(srcwinid)
+        let srcsupwin = -1
+        if srcinfo.category ==# 'subwin'
+            let srcsupwin = srcinfo.supwin
+        endif
+        
         let curwinid = srcwinid
         let prvwinid = 0
         let dstwinid = 0
@@ -706,7 +723,8 @@ function! s:GoInDirection(count, direction)
                 let dstwinid = curwinid
                 break
             endif
-            if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid
+            if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid &&
+           \   curwininfo.supwin !=# srcsupwin
                 let dstwinid = curwininfo.supwin
                 break
             endif

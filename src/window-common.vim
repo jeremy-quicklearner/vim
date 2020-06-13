@@ -262,40 +262,54 @@ function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     call WinCommonThawWindowSizes(prefreeze)
 endfunction
 
+" When windows are opened, Vim needs to choose which other windows to shrink
+" to make room. Sometimes Vim makes choices I don't like, such as equalizing
+" windows along the way. This function can be called before opening a window,
+" to remember the dimensions of all the windows that are already open. The
+" remembered dimensions can then be somewhat restored using
+" WinCommonRestoreMaxDimensions
+function! WinCommonPreserveDimensions()
+    let otherwinids = WinStateGetWinidsByCurrentTab()
+    let dims = WinStateGetWinDimensionsList(otherwinids)
+    let windims = {}
+    for idx in range(len(otherwinids))
+        let windims[otherwinids[idx]] = dims[idx]
+    endfor
+    return windims
+endfunction
+
+" Restore dimensions remembered with WinCommonPreserveDimensions
+function! WinCommonRestoreMaxDimensions(windims)
+    for otherwinid in keys(a:windims)
+        if !WinStateWinExists(otherwinid)
+            continue
+        endif
+        let olddims = a:windims[otherwinid]
+        let newdims = WinStateGetWinDimensions(otherwinid)
+        if olddims.w <# newdims.w
+            call WinStateMoveCursorToWinid(otherwinid)
+            call WinStateWincmd(olddims.w, '|')
+        endif
+        if olddims.h <# newdims.h
+            call WinStateMoveCursorToWinid(otherwinid)
+            call WinStateWincmd(olddims.h, '_')
+        endif
+    endfor
+endfunction
+
 " Wrapper for WinStateOpenUberwinsByGroupType that freezes windows whose
 " dimensions shouldn't change and ensures no windows get bigger
 function! WinCommonOpenUberwins(grouptypename)
     let prefreeze = WinCommonFreezeAllNonSupwinSizes()
     try
-        " Remember dimensions of all windows on screen before the uberwin
-        " opens
-        let otherwinids = WinStateGetWinidsByCurrentTab()
-        let dims = WinStateGetWinDimensionsList(otherwinids)
-        let windims = {}
-        for idx in range(len(otherwinids))
-            let windims[otherwinids[idx]] = dims[idx]
-        endfor
+        let windims = WinCommonPreserveDimensions()
+        try
+            let grouptype = g:uberwingrouptype[a:grouptypename]
+            let winids = WinStateOpenUberwinsByGroupType(grouptype)
 
-        " Open the uberwin
-        let grouptype = g:uberwingrouptype[a:grouptypename]
-        let winids = WinStateOpenUberwinsByGroupType(grouptype)
-
-        " When windows are opened, Vim needs to choose which other windows to
-        " shrink to make room. Sometimes Vim makes choices I don't like, such
-        " as equalizing windows along the way. So if any window's width or
-        " height has increased, change it back
-        for otherwinid in keys(windims)
-            let olddims = windims[otherwinid]
-            let newdims = WinStateGetWinDimensions(otherwinid)
-            if olddims.w <# newdims.w
-                call WinStateMoveCursorToWinid(otherwinid)
-                call WinStateWincmd(olddims.w, '|')
-            endif
-            if olddims.h <# newdims.h
-                call WinStateMoveCursorToWinid(otherwinid)
-                call WinStateWincmd(olddims.h, '_')
-            endif
-        endfor
+        finally
+            call WinCommonRestoreMaxDimensions(windims)
+        endtry
 
     finally
         call WinCommonThawWindowSizes(prefreeze)

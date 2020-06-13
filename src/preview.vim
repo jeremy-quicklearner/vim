@@ -23,21 +23,28 @@ function! ToOpenPreview()
         endif
     endfor
 
+    let previouswinid = win_getid()
     noautocmd execute 'topleft ' . &previewheight . 'split'
     call WinStateWincmd(&previewheight, '_')
 
     " If the file being previewed is already open in another Vim instance,
     " this command throws ( but works )
     try
-       silent execute 'buffer ' . t:j_preview.bufnr
+       noautocmd silent execute 'buffer ' . t:j_preview.bufnr
     catch /.*/
        call EchomLog('warning', v:exception)
     endtry
 
     let winid = win_getid()
     call WinStatePostCloseAndReopen(winid, t:j_preview)
-    set previewwindow
-    set winfixheight
+    let &previewwindow = 1
+    let &winfixheight = 1
+    " This looks strange but it's necessary. Without it, the above uses of
+    " noautocmd stop the syntax highlighting from being applied even though
+    " the syntax option is set
+    let &syntax = &syntax
+
+    noautocmd call win_gotoid(previouswinid)
 
     return [winid]
 endfunction
@@ -112,7 +119,7 @@ endfunction
 call WinAddUberwinGroupType('preview', ['preview'],
                            \['%!PreviewStatusLine()'],
                            \'P', 'p', 7,
-                           \40,
+                           \30,
                            \[-1], [&previewheight],
                            \function('ToOpenPreview'),
                            \function('ToClosePreview'),

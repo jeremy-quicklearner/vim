@@ -177,20 +177,15 @@ function! UpdateUndotreeSubwins(arg)
     endif
     let info = WinCommonGetCursorPosition()
         for supwinid in WinModelSupwinIds()
-            " Special case: When a supwin is closed while it has a live undotree, the
-            " cursor jumps to the left - to the undotree windows. The undotree
-            " plugin's autocmds fire and update the text in those windows, and
-            " TextChanged fires and calls this function, before the resolver runs.
-            " Since the resolver hasn't run yet, the model and state are inconsistent.
-            " The supwin is returned by WinModelSupwinIds() but it isn't in the state
-            " when we call WinStateMoveCursorToWinid(). The code below breaks.
-            " So check if the window exists before trying to jump to it
-            if !WinStateWinExists(supwinid)
-                continue
+            let undotreewinsexist = WinModelSubwinGroupExists(supwinid, 'undotree')
+
+            " Special case: Terminal windows never have undotrees
+            if undotreewinsexist && WinStateWinIsTerminal(supwinid)
+               call WinRemoveSubwinGroup(supwinid, 'undotree')
+               continue
             endif
 
             call WinStateMoveCursorToWinid(supwinid)
-            let undotreewinsexist = WinModelSubwinGroupExists(supwinid, 'undotree')
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
@@ -200,6 +195,7 @@ function! UpdateUndotreeSubwins(arg)
 
             if !undotreewinsexist && undotreeexists
                 call WinAddSubwinGroup(supwinid, 'undotree', 1)
+                continue
             endif
         endfor
     call WinCommonRestoreCursorPosition(info)
@@ -207,7 +203,10 @@ endfunction
 
 " Update the undotree subwins after each resolver run, when the state and
 " model are consistent
-call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 1, 10, 1, 1)
+if !exists('g:j_undotree_chc')
+    let g:j_undotree_chc = 1
+    call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 1)
+endif
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by

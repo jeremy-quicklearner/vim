@@ -24,11 +24,14 @@ function! ToOpenHelp()
         endif
     endfor
 
+    let prevwinid = win_getid()
     noautocmd vertical botright 89 split
-    silent execute 'buffer ' . t:j_help.bufnr
+    noautocmd silent execute 'buffer ' . t:j_help.bufnr
     let winid = win_getid()
     call WinStatePostCloseAndReopen(winid, t:j_help)
-    set winfixwidth
+    let &winfixwidth = 1
+
+    noautocmd call win_gotoid(prevwinid)
 
     return [winid]
 endfunction
@@ -88,7 +91,7 @@ endfunction
 call WinAddUberwinGroupType('help', ['help'],
                            \['%!HelpStatusLine()'],
                            \'H', 'h', 4,
-                           \60,
+                           \40,
                            \[89], [-1],
                            \function('ToOpenHelp'),
                            \function('ToCloseHelp'),

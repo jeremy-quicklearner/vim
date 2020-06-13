@@ -106,10 +106,12 @@
 " TODO: Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
 " TODO: Make the Command-line window an uberwin?
-" TODO: Figure out why terminal windows keep breaking the resolver and
+" TODO? Figure out why terminal windows keep breaking the resolver and
 "       statuslines
 "       - It's got to do with an internal bug in Vim. Maybe it can be
 "         mitigated?
+"       - The internal error is caught now, but it seems to add ranges to
+"         a bunch of commands that run after it gets caught
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
@@ -152,7 +154,10 @@ augroup Window
 augroup END
 
 " The resolver should run after any changes to the state
-call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1, 1)
+if !exists('g:j_winresolve_chc')
+    let g:j_winresolve_chc = 1
+    call RegisterCursorHoldCallback(function('WinResolve'), [], 0, 0, 1, 1)
+endif
 
 " Don't equalize window sizes when windows are closed
 set noequalalways

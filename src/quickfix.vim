@@ -9,7 +9,8 @@ function! ToOpenQuickfix()
     endif
 
     " Open the quickfix window
-    botright copen
+    noautocmd botright copen
+    let &syntax = 'qf'
 
     " copen also moves the cursor to the quickfix window, so return the
     " current window ID

@@ -25,6 +25,7 @@ I don't know how
 - Write a command that calls a ws make and puts errors in the quickfix list
 - Populate the pmenu with only tokens from the current indented block
 - Add a new subwin on the right that shows marks. Jump to each mark with <enter> and <space>
+- Add a new subwin on the right that shows the jump list
 - Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
 - Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
 - See if there's a way to draw columns to the left of indented blocks
