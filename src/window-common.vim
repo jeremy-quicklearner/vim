@@ -297,6 +297,45 @@ function! WinCommonRestoreMaxDimensions(windims)
     endfor
 endfunction
 
+" Record the dimensions of all windows in the model
+function! WinCommonRecordAllDimensions()
+    " Record all uberwin dimensions in the model
+    for grouptypename in WinModelShownUberwinGroupTypeNames()
+        try
+            let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
+            let dims = WinStateGetWinDimensionsList(winids)
+            call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
+        catch /.*/
+            call EchomLog('warning', 'WinCommonRecordAllDimensions found uberwin group ' . grouptypename . ' inconsistent:')
+            call EchomLog('warning', v:exception)
+        endtry
+    endfor
+
+    " Record all supwin dimensions in the model
+    for supwinid in WinModelSupwinIds()
+        try
+            let dim = WinStateGetWinDimensions(supwinid)
+            call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
+        catch
+            call EchomLog('warning', 'WinCommonRecordAllDimensions found supwin ' . supwinid . ' inconsistent:')
+            call EchomLog('warning', v:exception)
+        endtry
+
+    " Record all subwin dimensions in the model
+        let supwinnr = WinStateGetWinnrByWinid(supwinid)
+        for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+            try
+                let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
+                let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
+                call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
+            catch /.*/
+                call EchomLog('warning', 'WinCommonRecordAllDimensions found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:')
+                call EchomLog('warning', v:exception)
+            endtry
+        endfor
+    endfor
+endfunction
+
 " Wrapper for WinStateOpenUberwinsByGroupType that freezes windows whose
 " dimensions shouldn't change and ensures no windows get bigger
 function! WinCommonOpenUberwins(grouptypename)
@@ -714,7 +753,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
                     call WinStateMoveCursorToWinid(winid)
                 endif
             endif
-            call call(a:callback, a:args)
+            let retval = call(a:callback, a:args)
             let info = WinCommonGetCursorPosition()
 
         finally
@@ -732,17 +771,18 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
         call WinCommonRestoreCursorPosition(info)
         call WinCommonUpdateAfterimagingByCursorWindow(info.win)
     endtry
+    return retval
 endfunction
 function! WinCommonDoWithoutUberwins(curwin, callback, args)
-    call s:DoWithout(a:curwin, a:callback, a:args, 1, 0)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0)
 endfunction
 
 function! WinCommonDoWithoutSubwins(curwin, callback, args)
-    call s:DoWithout(a:curwin, a:callback, a:args, 0, 1)
+    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1)
 endfunction
 
 function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args)
-    call s:DoWithout(a:curwin, a:callback, a:args, 1, 1)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1)
 endfunction
 
 function! s:Nop()

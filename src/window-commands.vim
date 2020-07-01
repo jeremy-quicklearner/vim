@@ -24,11 +24,14 @@
 " TODO: Test WinRotate
 
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
+    call EchomLog('window-commands', 'debug', 'SanitizeRange ' . a:cmdname . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ']')
     if a:range ==# 0
+        call EchomLog('window-commands', 'verbose', 'Using default count ' . a:defaultcount)
         return a:defaultcount
     endif
 
     if a:range ==# 1
+        call EchomLog('window-commands', 'verbose', 'Using given count ' . a:count)
         return a:count
     endif
      
@@ -46,10 +49,11 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
                      \ ifsubwingotosupwin,
                      \ dowithoutuberwins,
                      \ dowithoutsubwins)
+    call EchomLog('window-commands', 'info', 'WinCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' / a:dowithoutsubwins . ']')
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
-        call EchomLog('error', v:exception)
+        call EchomLog('window-commands', 'error', v:exception)
         return
     endtry
 
@@ -62,13 +66,14 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
 endfunction
 
 function! WinCmdRunSpecialCmd(cmdname, range, count, handler)
+    call EchomLog('window-commands', 'info', 'WinCmdRunSpecialCmd ' . a:cmdname . ', [' . a:range . ',' . a:count . '], ' . a:handler)
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, '')
         let Handler = function(a:handler)
 
         call Handler(opcount)
     catch /.*/
-        call EchomLog('warning', v:exception)
+        call EchomLog('window-commands', 'warning', v:exception)
         return
     endtry
 endfunction
@@ -77,6 +82,7 @@ function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
                         \ preservecursor,
                         \ ifuberwindonothing, ifsubwingotosupwin,
                         \ dowithoutuberwins, dowithoutsubwins)
+    call EchomLog('window-commands', 'config', 'Command: ' . a:cmdname)
     execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
    \        ' call WinCmdRunCmd(' .
    \        '"' . a:cmdname . '",' .
@@ -91,6 +97,7 @@ function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
 endfunction
 
 function! WinCmdDefineSpecialCmd(cmdname, handler)
+    call EchomLog('window-commands', 'config', 'Special command: ' . a:cmdname)
     execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
    \        ' call WinCmdRunSpecialCmd(' .
    \        '"' . a:cmdname . '",' .

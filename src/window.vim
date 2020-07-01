@@ -82,13 +82,14 @@
 " operations).
 "
 " The mappings may interact in unwelcome ways with other scripts, so they are
-" TODO optional. If they are enabled, they have some minor side effects such as:
+" optional. If they are enabled, they have some minor side effects such as:
 "  - All window commands, even ones cancelled partway through with <esc> or
 "    <c-c>, kick you out of visual mode
 "    TODO? Fix
 "  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
 "    TODO? Fix
 "
+" TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
@@ -106,13 +107,14 @@
 " TODO: Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
 " TODO: Make the Command-line window an uberwin?
+" TODO: Actually make the mappings optional
 " TODO? Figure out why terminal windows keep breaking the resolver and
 "       statuslines
 "       - It's got to do with an internal bug in Vim. Maybe it can be
 "         mitigated?
 "       - The internal error is caught now, but it seems to add ranges to
 "         a bunch of commands that run after it gets caught
-" TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
+"       - All the statuslines and tabline get cleared
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
 " TODO: Audit the common code for functions that are not common to the
@@ -125,6 +127,20 @@
 " TODO: Move the whole window engine to a plugin
 " TODO: Autoload everything
 " TODO: Move subwin and uberwin group definitions to their own plugins
+
+" Logging facilities - all in one place so they can be changed easily
+" TODO: Add logging
+call SetLogLevel('window-mappings', 'warning')
+call SetLogLevel('window-commands', 'warning')
+call SetLogLevel('window-user',     'warning')
+" TODO: Add logging
+call SetLogLevel('window-resolve',  'warning')
+" TODO: Add logging
+call SetLogLevel('window-common',   'warning')
+" TODO: Add logging
+call SetLogLevel('window-model',    'warning')
+" TODO: Add logging
+call SetLogLevel('window-state',    'warning')
 
 " Model
 source <sfile>:p:h/window-model.vim

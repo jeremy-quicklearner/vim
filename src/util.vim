@@ -5,6 +5,8 @@ let mapleader = "-"
 let maplocalleader = "-"
 
 " A simple logging system
+" TODO: Move this to a plugin so that it's accessible to the window engine
+" when it becomes a plugin too
 let g:j_loglevels = [
 \   'critical',
 \   'error',
@@ -23,26 +25,27 @@ let g:j_loglevel_data = {
 \   'debug':   {'hl':'Normal',    'prefix':'DBG'},
 \   'verbose': {'hl':'Normal',    'prefix':'VRB'}
 \}
-function! SetLogLevel(loglevel)
+function! SetLogLevel(facility, loglevel)
     if index(g:j_loglevels, a:loglevel) <# 0
         throw 'Invalid log level ' . a:loglevel
     endif
-    let g:j_loglevel = a:loglevel
+    let g:j_loglevel[a:facility] = a:loglevel
 endfunction
-function! EchomLog(loglevel, msg)
+function! EchomLog(facility, loglevel, msg)
     if index(g:j_loglevels, a:loglevel) <# 0
         throw 'Invalid log level ' . a:loglevel
     endif
-    if index(g:j_loglevels, a:loglevel) ># index(g:j_loglevels, g:j_loglevel)
+    let currentloglevel = get(g:j_loglevel, a:facility, 'verbose')
+    if index(g:j_loglevels, a:loglevel) ># index(g:j_loglevels, currentloglevel)
         return
     endif
     execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
-    echom '[' . g:j_loglevel_data[a:loglevel].prefix . '] ' . a:msg
+    echom '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . a:msg
     " TODO: go back to the previous echohl instead of None
     echohl None
 endfunction
 if !exists('g:j_loglevel')
-    let g:j_loglevel = 'error'
+    let g:j_loglevel = {}
 endif
 
 " https://vim.fandom.com/wiki/Windo_and_restore_current_window

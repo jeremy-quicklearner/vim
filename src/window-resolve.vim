@@ -164,6 +164,7 @@ function! s:WinResolveStateToModel()
            \    'typename': typename
            \})
             if winid && WinStateWinIsTerminal(winid)
+                call EchomLog('window-resolve', 'debug', 'Step 1.1 relisting terminal window ' . winid . ' from uberwin ' . grouptypename . ':' . typename . 'to supwin')
                 call WinModelHideUberwins(grouptypename)
                 call WinModelAddSupwin(winid, -1, -1, -1)
                 let s:supwinsaddedcond = 1
@@ -188,6 +189,7 @@ function! s:WinResolveStateToModel()
                \    'typename': typename
                \})
                 if winid && WinStateWinIsTerminal(winid)
+                    call EchomLog('window-resolve', 'debug', 'Step 1.1 relisting terminal window ' . winid . ' from subwin ' supwinid . ':' . grouptypename . ':' . typename . 'to supwin')
                     call WinModelHideSubwins(supwinid, grouptypename)
                     call WinModelAddSupwin(winid, -1, -1, -1)
                     let s:supwinsaddedcond = 1
@@ -215,6 +217,7 @@ function! s:WinResolveStateToModel()
         endif
     endfor
     for tohide in keys(uberwingrouptypestohide)
+         call EchomLog('window-resolve', 'debug', 'Step 1.2 hiding non-state-complete uberwin group ' . tohide . ' in model')
          call WinModelHideUberwins(tohide)
     endfor
 
@@ -223,6 +226,7 @@ function! s:WinResolveStateToModel()
     let modelsupwinids = WinModelSupwinIds()
     for modelsupwinid in modelsupwinids
         if !WinStateWinExists(modelsupwinid)
+            call EchomLog('window-resolve', 'debug', 'Step 1.2 removing state-missing supwin ' . modelsupwinid . ' from model')
             call WinModelRemoveSupwin(modelsupwinid)
         endif
     endfor
@@ -248,6 +252,7 @@ function! s:WinResolveStateToModel()
     endfor
     for supwinid in keys(subwingrouptypestohidebysupwin)
         for subwingrouptypetohide in keys(subwingrouptypestohidebysupwin[supwinid])
+            call EchomLog('window-resolve', 'debug', 'Step 1.2 hiding non-state-complete subwin group ' . supwinid . ':' . subwingrouptypetohide . ' in model')
             call WinModelHideSubwins(supwinid, subwingrouptypetohide)
         endfor
     endfor
@@ -265,6 +270,7 @@ function! s:WinResolveStateToModel()
            \    'typename': typename
            \})
             if s:toIdentifyUberwins[grouptypename](winid) !=# typename
+                call EchomLog('window-resolve', 'debug', 'Step 1.3 relisting non-compliant window ' . winid . ' from uberwin ' . grouptypename . ':' . typename . ' to supwin')
                 call WinModelHideUberwins(grouptypename)
                 call WinModelAddSupwin(winid, -1, -1, -1)
                 let s:supwinsaddedcond = 1
@@ -294,6 +300,7 @@ function! s:WinResolveStateToModel()
                 if empty(identified) ||
                   \identified.supwin !=# supwinid ||
                   \identified.typename !=# typename
+                    call EchomLog('window-resolve', 'debug', 'Step 1.3 relisting non-compliant window ' . winid . ' from subwin ' . supwinid . ':' . grouptypename . ':' . typename . ' to supwin')
                     call WinModelHideSubwins(supwinid, grouptypename)
                     call WinModelAddSupwin(winid, -1, -1, -1)
                     let s:supwinsaddedcond = 1
@@ -326,6 +333,7 @@ function! s:WinResolveStateToModel()
     let groupedmissingwininfo = WinResolveGroupInfo(missingwininfos)
     for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
         let winids = groupedmissingwininfo.uberwin[uberwingrouptypename].winids
+        call EchomLog('window-resolve', 'debug', 'Step 1.4 adding uberwin group ' . uberwingrouptypename . ' to model with winids ' . string(winids))
         call WinModelAddOrShowUberwins(
        \    uberwingrouptypename,
        \    winids,
@@ -333,6 +341,7 @@ function! s:WinResolveStateToModel()
        \)
     endfor
     for supwinid in groupedmissingwininfo.supwin
+        call EchomLog('window-resolve', 'debug', 'Step 1.4 adding window ' . supwinid . ' to model as supwin')
         call WinModelAddSupwin(supwinid, -1, -1, -1)
         let s:supwinsaddedcond = 1
     endfor
@@ -343,6 +352,7 @@ function! s:WinResolveStateToModel()
         for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
             let winids = groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
             let supwinnr = WinStateGetWinnrByWinid(supwinid)
+            call EchomLog('window-resolve', 'debug', 'Step 1.4 adding subwin group ' . supwinid . ':' . subwingrouptypename . ' to model with winids ' . string(winids))
             call WinModelAddOrShowSubwins(
            \    supwinid,
            \    subwingrouptypename,
@@ -360,6 +370,7 @@ function! s:WinResolveStateToModel()
     for supwinid in WinModelSupwinIds()
         if WinStateWinExists(supwinid) && WinStateWinIsTerminal(supwinid)
             for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+                call EchomLog('window-resolve', 'debug', 'Step 1.5 hiding subwin group ' . grouptypename . ' of terminal supwin ' . supwinid . ' in model')
                 call WinModelHideSubwins(supwinid, grouptypename)
             endfor
         endif
@@ -383,6 +394,7 @@ function! s:WinResolveModelToState()
         " If any window in the state isn't categorizable, remove it from the
         " state
         if wininfo.category ==# 'none'
+            call EchomLog('window-resolve', 'debug', 'Step 2.1 removing uncategorizable window ' . winid . ' from state')
             call WinStateCloseWindow(winid)
             continue
         endif
@@ -390,6 +402,7 @@ function! s:WinResolveModelToState()
         " If any supwin in the state isn't in the model, remove it from the
         " state.
         if wininfo.category ==# 'supwin' && !WinModelSupwinExists(wininfo.id)
+            call EchomLog('window-resolve', 'debug', 'Step 2.1 removing supwin ' . winid . ' from state')
             call WinStateCloseWindow(winid)
             continue
         endif
@@ -400,6 +413,7 @@ function! s:WinResolveModelToState()
        \    !WinModelUberwinGroupExists(wininfo.grouptype) ||
        \    WinModelUberwinGroupIsHidden(wininfo.grouptype)
        \)
+            call EchomLog('window-resolve', 'debug', 'Step 2.1 removing non-shown uberwin ' . wininfo.grouptype . ':' . wininfo.typename . ' with winid ' . winid . ' from state')
             call WinStateCloseWindow(winid)
             continue
         endif
@@ -417,6 +431,7 @@ function! s:WinResolveModelToState()
                let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(wininfo.supwin)
            endif
 
+           call EchomLog('window-resolve', 'debug', 'Step 2.1 removing non-shown subwin ' . wininfo.supwin . ':' . subwin.grouptype . ':' . subwin.typename . ' with winid ' . winid . ' from state')
            call WinStateCloseWindow(winid)
 
            if WinModelSupwinExists(wininfo.supwin)
@@ -461,6 +476,7 @@ function! s:WinResolveModelToState()
                \   !WinCommonUberwinGroupDimensionsMatch(grouptypename)
                     let preserveduberwins[grouptypename] =
                    \    WinCommonPreCloseAndReopenUberwins(grouptypename)
+                    call EchomLog('window-resolve', 'debug', 'Step 2.2 removing uberwin group ' . grouptypename . ' from state')
                     call WinCommonCloseUberwinsByGroupTypeName(grouptypename)
                     let uberwinsremoved = 1
                     let passneeded = 1
@@ -512,6 +528,7 @@ function! s:WinResolveModelToState()
                 if WinCommonSubwinGroupExistsInState(supwinid, grouptypename)
                     let preservedsubwins[supwinid][grouptypename] =
                    \    WinCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
+                    call EchomLog('window-resolve', 'debug', 'Step 2.2 removing subwin group ' . supwinid . ':' . grouptypename . ' from state')
                     call WinCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1
                 endif
@@ -526,6 +543,7 @@ function! s:WinResolveModelToState()
     for grouptypename in WinModelShownUberwinGroupTypeNames()
         if !WinCommonUberwinGroupExistsInState(grouptypename)
             try
+                call EchomLog('window-resolve', 'debug', 'Step 2.3 adding uberwin group ' . grouptypename . ' to state')
                 let winids = WinCommonOpenUberwins(grouptypename)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
@@ -537,8 +555,8 @@ function! s:WinResolveModelToState()
                    \)
                 endif
             catch /.*/
-                call EchomLog('warning', 'Resolver step 2.3 failed to add ' . grouptypename . ' uberwin group to state:')
-                call EchomLog('warning', v:exception)
+                call EchomLog('window-resolve', 'warning', 'Step 2.3 failed to add ' . grouptypename . ' uberwin group to state:')
+                call EchomLog('window-resolve', 'warning', v:exception)
                 call WinModelHideUberwins(grouptypename)
             endtry
         endif
@@ -570,6 +588,7 @@ function! s:WinResolveModelToState()
                        \    othersupwinid,
                        \    grouptypename
                        \)
+                            call EchomLog('window-resolve', 'debug', 'Step 2.3 afterimaging subwin group ' . othersupwinid . ':' . grouptypename)
                             call WinCommonAfterimageSubwinsByInfo(
                            \    othersupwinid,
                            \    grouptypename
@@ -578,6 +597,7 @@ function! s:WinResolveModelToState()
                     endfor
                 endif
                 try
+                    call EchomLog('window-resolve', 'debug', 'Step 2.3 adding subwin group ' . supwinid . ':' . grouptypename . ' to state')
                     let winids = WinCommonOpenSubwins(supwinid, grouptypename)
                     " This Model write in ResolveModelToState is unfortunate, but I
                     " see no sensible way to put it anywhere else
@@ -591,8 +611,8 @@ function! s:WinResolveModelToState()
                        \)
                     endif
                 catch /.*/
-                    call EchomLog('warning', 'Resolver step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':')
-                    call EchomLog('warning', v:exception)
+                    call EchomLog('window-resolve', 'warning', 'Step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':')
+                    call EchomLog('window-resolve', 'warning', v:exception)
                     call WinModelHideSubwins(supwinid, grouptypename)
                 endtry
             endif
@@ -604,45 +624,6 @@ endfunction
 "         final position
 function! s:WinResolveCursor()
     call WinCommonUpdateAfterimagingByCursorWindow(s:curpos.win)
-endfunction
-
-" STEP 4: Record all window dimensions in the model
-function! s:WinResolveRecordDimensions()
-    " STEP 4.1: Record all uberwin dimensions in the model
-    for grouptypename in WinModelShownUberwinGroupTypeNames()
-        try
-            let winids = WinModelUberwinIdsByGroupTypeName(grouptypename)
-            let dims = WinStateGetWinDimensionsList(winids)
-            call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
-        catch /.*/
-            call EchomLog('warning', 'Resolver step 4.1 found uberwin group ' . grouptypename . ' inconsistent:')
-            call EchomLog('warning', v:exception)
-        endtry
-    endfor
-
-    " STEP 4.2: Record all supwin dimensions in the model
-    for supwinid in WinModelSupwinIds()
-        try
-            let dim = WinStateGetWinDimensions(supwinid)
-            call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
-        catch
-            call EchomLog('warning', 'Resolver step 4.2 found supwin ' . supwinid . ' inconsistent:')
-            call EchomLog('warning', v:exception)
-        endtry
-
-    " STEP 4.3: Record all subwin dimensions in the model
-        let supwinnr = WinStateGetWinnrByWinid(supwinid)
-        for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-            try
-                let winids = WinModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
-                let dims = WinStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
-            catch /.*/
-                call EchomLog('warning', 'Resolver step 4.3 found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:')
-                call EchomLog('warning', v:exception)
-            endtry
-        endfor
-    endfor
 endfunction
 
 " Resolver
@@ -701,7 +682,7 @@ function! WinResolve(arg)
     "         dimensions as being the last known consistent data, unless a
     "         user operation overwrites them with its own (also consistent)
     "         data.
-    call s:WinResolveRecordDimensions()
+    call WinCommonRecordAllDimensions()
 
     " Restore the cursor position from when the resolver started
     call WinCommonRestoreCursorPosition(s:curpos)
