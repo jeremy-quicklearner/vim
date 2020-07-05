@@ -1,4 +1,5 @@
 " Undotree plugin manipulation
+call SetLogLevel('undotree-subwin', 'info', 'warning')
 
 " Cause UndotreeShow to open the undotree windows relative to the current
 " window, instead of relative to the whole tab
@@ -23,6 +24,7 @@ let g:undotree_HighlightChangedWithSign = 0
 
 " Callback that opens the undotree windows for the current window
 function! ToOpenUndotree()
+    call EchomLog('undotree-subwin', 'info', 'ToOpenUndotree')
     if (exists('t:undotree') && t:undotree.IsVisible())
         throw 'Undotree window is already open'
     endif
@@ -79,6 +81,7 @@ endfunction
 
 " Callback that closes the undotree windows for the current window
 function! ToCloseUndotree()
+    call EchomLog('undotree-subwin', 'info', 'ToCloseUndotree')
     if (!exists('t:undotree') || !t:undotree.IsVisible())
         throw 'Undotree window is not open'
     endif
@@ -90,6 +93,7 @@ endfunction
 " {'typename':'diff','supwin':<id>} if the supplied winid is for an undotree
 " window
 function! ToIdentifyUndotree(winid)
+    call EchomLog('undotree-subwin', 'debug', 'ToIdentifyUndotree ' . a:winid)
     if (!exists('t:undotree') || !t:undotree.IsVisible())
         return {}
     endif
@@ -120,6 +124,7 @@ endfunction
 
 " Returns the statusline of the undotree window
 function! UndotreeStatusLine()
+    call EchomLog('undotree-subwin', 'debug', 'UndotreeStatusLine')
     let statusline = ''
 
     " 'Undotree' string
@@ -139,6 +144,7 @@ endfunction
 
 " Returns the statusline of the undodiff window
 function! UndodiffStatusLine()
+    call EchomLog('undotree-subwin', 'info', 'UndodiffStatusLine')
     let statusline = ''
 
     " 'Undodiff' string
@@ -172,6 +178,7 @@ call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
 function! UpdateUndotreeSubwins(arg)
+    call EchomLog('undotree-subwin', 'debug', 'UpdateUndotreeSubwins')
     if !WinModelExists()
         return
     endif
@@ -181,19 +188,22 @@ function! UpdateUndotreeSubwins(arg)
 
             " Special case: Terminal windows never have undotrees
             if undotreewinsexist && WinStateWinIsTerminal(supwinid)
-               call WinRemoveSubwinGroup(supwinid, 'undotree')
-               continue
+                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from terminal supwin ' . supwinid)
+                call WinRemoveSubwinGroup(supwinid, 'undotree')
+                continue
             endif
 
             call WinStateMoveCursorToWinid(supwinid)
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
+                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from supwin ' . supwinid . ' because its buffer has no undotree')
                 call WinRemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
             if !undotreewinsexist && undotreeexists
+                call EchomLog('undotree-subwin', 'info', 'Adding undotree subwin group to supwin ' . supwinid . ' because its buffer has an undotree')
                 call WinAddSubwinGroup(supwinid, 'undotree', 1)
                 continue
             endif
@@ -202,7 +212,7 @@ function! UpdateUndotreeSubwins(arg)
 endfunction
 
 " Update the undotree subwins after each resolver run, when the state and
-" model are consistent
+" model are certain to be consistent
 if !exists('g:j_undotree_chc')
     let g:j_undotree_chc = 1
     call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 1)

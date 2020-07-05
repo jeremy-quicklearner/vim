@@ -1,7 +1,9 @@
 " Location list and location window manipulation
+call SetLogLevel('loclist-subwin', 'info', 'warning')
 
 " Callback that opens the location window for the current window
 function! ToOpenLoclist()
+    call EchomLog('loclist-subwin', 'info', 'ToOpenLoclist')
     let supwinnr = winnr()
     let supwinid = win_getid()
 
@@ -34,6 +36,7 @@ endfunction
 
 " Callback that closes the location list for the current window
 function! ToCloseLoclist()
+    call EchomLog('loclist-subwin', 'info', 'ToCloseLoclist')
     let supwinnr = winnr()
     let supwinid = win_getid()
 
@@ -67,6 +70,7 @@ endfunction
 " Callback that returns {'typename':'loclist','supwin':<id>} if the supplied
 " winid is for a location window
 function! ToIdentifyLoclist(winid)
+    call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ' . a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != win_id2win(a:winid) &&
@@ -80,11 +84,13 @@ function! ToIdentifyLoclist(winid)
 endfunction
 
 function! LoclistFieldForStatusline(fieldname)
+    call EchomLog('loclist-subwin', 'debug', 'LoclistFieldForStatusline')
     return SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
 endfunction
 
 " Returns the statusline of the location window
 function! LoclistStatusLine()
+    call EchomLog('loclist-subwin', 'debug', 'LoclistStatusLine')
     let statusline = ''
 
     " 'Loclist' string
@@ -121,16 +127,19 @@ call WinAddSubwinGroupType('loclist', ['loclist'],
 " For each supwin, make sure the loclist subwin exists if and only if that
 " supwin has a location list
 function! UpdateLoclistSubwins()
+    call EchomLog('loclist-subwin', 'debug', 'UpdateLoclistSubwins')
     for supwinid in WinModelSupwinIds()
         let locwinexists = WinModelSubwinGroupExists(supwinid, 'loclist')
         let loclistexists = len(getloclist(supwinid))
 
         if locwinexists && !loclistexists
+            call EchomLog('loclist-subwin', 'info', 'Remove loclist subwin from supwin ' . supwinid . ' because it has no location list')
             call WinRemoveSubwinGroup(supwinid, 'loclist')
             continue
         endif
 
         if !locwinexists && loclistexists
+            call EchomLog('loclist-subwin', 'info', 'Add loclist subwin to supwin ' . supwinid . ' because it has a location list')
             call WinAddSubwinGroup(supwinid, 'loclist', 0)
             continue
         endif

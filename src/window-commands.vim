@@ -73,6 +73,7 @@ function! WinCmdRunSpecialCmd(cmdname, range, count, handler)
 
         call Handler(opcount)
     catch /.*/
+        call EchomLog('window-commands', 'warning', v:throwpoint)
         call EchomLog('window-commands', 'warning', v:exception)
         return
     endtry

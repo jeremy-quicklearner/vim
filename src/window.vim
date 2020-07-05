@@ -103,6 +103,7 @@
 " TODO? Add lots of verbose-level logging to the common code
 "
 " TODO: Run the resolver on WinResize
+" TODO: Add an uberwin to show the j_log
 " TODO: Make the Option window an uberwin
 " TODO: Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
@@ -129,18 +130,13 @@
 " TODO: Move subwin and uberwin group definitions to their own plugins
 
 " Logging facilities - all in one place so they can be changed easily
-" TODO: Add logging
-call SetLogLevel('window-mappings', 'warning')
-call SetLogLevel('window-commands', 'warning')
-call SetLogLevel('window-user',     'warning')
-" TODO: Add logging
-call SetLogLevel('window-resolve',  'warning')
-" TODO: Add logging
-call SetLogLevel('window-common',   'warning')
-" TODO: Add logging
-call SetLogLevel('window-model',    'warning')
-" TODO: Add logging
-call SetLogLevel('window-state',    'warning')
+call SetLogLevel('window-mappings', 'info', 'warning')
+call SetLogLevel('window-commands', 'info', 'warning')
+call SetLogLevel('window-user',     'info', 'warning')
+call SetLogLevel('window-resolve',  'info', 'warning')
+call SetLogLevel('window-common',   'info', 'warning')
+call SetLogLevel('window-model',    'info', 'warning')
+call SetLogLevel('window-state',    'info', 'warning')
 
 " Model
 source <sfile>:p:h/window-model.vim

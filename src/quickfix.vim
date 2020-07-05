@@ -1,7 +1,9 @@
 " Quickfix list and quickfix window manipulation
+call SetLogLevel('quickfix-uberwin', 'info', 'warning')
 
 " Callback that opens the quickfix window
 function! ToOpenQuickfix()
+    call EchomLog('quickfix-uberwin', 'info', 'ToOpenQuickfix')
     " Fail if the quickfix window is already open
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if qfwinid
@@ -19,6 +21,7 @@ endfunction
 
 " Callback that closes the quickfix window
 function! ToCloseQuickfix()
+    call EchomLog('quickfix-uberwin', 'info', 'ToCloseQuickfix')
     " Fail if the quickfix window is already closed
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if !qfwinid
@@ -38,6 +41,7 @@ endfunction
 " Callback that returns 'quickfix' if the supplied winid is for the quickfix
 " window
 function! ToIdentifyQuickfix(winid)
+    call EchomLog('quickfix-uberwin', 'debug', 'ToIdentifyQuickfix ' . a:winid)
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if a:winid == qfwinid
         return 'quickfix'
@@ -47,6 +51,7 @@ endfunction
 
 " Returns the statusline of the quickfix window
 function! QuickfixStatusLine()
+    call EchomLog('quickfix-uberwin', 'debug', 'QuickfixStatusLine')
     let qfdict = getqflist({
    \    'title': 1,
    \    'nr': 0
@@ -90,15 +95,18 @@ call WinAddUberwinGroupType('quickfix', ['quickfix'],
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list
 function! UpdateQuickfixUberwin(hide)
+    call EchomLog('quickfix-uberwin', 'debug', 'UpdateQuickfixUberwin ' . a:hide)
     let qfwinexists = WinModelUberwinGroupExists('quickfix')
     let qflistexists = len(getqflist())
     
     if qfwinexists && !qflistexists
+        call EchomLog('quickfix-uberwin', 'info', 'Remove quickfix uberwin because there is no quickfix list')
         call WinRemoveUberwinGroup('quickfix')
         return
     endif
 
     if !qfwinexists && qflistexists
+        call EchomLog('quickfix-uberwin', 'info', 'Add quickfix uberwin because there is a quickfix list')
         call WinAddUberwinGroup('quickfix', a:hide)
         return
     endif

@@ -25,28 +25,84 @@ let g:j_loglevel_data = {
 \   'debug':   {'hl':'Normal',    'prefix':'DBG'},
 \   'verbose': {'hl':'Normal',    'prefix':'VRB'}
 \}
-function! SetLogLevel(facility, loglevel)
-    if index(g:j_loglevels, a:loglevel) <# 0
-        throw 'Invalid log level ' . a:loglevel
+if !exists('g:j_loglevel')
+    let g:j_loglevel = {}
+endif
+if !exists('g:j_buflog_queue')
+    let g:j_buflog_queue = []
+endif
+if !exists('g:j_buflog_lines')
+    let g:j_buflog_lines = 0
+endif
+function! s:MaybeStartBuflog()
+    let g:j_buflog = bufnr('j_buflog', 1)
+    call setbufvar(g:j_buflog, '&buftype', 'nofile')
+    call setbufvar(g:j_buflog, '&buflisted', 1)
+    try
+        if !setbufline(g:j_buflog, 1, '[INF][buflog] Log start')
+            let g:j_buflog_lines = 1
+        endif
+    catch /.*/
+    endtry
+endfunction
+function! s:MaybeFlushBuflogQueue()
+    if !g:j_buflog_lines
+        call s:MaybeStartBuflog()
     endif
-    let g:j_loglevel[a:facility] = a:loglevel
+    if !g:j_buflog_lines
+        return
+    endif
+    while !empty(g:j_buflog_queue)
+        try
+            if setbufline(g:j_buflog, g:j_buflog_lines + 1, g:j_buflog_queue[0])
+                break
+            endif
+        catch /.*/
+            break
+        endtry
+        let g:j_buflog_lines += 1
+        call remove(g:j_buflog_queue, 0)
+    endwhile
+endfunction
+
+function! SetLogLevel(facility, bufloglevel, msgloglevel)
+    if index(g:j_loglevels, a:bufloglevel) <# 0
+        throw 'Invalid log level ' . a:bufloglevel
+    endif
+    if index(g:j_loglevels, a:msgloglevel) <# 0
+        throw 'Invalid log level ' . a:msgloglevel
+    endif
+    let g:j_loglevel[a:facility] = {'buf':a:bufloglevel,'msg':a:msgloglevel}
+    call add(g:j_buflog_queue, '[CNF][buflog] Loglevels for ' . a:facility . ' facility set to ' . a:bufloglevel . ' and ' . a:msgloglevel)
+endfunction
+function! ClearBufLog()
+    if !g:j_buflog_lines
+        return
+    endif
+    for linenr in range(g:j_buflog_lines)
+        call setbufline(g:j_buflog, linenr, '')
+    endfor
+    call setbufline(g:j_buflog, 1, '[INF][buflog] Log cleared')
+    let g:j_buflog_lines = 1
 endfunction
 function! EchomLog(facility, loglevel, msg)
     if index(g:j_loglevels, a:loglevel) <# 0
         throw 'Invalid log level ' . a:loglevel
     endif
-    let currentloglevel = get(g:j_loglevel, a:facility, 'verbose')
-    if index(g:j_loglevels, a:loglevel) ># index(g:j_loglevels, currentloglevel)
-        return
+    let currentbufloglevel = get(g:j_loglevel, a:facility, {'buf':'verbose'}).buf
+    let currentmsgloglevel = get(g:j_loglevel, a:facility, {'msg':'verbose'}).msg
+    let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . a:msg
+    if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentbufloglevel)
+        call add(g:j_buflog_queue, logstr)
+        call s:MaybeFlushBuflogQueue()
     endif
-    execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
-    echom '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . a:msg
-    " TODO: go back to the previous echohl instead of None
-    echohl None
+    if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentmsgloglevel)
+        execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
+        echom logstr
+        " TODO: go back to the previous echohl instead of None
+        echohl None
+    endif
 endfunction
-if !exists('g:j_loglevel')
-    let g:j_loglevel = {}
-endif
 
 " https://vim.fandom.com/wiki/Windo_and_restore_current_window
 " Just like windo, but restore the current window when done.

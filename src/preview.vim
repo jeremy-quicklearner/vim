@@ -5,6 +5,7 @@
 " with it only via the resolver and ToOpenPreview only ever gets called when the
 " resolver closes and reopens the window. So the implementation of
 " ToOpenPreview assumes that ToClosePreview has recently been called.
+call SetLogLevel('preview-uberwin', 'info', 'warning')
 
 augroup Preview
     autocmd!
@@ -13,6 +14,7 @@ augroup END
 
 " Callback that opens the preview window
 function! ToOpenPreview()
+    call EchomLog('preview-uberwin', 'info', 'ToOpenPreview')
     if empty(t:j_preview)
         throw 'Preview window has not been closed yet'
     endif
@@ -51,6 +53,7 @@ endfunction
 
 " Callback that closes the preview window
 function! ToClosePreview()
+    call EchomLog('preview-uberwin', 'info', 'ToClosePreview')
     let previewwinid = 0
     for winid in WinStateGetWinidsByCurrentTab()
         if getwinvar(winid, '&previewwindow', 0)
@@ -78,6 +81,7 @@ endfunction
 " Callback that returns 'preview' if the supplied winid is for the preview
 " window
 function! ToIdentifyPreview(winid)
+    call EchomLog('preview-uberwin', 'debug', 'ToIdentifyPreview ' . a:winid)
     if getwinvar(a:winid, '&previewwindow', 0)
         return 'preview'
     endif
@@ -86,6 +90,7 @@ endfunction
 
 " Returns the statusline of the preview window
 function! PreviewStatusLine()
+    call EchomLog('preview-uberwin', 'debug', 'PreviewStatusLine')
     let statusline = ''
 
     " 'Preview' string

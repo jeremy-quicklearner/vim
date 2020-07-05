@@ -5,6 +5,7 @@
 " interacts with it only via the resolver and ToOpenHelp only ever gets called
 " when the resolver closes and reopens the window. So the implementation of
 " ToOpenHelp assumes that ToCloseHelp has recently been called.
+call SetLogLevel('help-uberwin', 'info', 'warning')
 
 augroup Help
     autocmd!
@@ -13,6 +14,7 @@ augroup END
 
 " Callback that opens the help window
 function! ToOpenHelp()
+    call EchomLog('help-uberwin', 'info', 'ToOpenHelp')
     if empty(t:j_help)
        throw 'Help window has not been closed yet'
     endif
@@ -38,6 +40,7 @@ endfunction
 
 " Callback that closes the help window
 function! ToCloseHelp()
+    call EchomLog('help-uberwin', 'info', 'ToCloseHelp')
     let helpwinid = 0
     for winid in WinStateGetWinidsByCurrentTab()
         if getwinvar(winid, '&ft', '') == 'help'
@@ -57,6 +60,7 @@ endfunction
 
 " Callback that returns 'help' if the supplied winid is for the help window
 function! ToIdentifyHelp(winid)
+    call EchomLog('help-uberwin', 'debug', 'ToIdentifyHelp ' . a:winid)
     if getwinvar(a:winid, '&ft', '') == 'help'
         return 'help'
     endif
@@ -64,6 +68,7 @@ function! ToIdentifyHelp(winid)
 endfunction
 
 function! HelpStatusLine()
+    call EchomLog('help-uberwin', 'debug', 'HelpStatusLine')
     let statusline = ''
 
     " 'Help' string
