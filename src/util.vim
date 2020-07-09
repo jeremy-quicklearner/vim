@@ -31,21 +31,28 @@ endif
 if !exists('g:j_buflog_queue')
     let g:j_buflog_queue = []
 endif
+if !exists('g:j_buflog')
+    let g:j_buflog = bufnr('j_buflog', 1)
+endif
 if !exists('g:j_buflog_lines')
     let g:j_buflog_lines = 0
 endif
 function! s:MaybeStartBuflog()
-    let g:j_buflog = bufnr('j_buflog', 1)
+    if !bufloaded(g:j_buflog)
+        return
+    endif
     call setbufvar(g:j_buflog, '&buftype', 'nofile')
+    call setbufvar(g:j_buflog, '&filetype', 'buflog')
+    call setbufvar(g:j_buflog, '&bufhidden', 'hide')
     call setbufvar(g:j_buflog, '&buflisted', 1)
     try
-        if !setbufline(g:j_buflog, 1, '[INF][buflog] Log start')
+        silent if !setbufline(g:j_buflog, 1, '[INF][buflog] Log start')
             let g:j_buflog_lines = 1
         endif
     catch /.*/
     endtry
 endfunction
-function! s:MaybeFlushBuflogQueue()
+function! MaybeFlushBuflogQueue(arg)
     if !g:j_buflog_lines
         call s:MaybeStartBuflog()
     endif
@@ -54,7 +61,7 @@ function! s:MaybeFlushBuflogQueue()
     endif
     while !empty(g:j_buflog_queue)
         try
-            if setbufline(g:j_buflog, g:j_buflog_lines + 1, g:j_buflog_queue[0])
+            silent if setbufline(g:j_buflog, g:j_buflog_lines + 1, g:j_buflog_queue[0])
                 break
             endif
         catch /.*/
@@ -79,10 +86,10 @@ function! ClearBufLog()
     if !g:j_buflog_lines
         return
     endif
-    for linenr in range(g:j_buflog_lines)
-        call setbufline(g:j_buflog, linenr, '')
+    for linenr in range(g:j_buflog_lines + 1)
+        silent call setbufline(g:j_buflog, linenr, '')
     endfor
-    call setbufline(g:j_buflog, 1, '[INF][buflog] Log cleared')
+    silent call setbufline(g:j_buflog, 1, '[INF][buflog] Log cleared')
     let g:j_buflog_lines = 1
 endfunction
 function! EchomLog(facility, loglevel, msg)
@@ -94,12 +101,14 @@ function! EchomLog(facility, loglevel, msg)
     let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . a:msg
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentbufloglevel)
         call add(g:j_buflog_queue, logstr)
-        call s:MaybeFlushBuflogQueue()
+        call MaybeFlushBuflogQueue([])
     endif
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentmsgloglevel)
         execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
         echom logstr
-        " TODO: go back to the previous echohl instead of None
+        " TODO? go back to the previous echohl instead of None
+        "       - Apparently there is no way to read the current echohl, so
+        "         this is impossible
         echohl None
     endif
 endfunction
@@ -154,6 +163,8 @@ function! SanitizeForStatusLine(arg, str)
 endfunction
 
 " CursorHold callback infrastructure
+" TODO: Move this to a plugin so it can be used by the window engine when it
+" becomes a plugin
 let s:callbacksRunning = 0
 
 " Self-explanatory
@@ -308,3 +319,9 @@ augroup CursorHoldCallbacks
     " going back to terminal-job mode.
     autocmd TerminalOpen,WinEnter * call HandleTerminalEnter()
 augroup END
+
+" Flush the buflog queue at the end of every CursorHold event
+if !exists('g:j_buflog_chc')
+    let g:j_buflog_chc = 1
+    call RegisterCursorHoldCallback(function('MaybeFlushBuflogQueue'), [], 0, 1000, 1, 1)
+endif

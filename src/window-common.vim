@@ -231,7 +231,8 @@ function! WinCommonReselectCursorWindow(oldpos)
 endfunction
 
 " Freeze the width and height of all nonsupwins. Return information about the
-" frozen windows' previous settings so that they can later be thawed
+" frozen windows' previous fixedness and scroll position so that they can later
+" be thawed and restored
 function! WinCommonFreezeAllNonSupwinSizes()
     call EchomLog('window-common', 'debug', 'WinCommonFreezeAllNonSupwinSizes')
     let immunewinids = []
@@ -253,8 +254,8 @@ function! WinCommonFreezeAllNonSupwinSizes()
 endfunction
 
 " Freeze the width and height of all windows except for a given supwin and its
-" subwins. Return information about the frozen windows' previous settings so
-" that they can later be thawed
+" subwins. Return information about the frozen windows' fixedness and scroll
+" position so that they can later be thawed and restored
 function! WinCommonFreezeAllWindowSizesOutsideSupwin(immunesupwinid)
     call EchomLog('window-common', 'debug', 'WinCommonFreezeAllWindowSizesOutsideSupwin ' . a:immunesupwinid)
     let immunewinids = [str2nr(a:immunesupwinid)]
@@ -281,8 +282,12 @@ endfunction
 function! WinCommonThawWindowSizes(prefreeze)
     call EchomLog('window-common', 'debug', 'WinCommonThawWindowSizes')
     for winid in keys(a:prefreeze)
-        call EchomLog('window-common', 'verbose', 'Thaw ' . winid . ':' . string(a:prefreeze[winid]))
-        call WinStateThawWindowSize(winid, a:prefreeze[winid])
+        if WinStateWinExists(winid)
+            call EchomLog('window-common', 'verbose', 'Thaw ' . winid . ':' . string(a:prefreeze[winid]))
+            call WinStateThawWindowSize(winid, a:prefreeze[winid])
+        else
+            call EchomLog('window-common', 'verbose', 'Window ' . winid . ' does not exist in state and so cannot be thawed')
+        endif
     endfor
 endfunction
 
@@ -295,12 +300,15 @@ function! WinCommonRestoreCursorPosition(info)
     call EchomLog('window-common', 'debug', 'Reselected cursor position: ' . string(newpos))
     let winid = WinModelIdByInfo(newpos)
     call WinStateMoveCursorToWinid(winid)
-    " TODO: Only do this is we didn't reselect
-    call WinStateRestoreCursorPosition(a:info.cur)
+    if WinModelIdByInfo(a:info.win) ==# WinModelIdByInfo(newpos)
+        call WinStateRestoreCursorPosition(a:info.cur)
+    endif
 endfunction
 
 " Wrapper for WinStateCloseUberwinsByGroupType that freezes windows whose
-" dimensions shouldn't change
+" dimensions shouldn't change and validates that the windows it removes from
+" the state are the ones associated with the correct uberwin group type in the
+" model
 function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonCloseUberwinsByGroupTypeName ' . a:grouptypename)
     " When windows are closed, Vim needs to choose which other windows to
@@ -310,8 +318,26 @@ function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     let prefreeze = WinCommonFreezeAllNonSupwinSizes()
     try
         let grouptype = g:uberwingrouptype[a:grouptypename]
+        let preclosewinids = WinStateGetWinidsByCurrentTab()
+        let uberwinids = WinModelUberwinIdsByGroupTypeName(a:grouptypename)
+        for winid in uberwinids
+            if index(preclosewinids, str2nr(winid)) < 0
+                throw 'Model uberwin ID ' . winid . ' from group ' . a:grouptypename . ' not present in state'
+            endif
+        endfor
         call EchomLog('window-common', 'debug', 'State-closing uberwin group ' . a:grouptypename)
         call WinStateCloseUberwinsByGroupType(grouptype)
+        let postclosewinids = WinStateGetWinidsByCurrentTab()
+        for winid in preclosewinids
+            let isuberwinid = (index(uberwinids, str2nr(winid)) >= 0)
+            let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
+            if !isuberwinid && !ispresent
+                throw 'toClose callback of uberwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of uberwin group ' . a:grouptypename
+            endif
+            if isuberwinid && ispresent
+                throw 'toClose callback of uberwin group type ' . a:grouptypename . ' did not close uberwin ' . winid
+            endif
+        endfor
     finally
         call WinCommonThawWindowSizes(prefreeze)
     endtry
@@ -335,12 +361,23 @@ function! WinCommonPreserveDimensions()
     return windims
 endfunction
 
+function! s:CompareWinidsByWinnr(winid1, winid2)
+        if !WinStateWinExists(a:winid1) || !WinStateWinExists(a:winid2)
+            return 0
+        endif
+    let winnr1 = WinStateGetWinnrByWinid(a:winid1)
+    let winnr2 = WinStateGetWinnrByWinid(a:winid2)
+    return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? -1 : 1
+endfunction
+
 " Restore dimensions remembered with WinCommonPreserveDimensions
 function! WinCommonRestoreMaxDimensions(windims)
     call EchomLog('window-common', 'debug', 'WinCommonRestoreMaxDimensions')
-    for winid in keys(a:windims)
+    let sorted = copy(keys(a:windims))
+    call sort(sorted, function('s:CompareWinidsByWinnr'))
+    for winid in sorted
         if !WinStateWinExists(winid)
-            call EchomLog('window-common', 'verbose', Window ' . winid . ' no longer exists')
+            call EchomLog('window-common', 'verbose', 'Window ' . winid . ' no longer exists')
             continue
         endif
         call EchomLog('window-common', 'verbose', 'Restoring dimensions for ' . winid . ': ' . string(a:windims[winid]))
@@ -371,7 +408,7 @@ function! WinCommonRecordAllDimensions()
             call WinModelChangeUberwinGroupDimensions(grouptypename, dims)
         catch /.*/
             call EchomLog('window-common', 'warning', 'WinCommonRecordAllDimensions found uberwin group ' . grouptypename . ' inconsistent:')
-            call EchomLog('window-common', 'warning', v:throwpoint)
+            call EchomLog('window-common', 'debug', v:throwpoint)
             call EchomLog('window-common', 'warning', v:exception)
         endtry
     endfor
@@ -384,7 +421,7 @@ function! WinCommonRecordAllDimensions()
             call WinModelChangeSupwinDimensions(supwinid, dim.nr, dim.w, dim.h)
         catch
             call EchomLog('window-common', 'warning', 'WinCommonRecordAllDimensions found supwin ' . supwinid . ' inconsistent:')
-            call EchomLog('window-common', 'warning', v:throwpoint)
+            call EchomLog('window-common', 'debug', v:throwpoint)
             call EchomLog('window-common', 'warning', v:exception)
         endtry
 
@@ -398,7 +435,7 @@ function! WinCommonRecordAllDimensions()
                 call WinModelChangeSubwinGroupDimensions(supwinid, grouptypename, dims)
             catch /.*/
                 call EchomLog('window-common', 'warning', 'WinCommonRecordAllDimensions found subwin group ' . grouptypename . ' for supwin ' . supwinid . ' inconsistent:')
-                call EchomLog('window-common', 'warning', v:throwpoint)
+                call EchomLog('window-common', 'debug', v:throwpoint)
                 call EchomLog('window-common', 'warning', v:exception)
             endtry
         endfor
@@ -464,7 +501,7 @@ function! WinCommonReopenUberwins(preserved)
             call WinModelChangeUberwinGroupDimensions(grouptype.grouptypename, dims)
         catch /.*/
             call EchomLog('window-common', 'WinCommonReopenUberwins failed to open ' . grouptype.grouptypename . ' uberwin group:')
-            call EchomLog('window-common', 'warning', v:throwpoint)
+            call EchomLog('window-common', 'debug', v:throwpoint)
             call EchomLog('window-common', 'warning', v:exception)
             call WinModelHideUberwins(grouptype.grouptypename)
         endtry
@@ -499,9 +536,27 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
             " the state. So deafterimage them in the model.
             call WinModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
         else
-            call EchomLog('window-common', 'debug', 'Subwin group ' . a:supwinid . ':' . a:grouptypename . ' is not afterimaged. Closing via toClose')
             let grouptype = g:subwingrouptype[a:grouptypename]
+            let preclosewinids = WinStateGetWinidsByCurrentTab()
+            let subwinids = WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
+            for winid in subwinids
+                if index(preclosewinids, str2nr(winid)) < 0
+                    throw 'Model subwin ID ' . winid . ' from group ' . a:supwinid . ':' . a:grouptypename . ' not present in state'
+                endif
+            endfor
+            call EchomLog('window-common', 'debug', 'Subwin group ' . a:supwinid . ':' . a:grouptypename . ' is not afterimaged. Closing via toClose')
             call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+            let postclosewinids = WinStateGetWinidsByCurrentTab()
+            for winid in preclosewinids
+                let issubwinid = (index(subwinids, str2nr(winid)) >= 0)
+                let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
+                if !issubwinid && !ispresent
+                    throw 'toClose callback of subwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of subwin group ' . a:supwinid . ':' . a:grouptypename
+                endif
+                if issubwinid && ispresent
+                    throw 'toClose callback of subwin group type ' . a:grouptypename . ' did not close subwin ' . a:winid . ' of supwin ' . a:supwinid
+                endif
+            endfor
         endif
 
     finally
@@ -587,7 +642,7 @@ function! WinCommonReopenSubwins(supwinid, preserved)
            \)
         catch /.*/
             call EchomLog('window-common', 'warning', 'WinCommonReopenSubwins failed to open ' . grouptype.grouptypename . ' subwin group for supwin ' . a:supwinid . ':')
-            call EchomLog('window-common', 'warning', v:throwpoint)
+            call EchomLog('window-common', 'debug', v:throwpoint)
             call EchomLog('window-common', 'warning', v:exception)
             call WinModelHideSubwins(a:supwinid, grouptype.grouptypename)
         endtry

@@ -67,7 +67,7 @@ function! WinStateGetBufnrByWinid(winid)
 endfunction
 
 function! WinStateWinIsTerminal(winid)
-    call EchomLog('window-state', 'debug', 'WinStateWinIsTerminal' . a:winid)
+    call EchomLog('window-state', 'debug', 'WinStateWinIsTerminal ' . a:winid)
     let isterm = WinStateWinExists(a:winid) && getwinvar(a:winid, '&buftype') ==# 'terminal'
     if isterm
         call EchomLog('window-state', 'debug', 'Window ' . a:winid . ' is a terminal window')
@@ -152,20 +152,36 @@ endfunction
 " Dimension freezing
 function! WinStateFreezeWindowSize(winid)
     call EchomLog('window-state', 'info', 'WinStateFreezeWindowSize ' . a:winid)
-    let prefreeze = {
-   \    'w': getwinvar(a:winid, '&winfixwidth'),
-   \    'h': getwinvar(a:winid, '&winfixheight')
-   \}
-    call EchomLog('window-state', 'verbose', 'Pre-freeze dimensions for window ' . a:winid . ': ' . string(prefreeze))
-    call setwinvar(a:winid, '&winfixwidth', 1)
-    call setwinvar(a:winid, '&winfixheight', 1)
+    let curwinid = win_getid()
+    call WinStateMoveCursorToWinidSilently(a:winid)
+    try
+        let prefreeze = {
+       \    'w': &winfixwidth,
+       \    'h': &winfixheight,
+       \    'top': winsaveview().topline
+       \}
+        call EchomLog('window-state', 'verbose', 'Pre-freeze fixedness for window ' . a:winid . ': ' . string(prefreeze))
+        call setwinvar(a:winid, '&winfixwidth', 1)
+        call setwinvar(a:winid, '&winfixheight', 1)
+    finally
+        call WinStateMoveCursorToWinidSilently(curwinid)
+    endtry
     return prefreeze
 endfunction
 
 function! WinStateThawWindowSize(winid, prefreeze)
+    let curwinid = win_getid()
+    call WinStateMoveCursorToWinidSilently(a:winid)
     call EchomLog('window-state', 'info', 'WinStateThawWindowSize ' . a:winid . ' ' . string(a:prefreeze))
-    call setwinvar(a:winid, '&winfixwidth', a:prefreeze.w)
-    call setwinvar(a:winid, '&winfixheight', a:prefreeze.h)
+    try
+        call setwinvar(a:winid, '&winfixwidth', a:prefreeze.w)
+        call setwinvar(a:winid, '&winfixheight', a:prefreeze.h)
+        let view = winsaveview()
+        let view.topline = a:prefreeze.top
+        call winrestview(view)
+    finally
+        call WinStateMoveCursorToWinidSilently(curwinid)
+    endtry
 endfunction
 
 " Generic Ctrl-W commands
@@ -216,17 +232,21 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 1)
+            call setwinvar(winids[idx], '&winminwidth', a:grouptype.widths[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free width for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 0)
+            call setwinvar(winids[idx], '&winminwidth', 0)
         endif
 
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 1)
+            call setwinvar(winids[idx], '&winminheight', a:grouptype.heights[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free height for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 0)
+            call setwinvar(winids[idx], '&winminheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for uberwin ' . a:grouptype.name . ':' . a:grouptype.typenames[idx] . ' to ' . a:grouptype.statuslines[idx])
@@ -242,8 +262,7 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
     return winids
 endfunction
 
-" Close windows using the toClose function from a group type and return the
-" resulting window IDs
+" Close uberwins using the toClose function from a group type
 function! WinStateCloseUberwinsByGroupType(grouptype)
     call EchomLog('window-state', 'info', 'WinStateCloseUberwinsByGroupType ' . string(a:grouptype.name))
     if !has_key(a:grouptype, 'toClose')
@@ -286,16 +305,20 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 1)
+            call setwinvar(winids[idx], '&winminwidth', a:grouptype.widths[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free width for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 0)
+            call setwinvar(winids[idx], '&winminwidth', 0)
         endif
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 1)
+            call setwinvar(winids[idx], '&winminheight', a:grouptype.heights[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free height for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 0)
+            call setwinvar(winids[idx], '&winminheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for subwin ' . a:supwinid . ':' . a:grouptype.name . ':' . a:grouptype.typenames[idx] . ' to ' . a:grouptype.statuslines[idx])
@@ -314,8 +337,7 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
     return winids
 endfunction
 
-" From a given window, close windows using the toClose function from a group type
-" and return the resulting window IDs
+" Close subwins of a give supwin using the toClose function from a group type
 function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     call EchomLog('window-state', 'info', 'WinStateCloseSubwinsByGroupType ' . a:supwinid . ':' . string(a:grouptype.name))
     if !has_key(a:grouptype, 'toClose')
@@ -538,7 +560,6 @@ function! WinStateAfterimageWindow(winid)
     " state of the window exactly as it was when the function was first
     " called, and autocmds may fire on win_gotoid that change the state
     call WinStateMoveCursorToWinidSilently(a:winid)
-    call s:MaybeRedraw()
 
     " Preserve cursor and scroll position
     let view = winsaveview()
@@ -651,7 +672,6 @@ endfunction
 function! WinStatePreCloseAndReopen(winid)
     call EchomLog('window-state', 'info', 'WinStatePreCloseAndReopen ' . a:winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
-    call s:MaybeRedraw()
 
     " Preserve cursor position
     let view = winsaveview()
@@ -692,7 +712,6 @@ function! WinStatePostCloseAndReopen(winid, preserved)
     call EchomLog('window-state', 'info', 'WinStatePostCloseAndReopen ' . a:winid . '...')
     call EchomLog('window-state', 'verbose', ' colorcolumn: ' . a:preserved.colorcol . ' foldcolumn: ' . a:preserved.foldcol . ' view: ' . string(a:preserved.view))
     call WinStateMoveCursorToWinidSilently(a:winid)
-    call s:MaybeRedraw()
 
     " Restore signs
     call s:RestoreSigns(a:winid, a:preserved.sign)

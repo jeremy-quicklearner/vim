@@ -35,6 +35,7 @@ endfunction
 if !exists('g:j_activewin_chc')
     let g:j_activewin_chc = 1
     call RegisterCursorHoldCallback(function('IndicateActiveWindow'), [], 0, 90, 1, 1)
+    call WinAddPostUserOperationCallback(function('IndicateActiveWindow'))
 endif
 
 " For code, colour columns

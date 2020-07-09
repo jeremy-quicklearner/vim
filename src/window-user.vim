@@ -1,8 +1,5 @@
 " Window user operations
 " See window.vim
-"
-" TODO: Write dimensions after user operations
-" TODO: Add infrastructure for post-user-operation callbacks
 
 " Resolver callback registration
 
@@ -18,6 +15,21 @@ endfunction
 function! WinAddSupwinsAddedResolveCallback(callback)
     call WinModelAddSupwinsAddedResolveCallback(a:callback)
     call EchomLog('window-user', 'config', 'Supwins-added pre-resolve callback: ' . string(a:callback))
+endfunction
+
+" Register a callback to run after any successful user operation that changes
+" the state or model and leaves them consistent
+function! WinAddPostUserOperationCallback(callback)
+    call WinModelAddPostUserOperationCallback(a:callback)
+    call EchomLog('window-user', 'config', 'Post-user operation callback: ' . string(a:callback))
+endfunction
+
+function! s:RunPostUserOpCallbacks()
+    call EchomLog('window-user', 'debug', 'Running post-user-operation callbacks')
+    for PostUserOpCallback in WinModelPostUserOperationCallbacks()
+        call EchomLog('window-user', 'verbose', 'Running post-user-operation callback ' . string(PostUserOpCallback))
+        call PostUserOpCallback([])
+    endfor
 endfunction
 
 " Group Types
@@ -111,7 +123,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
         call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -119,6 +131,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     if a:hidden
         call EchomLog('window-user', 'info', 'WinAddUberwinGroup hidden ' . a:grouptypename)
         call WinModelAddUberwins(a:grouptypename, [], [])
+        call s:RunPostUserOpCallbacks()
         return
     endif
     
@@ -127,6 +140,8 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ' . string(info))
     try
+        " TODO: Can probably skip this step as it is done in
+        "       WinCommonOpenUberwins
         let windims = WinCommonPreserveDimensions()
         call EchomLog('window-user', 'verbose', 'Preserved dimensions ' . string(windims))
         try
@@ -144,10 +159,11 @@ function! WinAddUberwinGroup(grouptypename, hidden)
                     call EchomLog('window-user', 'verbose', 'Added uberwin group ' . a:grouptypename . ' to model')
 
                 catch /.*/
-                    call EchomLog('window-user', 'error', 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                    call EchomLog('window-user', 'warning', 'WinAddUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
                     call EchomLog('window-user', 'debug', v:throwpoint)
-                    call EchomLog('window-user', 'error', v:exception)
+                    call EchomLog('window-user', 'warning', v:exception)
                     call WinAddUberwinGroup(a:grouptypename, 1)
+                    return
                 endtry
 
             " Reopen the uberwins we closed
@@ -161,15 +177,12 @@ function! WinAddUberwinGroup(grouptypename, hidden)
             call EchomLog('window-user', 'verbose', 'Restored dimensions')
         endtry
 
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. So close and reopen all subwins.
-        " TODO: Probably not needed anymore
-        call WinCommonCloseAndReopenAllShownSubwins(info.win)
-
     finally
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinRemoveUberwinGroup(grouptypename)
@@ -198,6 +211,8 @@ function! WinRemoveUberwinGroup(grouptypename)
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinHideUberwinGroup(grouptypename)
@@ -205,7 +220,7 @@ function! WinHideUberwinGroup(grouptypename)
         call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -230,6 +245,8 @@ function! WinHideUberwinGroup(grouptypename)
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinShowUberwinGroup(grouptypename)
@@ -237,7 +254,7 @@ function! WinShowUberwinGroup(grouptypename)
         call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -248,6 +265,8 @@ function! WinShowUberwinGroup(grouptypename)
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ' . string(info))
     try
+        " TODO: Can probably skip this step as it is done in
+        "       WinCommonOpenUberwins
         let windims = WinCommonPreserveDimensions()
         call EchomLog('window-user', 'verbose', 'Preserved dimensions ' . string(windims))
         try
@@ -264,9 +283,10 @@ function! WinShowUberwinGroup(grouptypename)
                     call EchomLog('window-user', 'verbose', 'Showed uberwin group ' . a:grouptypename . ' in model')
 
                 catch /.*/
-                    call EchomLog('window-user', 'error', 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
+                    call EchomLog('window-user', 'warning', 'WinShowUberwinGroup failed to open ' . a:grouptypename . ' uberwin group:')
                     call EchomLog('window-user', 'debug', v:throwpoint)
-                    call EchomLog('window-user', 'error', v:exception)
+                    call EchomLog('window-user', 'warning', v:exception)
+                    return
                 endtry
 
 
@@ -281,15 +301,12 @@ function! WinShowUberwinGroup(grouptypename)
             call EchomLog('window-user', 'verbose', 'Restored dimensions')
         endtry
 
-        " Opening an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        " TODO: Probably not needed anymore
-        call WinCommonCloseAndReopenAllShownSubwins(info.win)
-
     finally
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Subwins
@@ -321,7 +338,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
         call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -329,6 +346,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     if a:hidden
         call EchomLog('window-user', 'info', 'WinAddSubwinGroup hidden ' . a:supwinid . ':' . a:grouptypename)
         call WinModelAddSubwins(a:supwinid, a:grouptypename, [], [])
+        call s:RunPostUserOpCallbacks()
         return
     endif
 
@@ -356,6 +374,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
                 call EchomLog('window-user', 'debug', v:throwpoint)
                 call EchomLog('window-user', 'warning', v:exception)
                 call WinAddSubwinGroup(a:supwinid, a:grouptypename, 1)
+                return
             endtry
 
         " Reopen the subwins we closed
@@ -368,10 +387,8 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
-
-    let dims = WinStateGetWinDimensions(a:supwinid)
-    call WinModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
-    call EchomLog('window-user', 'verbose', 'Wrote dimensions for supwin ' . a:supwinid)
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinRemoveSubwinGroup(supwinid, grouptypename)
@@ -379,7 +396,7 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
         call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -412,6 +429,8 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinHideSubwinGroup(winid, grouptypename)
@@ -420,7 +439,7 @@ function! WinHideSubwinGroup(winid, grouptypename)
         call WinModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -444,6 +463,8 @@ function! WinHideSubwinGroup(winid, grouptypename)
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinShowSubwinGroup(srcid, grouptypename)
@@ -452,7 +473,7 @@ function! WinShowSubwinGroup(srcid, grouptypename)
         call WinModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -480,6 +501,7 @@ function! WinShowSubwinGroup(srcid, grouptypename)
                 call EchomLog('window-user', 'warning', 'WinShowSubwinGroup failed to open ' . a:grouptypename . ' subwin group for supwin ' . supwinid . ':')
                 call EchomLog('window-user', 'debug', v:throwpoint)
                 call EchomLog('window-user', 'warning', v:exception)
+                return
             endtry
 
         " Reopen the subwins we closed
@@ -493,9 +515,8 @@ function! WinShowSubwinGroup(srcid, grouptypename)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
     endtry
 
-    let dims = WinStateGetWinDimensions(supwinid)
-    call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
-    call EchomLog('window-user', 'verbose', 'Wrote dimensions for supwin ' . supwinid)
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Retrieve subwins and supwins' statuslines from the model
@@ -509,13 +530,16 @@ endfunction
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. It is designed to be used only by the Commands and
 " Mappings, which ensure consistency by passing carefully-chosen flags (and
-" sometimes relying on the resolver)
+" sometimes relying on the resolver).
+" In particular, a true 'relyonresolver' signifies that this call will leave
+" the state and model inconsistent
 function! WinDoCmdWithFlags(cmd,
                           \ count,
                           \ preservecursor,
                           \ ifuberwindonothing, ifsubwingotosupwin,
-                          \ dowithoutuberwins, dowithoutsubwins)
-    call EchomLog('window-user', 'info', 'WinDoCmdWithFlags ' . a:cmd . ' ' . a:count . ' [' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ']')
+                          \ dowithoutuberwins, dowithoutsubwins,
+                          \ relyonresolver)
+    call EchomLog('window-user', 'info', 'WinDoCmdWithFlags ' . a:cmd . ' ' . a:count . ' [' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:relyonresolver . ']')
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ' . string(info))
 
@@ -549,11 +573,20 @@ function! WinDoCmdWithFlags(cmd,
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
+        return
+    finally
+        let endinfo = WinCommonGetCursorPosition()
+        if a:preservecursor
+            call WinCommonRestoreCursorPosition(info)
+            call EchomLog('window-user', 'verbose', 'Restored cursor position')
+        elseif WinModelIdByInfo(info.win) !=# WinModelIdByInfo(endinfo.win)
+            call WinModelSetPreviousWinInfo(info.win)
+            call WinModelSetCurrentWinInfo(endinfo.win)
+        endif
     endtry
-
-    if a:preservecursor
-        call WinCommonRestoreCursorPosition(info)
-        call EchomLog('window-user', 'verbose', 'Restored cursor position')
+    if !a:relyonresolver
+        call WinCommonRecordAllDimensions()
+        call s:RunPostUserOpCallbacks()
     endif
 endfunction
 
@@ -566,7 +599,7 @@ function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -600,7 +633,7 @@ function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -638,7 +671,7 @@ function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
         call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -688,9 +721,9 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
         call WinModelAssertUberwinTypeExists(a:dstgrouptype, a:dsttypename)
         call WinModelAssertUberwinGroupExists(a:dsttypename)
     catch /.*/
-        call EchomLog('window-user', 'error', 'Cannot go to uberwin ' . a:dstgrouptype . ':' . a:dsttypename . ':')
+        call EchomLog('window-user', 'warning', 'Cannot go to uberwin ' . a:dstgrouptype . ':' . a:dsttypename . ':')
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -714,11 +747,15 @@ function! WinGotoUberwin(dstgrouptype, dsttypename)
 
     if cur.win.category ==# 'supwin'
         call s:GoSupwinToUberwin(cur.win.id, a:dstgrouptype, a:dsttypename)
+        call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+        call s:RunPostUserOpCallbacks()
         return
     endif
 
     if cur.win.category ==# 'uberwin'
         call s:GoUberwinToUberwin(a:dstgrouptype, a:dsttypename)
+        call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+        call s:RunPostUserOpCallbacks()
         return
     endif
 
@@ -730,9 +767,9 @@ function! WinGotoSupwin(dstwinid)
     try
         let dstsupwinid = WinModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
     catch /.*/
-        call EchomLog('window-user', 'error', 'Cannot go to supwin ' . a:dstwinid . ':')
+        call EchomLog('window-user', 'warning', 'Cannot go to supwin ' . a:dstwinid . ':')
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
 
@@ -750,11 +787,17 @@ function! WinGotoSupwin(dstwinid)
 
     if cur.win.category ==# 'uberwin'
         call s:GoUberwinToSupwin(dstsupwinid)
+        call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+        call s:RunPostUserOpCallbacks()
         return
     endif
 
-    if cur.win.category ==# 'supwin' && cur.win.id != dstsupwinid
-        call s:GoSupwinToSupwin(cur.win.id,  dstsupwinid)
+    if cur.win.category ==# 'supwin'
+        if cur.win.id != dstsupwinid
+            call s:GoSupwinToSupwin(cur.win.id,  dstsupwinid)
+        endif
+        call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+        call s:RunPostUserOpCallbacks()
         return
     endif
 endfunction
@@ -766,9 +809,9 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
         call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
         call WinModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
     catch /.*/
-        call EchomLog('window-user', 'error', 'Cannot go to subwin ' . a:dstgrouptypename . ':' . a:dsttypename . ' of supwin ' . a:dstwinid . ':')
+        call EchomLog('window-user', 'warning', 'Cannot go to subwin ' . a:dstgrouptypename . ':' . a:dsttypename . ' of supwin ' . a:dstwinid . ':')
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
     
@@ -786,6 +829,8 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     if cur.win.category ==# 'subwin'
         if cur.win.supwin ==# dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
             call s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename)
+            call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+            call s:RunPostUserOpCallbacks()
             return
         endif
 
@@ -809,6 +854,8 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     endif
 
     call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
+    call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! s:GotoByInfo(info)
@@ -842,9 +889,10 @@ function! WinGotoPrevious(count)
     
     let src = WinCommonGetCursorPosition().win
 
-    call s:GotoByInfo(dst)
-
     call WinModelSetPreviousWinInfo(src)
+    call s:GotoByInfo(dst)
+    call WinModelSetCurrentWinInfo(dst)
+
     call EchomLog('window-user', 'verbose', 'Previous window set to ' . string(src))
 endfunction
 
@@ -959,6 +1007,7 @@ function! WinOnly(count)
     call s:GotoByInfo(info)
 
     call WinStateWincmd('', 'o')
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Exchange the current supwin (or current subwin's supwin) with a different
@@ -989,9 +1038,10 @@ function! WinExchange(count)
         endif
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
-        call EchomLog('window-user', 'error', v:exception)
+        call EchomLog('window-user', 'warning', v:exception)
+        return
     endtry
-
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Run a command in every supwin
@@ -1004,7 +1054,7 @@ function! SupwinDo(command, range)
     try
         for supwinid in WinModelSupwinIds()
             call WinGotoSupwin(supwinid)
-            call EchomLog('running command <' . a:range . a:command .'>')
+            call EchomLog('window-user', 'verbose', 'running command <' . a:range . a:command .'>')
             execute a:range . a:command
         endfor
     finally

@@ -89,6 +89,11 @@
 "  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
 "    TODO? Fix
 "
+" TODO: Figure out why the help window keeps scrolling down by two lines
+"       whenever it gets closed and reopened
+"        - It's because the quickfix window opens after the help window and pushes
+"        all the text in the help window upwards. Fix by using winsaveview()
+"        and persisting only the 'topline' field
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
@@ -98,15 +103,13 @@
 " TODO? Figure out why folds keep appearing in the help window on
 "       WinShowUberwin. Haven't seen this happen in some time - maybe it's
 "       fixed?
-" TODO? Add lots of info-level and config-level logging to the user operations
-" TODO? Add lots of debug-level logging to the resolver
-" TODO? Add lots of verbose-level logging to the common code
-"
 " TODO: Run the resolver on WinResize
-" TODO: Add an uberwin to show the j_log
+" TODO: Add an uberwin to show the buflog
 " TODO: Make the Option window an uberwin
-" TODO: Think of a way to avoid creating a new buffer every time a subwin is
+" TODO? Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
+"       - This would mean reusing buffers and completely cleaning them between
+"         uses - may not be worth it.
 " TODO: Make the Command-line window an uberwin?
 " TODO: Actually make the mappings optional
 " TODO? Figure out why terminal windows keep breaking the resolver and
@@ -122,21 +125,21 @@
 "       resolver and user operations
 " TODO: Audit all the user operations for redundancy
 " TODO: Audit all the asserts for redundancy
+" TODO: Audit every function for calls to it
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
-" TODO: Move the CursorHold callback infrastructure to a plugin
 " TODO: Move the whole window engine to a plugin
 " TODO: Autoload everything
 " TODO: Move subwin and uberwin group definitions to their own plugins
 
 " Logging facilities - all in one place so they can be changed easily
-call SetLogLevel('window-mappings', 'info', 'warning')
-call SetLogLevel('window-commands', 'info', 'warning')
-call SetLogLevel('window-user',     'info', 'warning')
-call SetLogLevel('window-resolve',  'info', 'warning')
-call SetLogLevel('window-common',   'info', 'warning')
-call SetLogLevel('window-model',    'info', 'warning')
-call SetLogLevel('window-state',    'info', 'warning')
+call SetLogLevel('window-mappings', 'info',    'warning')
+call SetLogLevel('window-commands', 'info',    'warning')
+call SetLogLevel('window-user',     'info',    'warning')
+call SetLogLevel('window-resolve',  'info',    'warning')
+call SetLogLevel('window-common',   'info',    'warning')
+call SetLogLevel('window-model',    'warning', 'warning')
+call SetLogLevel('window-state',    'warning', 'warning')
 
 " Model
 source <sfile>:p:h/window-model.vim

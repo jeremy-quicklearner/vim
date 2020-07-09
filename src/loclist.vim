@@ -126,7 +126,7 @@ call WinAddSubwinGroupType('loclist', ['loclist'],
 
 " For each supwin, make sure the loclist subwin exists if and only if that
 " supwin has a location list
-function! UpdateLoclistSubwins()
+function! UpdateLoclistSubwins(arg)
     call EchomLog('loclist-subwin', 'debug', 'UpdateLoclistSubwins')
     for supwinid in WinModelSupwinIds()
         let locwinexists = WinModelSubwinGroupExists(supwinid, 'loclist')
@@ -146,14 +146,12 @@ function! UpdateLoclistSubwins()
     endfor
 endfunction
 
-" Update the loclist subwins when new supwins are added
-call WinAddSupwinsAddedResolveCallback(function('UpdateLoclistSubwins'))
-
-" Update the loclist subwins whenever a loclist is changed
-augroup Loclist
-    autocmd!
-    autocmd QuickFixCmdPost * call UpdateLoclistSubwins()
-augroup END
+" Update the loclist subwins after each resolver run, when the state and
+" model are certain to be consistent
+if !exists('g:j_loclist_chc')
+    let g:j_loclist_chc = 1
+    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 0, 20, 1, 1)
+endif
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by

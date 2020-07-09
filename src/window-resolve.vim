@@ -1,7 +1,6 @@
 " Window infrastructure Resolve function
 " See window.vim
-" TODO: Track the cursor's current position and make sure prevwin changes in
-" sync with it
+" TODO: figure out why typing :tabnew in a help window does weird things
 
 " The cursor's final position is used in multiple places
 let s:curpos = {}
@@ -378,7 +377,7 @@ function! s:WinResolveStateToModel()
     call EchomLog('window-resolve', 'verbose', 'Add model-missing uberwins to model')
     for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
         let winids = groupedmissingwininfo.uberwin[uberwingrouptypename].winids
-        call EchomLog('window-resolve', 'debug', 'Step 1.4 adding uberwin group ' . uberwingrouptypename . ' to model with winids ' . string(winids))
+        call EchomLog('window-resolve', 'info', 'Step 1.4 adding uberwin group ' . uberwingrouptypename . ' to model with winids ' . string(winids))
         call WinModelAddOrShowUberwins(
        \    uberwingrouptypename,
        \    winids,
@@ -387,7 +386,7 @@ function! s:WinResolveStateToModel()
     endfor
     call EchomLog('window-resolve', 'verbose', 'Add model-missing supwins to model')
     for supwinid in groupedmissingwininfo.supwin
-        call EchomLog('window-resolve', 'debug', 'Step 1.4 adding window ' . supwinid . ' to model as supwin')
+        call EchomLog('window-resolve', 'info', 'Step 1.4 adding window ' . supwinid . ' to model as supwin')
         call WinModelAddSupwin(supwinid, -1, -1, -1)
         let s:supwinsaddedcond = 1
     endfor
@@ -400,7 +399,7 @@ function! s:WinResolveStateToModel()
         endif
         for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
             let winids = groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
-            call EchomLog('window-resolve', 'debug', 'Step 1.4 adding subwin group ' . supwinid . ':' . subwingrouptypename . ' to model with winids ' . string(winids))
+            call EchomLog('window-resolve', 'info', 'Step 1.4 adding subwin group ' . supwinid . ':' . subwingrouptypename . ' to model with winids ' . string(winids))
             call WinModelAddOrShowSubwins(
            \    supwinid,
            \    subwingrouptypename,
@@ -411,15 +410,15 @@ function! s:WinResolveStateToModel()
     endfor
 
     " STEP 1.5: Supwins that have become terminal windows need to have their
-    " subwins hidden, but this must be done after STEP 1.4 which would add the
-    " subwins back
-    " If any supwin is a terminal window with shown subwins, mark them as
-    " hidden in the model
+    "      subwins hidden, but this must be done after STEP 1.4 which would add the
+    "      subwins back
+    "      If any supwin is a terminal window with shown subwins, mark them as
+    "      hidden in the model
     call EchomLog('window-resolve', 'verbose', 'Step 1.5')
     for supwinid in WinModelSupwinIds()
-        call EchomLog('window-resolve', 'verbose', 'Checking if supwin ' . supwinid . ' is a terminal window')
-        if WinStateWinExists(supwinid) && WinStateWinIsTerminal(supwinid)
-            call EchomLog('window-resolve', 'verbose', 'Supwin ' . supwinid . ' is a terminal window')
+        call EchomLog('window-resolve', 'verbose', 'Checking if supwin ' . supwinid . ' is a terminal window in the state')
+        if WinStateWinIsTerminal(supwinid)
+            call EchomLog('window-resolve', 'verbose', 'Supwin ' . supwinid . ' is a terminal window in the state')
             for grouptypename in WinModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
                 call EchomLog('window-resolve', 'debug', 'Step 1.5 hiding subwin group ' . grouptypename . ' of terminal supwin ' . supwinid . ' in model')
                 call WinModelHideSubwins(supwinid, grouptypename)
@@ -437,6 +436,7 @@ function! s:WinResolveModelToState()
     "       may require it in the future
     call EchomLog('window-resolve', 'verbose', 'Step 2.1')
     for winid in WinStateGetWinidsByCurrentTab()
+        " TODO? Remove this
         if !WinStateWinExists(winid)
             call EchomLog('window-resolve', 'error', 'State is inconsistent - winid ' . winid . ' is both present and not present')
             continue
@@ -485,7 +485,7 @@ function! s:WinResolveModelToState()
                let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(wininfo.supwin)
            endif
 
-           call EchomLog('window-resolve', 'info', 'Step 2.1 removing non-model-shown subwin ' . wininfo.supwin . ':' . subwin.grouptype . ':' . subwin.typename . ' with winid ' . winid . ' from state')
+           call EchomLog('window-resolve', 'info', 'Step 2.1 removing non-model-shown subwin ' . wininfo.supwin . ':' . wininfo.grouptype . ':' . wininfo.typename . ' with winid ' . winid . ' from state')
            call WinStateCloseWindow(winid)
 
            if WinModelSupwinExists(wininfo.supwin)
@@ -610,7 +610,7 @@ function! s:WinResolveModelToState()
         call EchomLog('window-resolve', 'verbose', 'Checking model uberwin group ' . grouptypename)
         if !WinCommonUberwinGroupExistsInState(grouptypename)
             try
-                call EchomLog('window-resolve', 'debug', 'Step 2.3 adding uberwin group ' . grouptypename . ' to state')
+                call EchomLog('window-resolve', 'info', 'Step 2.3 adding uberwin group ' . grouptypename . ' to state')
                 let winids = WinCommonOpenUberwins(grouptypename)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
@@ -624,7 +624,7 @@ function! s:WinResolveModelToState()
                 endif
             catch /.*/
                 call EchomLog('window-resolve', 'warning', 'Step 2.3 failed to add ' . grouptypename . ' uberwin group to state:')
-                call EchomLog('window-resolve', 'warning', v:throwpoint)
+                call EchomLog('window-resolve', 'debug', v:throwpoint)
                 call EchomLog('window-resolve', 'warning', v:exception)
                 call WinModelHideUberwins(grouptypename)
             endtry
@@ -670,7 +670,7 @@ function! s:WinResolveModelToState()
                     endfor
                 endif
                 try
-                    call EchomLog('window-resolve', 'debug', 'Step 2.3 adding subwin group ' . supwinid . ':' . grouptypename . ' to state')
+                    call EchomLog('window-resolve', 'info', 'Step 2.3 adding subwin group ' . supwinid . ':' . grouptypename . ' to state')
                     let winids = WinCommonOpenSubwins(supwinid, grouptypename)
                     " This Model write in ResolveModelToState is unfortunate, but I
                     " see no sensible way to put it anywhere else
@@ -686,7 +686,7 @@ function! s:WinResolveModelToState()
                     endif
                 catch /.*/
                     call EchomLog('window-resolve', 'warning', 'Step 2.3 failed to add ' . grouptypename . ' subwin group to supwin ' . supwinid . ':')
-                    call EchomLog('window-resolve', 'warning', v:throwpoint)
+                    call EchomLog('window-resolve', 'debug', v:throwpoint)
                     call EchomLog('window-resolve', 'warning', v:exception)
                     call WinModelHideSubwins(supwinid, grouptypename)
                 endtry
@@ -698,8 +698,25 @@ endfunction
 " STEP 3: Make sure that the subwins are afterimaged according to the cursor's
 "         final position
 function! s:WinResolveCursor()
-    call EchomLog('window-resolve', 'verbose', 'Step 3')
+    " STEP 3.1: See comments on WinCommonUpdateAfterimagingByCursorWindow
+    call EchomLog('window-resolve', 'verbose', 'Step 3.1')
     call WinCommonUpdateAfterimagingByCursorWindow(s:curpos.win)
+
+    " STEP 3.2: If the model's current window does not match the state's
+    "           current window (as it was at the start of this resolver run), then
+    "           the state's current window was touched between resolver runs by
+    "           something other than the user operations. That other thing won't have
+    "           updated the model's previous window, so update it here by using the
+    "           model's current window. Then update the model's current window using
+    "           the state's current window.
+    call EchomLog('window-resolve', 'verbose', 'Step 3.2')
+    let modelcurrentwininfo = WinModelCurrentWinInfo()
+    let modelcurrentwinid = WinModelIdByInfo(modelcurrentwininfo)
+    if WinModelIdByInfo(WinModelPreviousWinInfo()) && modelcurrentwinid &&
+   \   WinModelIdByInfo(s:curpos.win) !=# modelcurrentwinid
+        call WinModelSetPreviousWinInfo(modelcurrentwininfo)
+        call WinModelSetCurrentWinInfo(s:curpos.win)
+    endif
 endfunction
 
 " Resolver
@@ -759,8 +776,8 @@ function! WinResolve(arg)
     call s:WinResolveModelToState()
 
     " STEP 3: The model and state are now consistent with each other, but
-    "         afterimaging may be inconsistent with the final position of the
-    "         cursor. Make it consistent.
+    "         afterimaging and tracked cursor positions may be inconsistent with the
+    "         final position of the cursor. Make it consistent.
     call s:WinResolveCursor()
 
     " STEP 4: Now everything is consistent, so record the dimensions of all

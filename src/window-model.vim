@@ -9,6 +9,10 @@
 "     <funcref>
 "     ...
 " ]
+" g:postuseropcallbacks = [
+"     <funcref>
+"     ...
+" ]
 " g:uberwingrouptype = {
 "     <grouptypename>: {
 "         typenames: [ <typename>, ... ]
@@ -43,6 +47,13 @@
 "     ...
 " }
 " t:prevwin = {
+"     category: <'uberwin'|'supwin'|'subwin'|'none'>
+"     grouptypename: <grouptypename>
+"     grouptype: <grouptype>
+"     supwin: <winid>
+"     id: <winid>
+" }
+" t:curwin = {
 "     category: <'uberwin'|'supwin'|'subwin'|'none'>
 "     grouptypename: <grouptypename>
 "     grouptype: <grouptype>
@@ -98,11 +109,12 @@
 "     ...
 " }
 
-" Resolver callbacks and group types are global
+" Resolver and post-user-operation callbacks and group types are global
 if !exists('g:uberwingrouptype')
     call EchomLog('window-model', 'info', 'Initializing global model')
     let g:tabenterpreresolvecallbacks = []
     let g:supwinsaddedresolvecallbacks = []
+    let g:postuseropcallbacks = []
     let g:uberwingrouptype = {}
     let g:subwingrouptype = {}
 endif
@@ -126,31 +138,38 @@ function! WinModelInit()
     endif
     call EchomLog('window-model', 'info', 'WinModelInit')
     let t:prevwin = {'category':'none','id':0}
+    let t:curwin = {'category':'none','id':0}
     let t:uberwin = {}
     let t:supwin = {}
     let t:subwin = {}
 endfunction
 
 " Resolve callback manipulation
-function! s:AddTypedResolveCallback(type, callback)
-    call EchomLog('window-model', 'debug', 'ResolveCallback: ' . a:type . ', ' . string(a:callback))
+function! s:AddTypedCallback(type, callback)
+    call EchomLog('window-model', 'debug', 'Callback: ' . a:type . ', ' . string(a:callback))
     if type(a:callback) != v:t_func
         throw 'Resolve callback is not a function'
     endif
-
-    if eval('index(g:' . a:type . 'resolvecallbacks, a:callback)') >= 0
-        throw 'Resolve callback is already registered'
+    if !exists('g:' . a:type . 'callbacks')
+        throw 'Callback type ' . a:type . ' does not exist')
+    endif
+    if eval('index(g:' . a:type . 'callbacks, a:callback)') >= 0
+        throw 'Callback is already registered'
     endif
 
-    execute 'call add(g:' . a:type . 'resolvecallbacks, a:callback)'
+    execute 'call add(g:' . a:type . 'callbacks, a:callback)'
 endfunction
 function! WinModelAddTabEnterPreResolveCallback(callback)
-    call EchomLog('window-model', 'config', 'TabEnter PreResolve Callback: ' . string(a:callback))
-    call s:AddTypedResolveCallback('tabenterpre', a:callback)
+    call EchomLog('window-model', 'debug', 'TabEnter PreResolve Callback: ' . string(a:callback))
+    call s:AddTypedCallback('tabenterpreresolve', a:callback)
 endfunction
 function! WinModelAddSupwinsAddedResolveCallback(callback)
-    call EchomLog('window-model', 'config', 'SupwinsAdded Resolve Callback: ' . string(a:callback))
-    call s:AddTypedResolveCallback('supwinsadded', a:callback)
+    call EchomLog('window-model', 'debug', 'SupwinsAdded Resolve Callback: ' . string(a:callback))
+    call s:AddTypedCallback('supwinsaddedresolve', a:callback)
+endfunction
+function! WinModelAddPostUserOperationCallback(callback)
+    call EchomLog('window-model', 'debug', 'Post-User Operation Callbacl: ' . string(a:callback))
+    call s:AddTypedCallback('postuserop', a:callback)
 endfunction
 function! WinModelTabEnterPreResolveCallbacks()
     call EchomLog('window-model', 'debug', 'WinModelTabEnterPreResolveCallbacks')
@@ -159,6 +178,10 @@ endfunction
 function! WinModelSupwinsAddedResolveCallbacks()
     call EchomLog('window-model', 'debug', 'WinModelSupwinsAddedResolveCallbacks')
     return g:supwinsaddedresolvecallbacks
+endfunction
+function! WinModelPostUserOperationCallbacks()
+    call EchomLog('window-model', 'debug', 'WinModelPostUserOperationCallbacks')
+    return g:postuseropcallbacks
 endfunction
 
 " Uberwin group type manipulation
@@ -421,6 +444,22 @@ function! WinModelSetPreviousWinInfo(info)
         throw "Attempted to set previous window to one that doesn't exist in model"
     endif
     let t:prevwin = a:info
+endfunction
+
+" Current window info manipulation
+function! WinModelCurrentWinInfo()
+    call EchomLog('window-model', 'debug', 'WinModelCurrentWinInfo')
+    call s:AssertWinModelExists()
+    call EchomLog('window-model', 'debug', 'Current window: ' . string(t:curwin))
+    return t:curwin
+endfunction
+
+function! WinModelSetCurrentWinInfo(info)
+    call EchomLog('window-model', 'info', 'WinModelSetCurrentWinInfo ' . string(a:info))
+    if !WinModelIdByInfo(a:info)
+        throw "Attempted to set current window to one that doesn't exist in model"
+    endif
+    let t:curwin = a:info
 endfunction
 
 " General Getters
@@ -712,7 +751,8 @@ function! WinModelIdByInfo(info)
         endif
         call EchomLog('window-model', 'debug', 'Uberwin group ' . a:info.grouptype . ' not shown')
     elseif a:info.category ==# 'subwin'
-        if WinModelSubwinGroupExists(a:info.supwin, a:info.grouptype) &&
+        if WinModelSupwinExists(a:info.supwin) &&
+       \   WinModelSubwinGroupExists(a:info.supwin, a:info.grouptype) &&
        \   !WinModelSubwinGroupIsHidden(a:info.supwin, a:info.grouptype)
             call EchomLog('window-model', 'debug', 'Subwin ' . a:info.supwin . ':' . a:info.grouptype . ':' . a:info.typename . ' has ID ' . t:supwin[a:info.supwin].subwin[a:info.grouptype].subwin[a:info.typename].id)
             return t:supwin[a:info.supwin].subwin[a:info.grouptype].subwin[a:info.typename].id
@@ -846,11 +886,11 @@ function! s:ValidateNewDimensions(category, grouptypename, typename, nr, w, h)
     if type(a:nr) !=# v:t_number || (a:nr !=# -1 && a:nr <=# 0)
         throw "nr must be a positive number or -1"
     endif
-    if type(a:w) !=# v:t_number || (a:w !=# -1 && a:w <=# 0)
-        throw "w must be a positive number or -1"
+    if type(a:w) !=# v:t_number || a:w <=# -1
+        throw "w must be at least -1"
     endif
-    if type(a:h) !=# v:t_number || (a:h !=# -1 && a:h <=# 0)
-        throw "h must be a positive number or -1"
+    if type(a:h) !=# v:t_number || a:h <=# -1
+        throw "h must be at least -1"
     endif
     if a:category ==# 'uberwin'
         call WinModelAssertUberwinTypeExists(a:grouptypename, a:typename)
@@ -934,11 +974,11 @@ function! s:ValidateNewSubwinDimensions(grouptypename, typename, relnr, w, h)
     if type(a:relnr) !=# v:t_number
         throw "relnr must be a number"
     endif
-    if type(a:w) !=# v:t_number || (a:w !=# -1 && a:w <=# 0)
-        throw "w must be a positive number or -1"
+    if type(a:w) !=# v:t_number || a:w <=# -10
+        throw "w must be at least -1"
     endif
-    if type(a:h) !=# v:t_number || (a:h !=# -1 && a:h <=# 0)
-        throw "h must be a positive number or -1"
+    if type(a:h) !=# v:t_number || a:h <=# -1)
+        throw "h must be at least -1"
     endif
     call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)
     let typeidx = index(g:subwingrouptype[a:grouptypename].typenames, a:typename)

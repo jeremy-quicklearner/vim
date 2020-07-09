@@ -34,7 +34,7 @@ function! ToOpenPreview()
     try
        noautocmd silent execute 'buffer ' . t:j_preview.bufnr
     catch /.*/
-       call EchomLog('warning', v:exception)
+       call EchomLog('preview-uberwin', 'warning', v:exception)
     endtry
 
     let winid = win_getid()

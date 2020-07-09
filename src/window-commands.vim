@@ -2,6 +2,11 @@
 " See window.vim
 " This file defines several custom commands that call user operations
 
+" TODO: Test WinOnly
+" TODO: Test WinDecreaseHeight
+" TODO: Test WinDecreaseWidth
+" TODO: Test WinEqualize
+" TODO: Test WinExchange
 " TODO: Test WinGoDown
 " TODO: Test WinGoFirst
 " TODO: Test WinGoLast
@@ -22,6 +27,7 @@
 " TODO: Test WinReverseGoNext
 " TODO: Test WinReverseRotate
 " TODO: Test WinRotate
+
 
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
     call EchomLog('window-commands', 'debug', 'SanitizeRange ' . a:cmdname . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ']')
@@ -48,8 +54,9 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
                      \ ifuberwindonothing,
                      \ ifsubwingotosupwin,
                      \ dowithoutuberwins,
-                     \ dowithoutsubwins)
-    call EchomLog('window-commands', 'info', 'WinCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' / a:dowithoutsubwins . ']')
+                     \ dowithoutsubwins,
+                     \ relyonresolver)
+    call EchomLog('window-commands', 'info', 'WinCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:relyonresolver . ']')
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
@@ -62,7 +69,8 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
                          \ a:ifuberwindonothing,
                          \ a:ifsubwingotosupwin,
                          \ a:dowithoutuberwins,
-                         \ a:dowithoutsubwins)
+                         \ a:dowithoutsubwins,
+                         \ a:relyonresolver)
 endfunction
 
 function! WinCmdRunSpecialCmd(cmdname, range, count, handler)
@@ -82,7 +90,8 @@ endfunction
 function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
                         \ preservecursor,
                         \ ifuberwindonothing, ifsubwingotosupwin,
-                        \ dowithoutuberwins, dowithoutsubwins)
+                        \ dowithoutuberwins, dowithoutsubwins,
+                        \ relyonresolver)
     call EchomLog('window-commands', 'config', 'Command: ' . a:cmdname)
     execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
    \        ' call WinCmdRunCmd(' .
@@ -94,7 +103,8 @@ function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
    \        a:ifuberwindonothing . ',' .
    \        a:ifsubwingotosupwin . ',' .
    \        a:dowithoutuberwins . ',' .
-   \        a:dowithoutsubwins . ')'
+   \        a:dowithoutsubwins . ',' .
+   \        a:relyonresolver . ')'
 endfunction
 
 function! WinCmdDefineSpecialCmd(cmdname, handler)
@@ -231,6 +241,16 @@ let s:cmdsWithoutSubwins = [
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
+let s:cmdsThatRelyOnResolver = [
+\   'WinDecreaseHeight',
+\   'WinDecreaseWidth',
+\   'WinIncreaseHeight',
+\   'WinIncreaseWidth',
+\   'WinMoveToNewTab',
+\   'WinResizeHorizontal',
+\   'WinResizeVertical',
+\   'WinReverseRotate',
+\]
 
 for cmdname in keys(s:allNonSpecialCmds)
     call WinCmdDefineCmd(
@@ -239,6 +259,7 @@ for cmdname in keys(s:allNonSpecialCmds)
    \    index(s:cmdsWithUberwinNop,         cmdname) >= 0,
    \    index(s:cmdsWithSubwinToSupwin,     cmdname) >= 0,
    \    index(s:cmdsWithoutUberwins,        cmdname) >= 0,
-   \    index(s:cmdsWithoutSubwins,         cmdname) >= 0
+   \    index(s:cmdsWithoutSubwins,         cmdname) >= 0,
+   \    index(s:cmdsThatRelyOnResolver,     cmdname) >= 0
    \)
 endfor

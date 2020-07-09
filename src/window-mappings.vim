@@ -3,6 +3,11 @@
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine to one of the custom commands from window-commands.vim
 
+" TODO: Test WinOnly
+" TODO: Test WinDecreaseHeight
+" TODO: Test WinDecreaseWidth
+" TODO: Test WinEqualize
+" TODO: Test WinExchange
 " TODO: Test WinGoDown
 " TODO: Test WinGoFirst
 " TODO: Test WinGoLast
