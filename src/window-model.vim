@@ -886,10 +886,10 @@ function! s:ValidateNewDimensions(category, grouptypename, typename, nr, w, h)
     if type(a:nr) !=# v:t_number || (a:nr !=# -1 && a:nr <=# 0)
         throw "nr must be a positive number or -1"
     endif
-    if type(a:w) !=# v:t_number || a:w <=# -1
+    if type(a:w) !=# v:t_number || a:w <# -1
         throw "w must be at least -1"
     endif
-    if type(a:h) !=# v:t_number || a:h <=# -1
+    if type(a:h) !=# v:t_number || a:h <# -1
         throw "h must be at least -1"
     endif
     if a:category ==# 'uberwin'
@@ -974,10 +974,10 @@ function! s:ValidateNewSubwinDimensions(grouptypename, typename, relnr, w, h)
     if type(a:relnr) !=# v:t_number
         throw "relnr must be a number"
     endif
-    if type(a:w) !=# v:t_number || a:w <=# -10
+    if type(a:w) !=# v:t_number || a:w <# -1
         throw "w must be at least -1"
     endif
-    if type(a:h) !=# v:t_number || a:h <=# -1)
+    if type(a:h) !=# v:t_number || a:h <# -1
         throw "h must be at least -1"
     endif
     call WinModelAssertSubwinTypeExists(a:grouptypename, a:typename)

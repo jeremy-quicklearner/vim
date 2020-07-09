@@ -367,7 +367,7 @@ function! s:CompareWinidsByWinnr(winid1, winid2)
         endif
     let winnr1 = WinStateGetWinnrByWinid(a:winid1)
     let winnr2 = WinStateGetWinnrByWinid(a:winid2)
-    return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? -1 : 1
+    return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? 1 : -1
 endfunction
 
 " Restore dimensions remembered with WinCommonPreserveDimensions

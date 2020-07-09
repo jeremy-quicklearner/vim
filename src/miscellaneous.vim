@@ -13,6 +13,8 @@ set history=50
 " Allow windows to be arbitratily small
 set winheight=1
 set winwidth=1
+set winminheight=0
+set winminheight=0
 
 " The default updatetime of 4000 is too slow for me. CursorHold callbacks need
 " to happen quickly

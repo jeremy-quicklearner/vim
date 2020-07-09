@@ -232,21 +232,17 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 1)
-            call setwinvar(winids[idx], '&winminwidth', a:grouptype.widths[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free width for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 0)
-            call setwinvar(winids[idx], '&winminwidth', 0)
         endif
 
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 1)
-            call setwinvar(winids[idx], '&winminheight', a:grouptype.heights[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free height for uberwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 0)
-            call setwinvar(winids[idx], '&winminheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for uberwin ' . a:grouptype.name . ':' . a:grouptype.typenames[idx] . ' to ' . a:grouptype.statuslines[idx])
@@ -305,20 +301,16 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 1)
-            call setwinvar(winids[idx], '&winminwidth', a:grouptype.widths[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free width for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixwidth', 0)
-            call setwinvar(winids[idx], '&winminwidth', 0)
         endif
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 1)
-            call setwinvar(winids[idx], '&winminheight', a:grouptype.heights[idx])
         else
             call EchomLog('window-state', 'verbose', 'Free height for subwin ' . a:grouptype.typenames[idx])
             call setwinvar(winids[idx], '&winfixheight', 0)
-            call setwinvar(winids[idx], '&winminheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for subwin ' . a:supwinid . ':' . a:grouptype.name . ':' . a:grouptype.typenames[idx] . ' to ' . a:grouptype.statuslines[idx])
