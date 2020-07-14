@@ -81,7 +81,7 @@ endfunction
 " Callback that returns 'preview' if the supplied winid is for the preview
 " window
 function! ToIdentifyPreview(winid)
-    call EchomLog('preview-uberwin', 'debug', 'ToIdentifyPreview ' . a:winid)
+    call EchomLog('preview-uberwin', 'debug', 'ToIdentifyPreview ', a:winid)
     if getwinvar(a:winid, '&previewwindow', 0)
         return 'preview'
     endif

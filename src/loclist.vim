@@ -70,7 +70,7 @@ endfunction
 " Callback that returns {'typename':'loclist','supwin':<id>} if the supplied
 " winid is for a location window
 function! ToIdentifyLoclist(winid)
-    call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ' . a:winid)
+    call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ', a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != win_id2win(a:winid) &&
@@ -133,13 +133,13 @@ function! UpdateLoclistSubwins(arg)
         let loclistexists = len(getloclist(supwinid))
 
         if locwinexists && !loclistexists
-            call EchomLog('loclist-subwin', 'info', 'Remove loclist subwin from supwin ' . supwinid . ' because it has no location list')
+            call EchomLog('loclist-subwin', 'info', 'Remove loclist subwin from supwin ', supwinid, ' because it has no location list')
             call WinRemoveSubwinGroup(supwinid, 'loclist')
             continue
         endif
 
         if !locwinexists && loclistexists
-            call EchomLog('loclist-subwin', 'info', 'Add loclist subwin to supwin ' . supwinid . ' because it has a location list')
+            call EchomLog('loclist-subwin', 'info', 'Add loclist subwin to supwin ', supwinid, ' because it has a location list')
             call WinAddSubwinGroup(supwinid, 'loclist', 0)
             continue
         endif

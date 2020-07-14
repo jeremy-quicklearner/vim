@@ -92,18 +92,22 @@ function! ClearBufLog()
     silent call setbufline(g:j_buflog, 1, '[INF][buflog] Log cleared')
     let g:j_buflog_lines = 1
 endfunction
-function! EchomLog(facility, loglevel, msg)
+function! EchomLog(facility, loglevel, ...)
     if index(g:j_loglevels, a:loglevel) <# 0
         throw 'Invalid log level ' . a:loglevel
     endif
     let currentbufloglevel = get(g:j_loglevel, a:facility, {'buf':'verbose'}).buf
     let currentmsgloglevel = get(g:j_loglevel, a:facility, {'msg':'verbose'}).msg
-    let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . a:msg
+    let logstr = ''
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentbufloglevel)
+        let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . join(a:000, '')
         call add(g:j_buflog_queue, logstr)
         call MaybeFlushBuflogQueue([])
     endif
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentmsgloglevel)
+        if empty(logstr)
+            let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . join(a:000, '')
+        endif
         execute 'echohl ' . g:j_loglevel_data[a:loglevel].hl
         echom logstr
         " TODO? go back to the previous echohl instead of None

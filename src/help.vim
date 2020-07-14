@@ -60,7 +60,7 @@ endfunction
 
 " Callback that returns 'help' if the supplied winid is for the help window
 function! ToIdentifyHelp(winid)
-    call EchomLog('help-uberwin', 'debug', 'ToIdentifyHelp ' . a:winid)
+    call EchomLog('help-uberwin', 'debug', 'ToIdentifyHelp ', a:winid)
     if getwinvar(a:winid, '&ft', '') == 'help'
         return 'help'
     endif

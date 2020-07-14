@@ -41,7 +41,15 @@ function! ToOpenUndotree()
 
     let jtarget = win_getid()
 
+    
+    " Open the undotree window on the left side
+    let oldsr = &splitright
+    let &splitright = 0
+
     UndotreeShow
+
+    " Restore splitright
+    let &splitright = oldsr
     
     " UndotreeShow does not directly cause the undotree to be drawn. Instead,
     " it registers an autocmd that draws the tree when one of a set of events
@@ -86,14 +94,25 @@ function! ToCloseUndotree()
         throw 'Undotree window is not open'
     endif
 
+    " When closing the undotree, we want the supwin to its right to fill the
+    " space left. If there is also a supwin to the left, Vim may choose to fill
+    " the space with that one instead of the one to the right. Setting splitright 
+    " to 0 causes Vim to always pick the supwin to the right via some undocumented
+    " behaviour.
+    let oldsr = &splitright
+    let &splitright = 0
+
     UndotreeHide
+
+    " Restore splitright
+    let &splitright = oldsr
 endfunction
 
 " Callback that returns {'typename':'tree','supwin':<id>} or
 " {'typename':'diff','supwin':<id>} if the supplied winid is for an undotree
 " window
 function! ToIdentifyUndotree(winid)
-    call EchomLog('undotree-subwin', 'debug', 'ToIdentifyUndotree ' . a:winid)
+    call EchomLog('undotree-subwin', 'debug', 'ToIdentifyUndotree ', a:winid)
     if (!exists('t:undotree') || !t:undotree.IsVisible())
         return {}
     endif
@@ -188,7 +207,7 @@ function! UpdateUndotreeSubwins(arg)
 
             " Special case: Terminal windows never have undotrees
             if undotreewinsexist && WinStateWinIsTerminal(supwinid)
-                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from terminal supwin ' . supwinid)
+                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from terminal supwin ', supwinid)
                 call WinRemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
@@ -197,13 +216,13 @@ function! UpdateUndotreeSubwins(arg)
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
-                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from supwin ' . supwinid . ' because its buffer has no undotree')
+                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from supwin ', supwinid, ' because its buffer has no undotree')
                 call WinRemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
             if !undotreewinsexist && undotreeexists
-                call EchomLog('undotree-subwin', 'info', 'Adding undotree subwin group to supwin ' . supwinid . ' because its buffer has an undotree')
+                call EchomLog('undotree-subwin', 'info', 'Adding undotree subwin group to supwin ', supwinid, ' because its buffer has an undotree')
                 call WinAddSubwinGroup(supwinid, 'undotree', 1)
                 continue
             endif

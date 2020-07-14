@@ -41,7 +41,7 @@ endfunction
 " Callback that returns 'quickfix' if the supplied winid is for the quickfix
 " window
 function! ToIdentifyQuickfix(winid)
-    call EchomLog('quickfix-uberwin', 'debug', 'ToIdentifyQuickfix ' . a:winid)
+    call EchomLog('quickfix-uberwin', 'debug', 'ToIdentifyQuickfix ', a:winid)
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if a:winid == qfwinid
         return 'quickfix'
@@ -95,7 +95,7 @@ call WinAddUberwinGroupType('quickfix', ['quickfix'],
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list
 function! UpdateQuickfixUberwin(hide)
-    call EchomLog('quickfix-uberwin', 'debug', 'UpdateQuickfixUberwin ' . a:hide)
+    call EchomLog('quickfix-uberwin', 'debug', 'UpdateQuickfixUberwin ', a:hide)
     let qfwinexists = WinModelUberwinGroupExists('quickfix')
     let qflistexists = len(getqflist())
     

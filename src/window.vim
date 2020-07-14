@@ -89,11 +89,14 @@
 "  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
 "    TODO? Fix
 "
-" TODO: Figure out why the help window keeps scrolling down by two lines
-"       whenever it gets closed and reopened
-"        - It's because the quickfix window opens after the help window and pushes
-"        all the text in the help window upwards. Fix by using winsaveview()
-"        and persisting only the 'topline' field
+" TODO: Think of some way to avoid evaluating log arguments that won't get
+"       printed anywhere
+" TODO: Remove freezing. Rely on splitright/splitbelow for subwins, and only
+" TODO: Decide how to approach fixed-width and fixed-height supwins. Do they
+"       work well already? Does the Resolver need a new step that makes sure
+"       all supwins have winfix(width|height) off? Do their subwins open
+"       correctly? Do they play well with CTRL-W _ and CTRL-W | ?
+"       use winsaveview().topline when opening uberwins.
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
@@ -133,11 +136,11 @@
 " TODO: Move subwin and uberwin group definitions to their own plugins
 
 " Logging facilities - all in one place so they can be changed easily
-call SetLogLevel('window-mappings', 'info',    'warning')
-call SetLogLevel('window-commands', 'info',    'warning')
-call SetLogLevel('window-user',     'info',    'warning')
-call SetLogLevel('window-resolve',  'info',    'warning')
-call SetLogLevel('window-common',   'info',    'warning')
+call SetLogLevel('window-mappings', 'info', 'warning')
+call SetLogLevel('window-commands', 'info', 'warning')
+call SetLogLevel('window-user',     'info', 'warning')
+call SetLogLevel('window-resolve',  'info', 'warning')
+call SetLogLevel('window-common',   'info', 'warning')
 call SetLogLevel('window-model',    'warning', 'warning')
 call SetLogLevel('window-state',    'warning', 'warning')
 

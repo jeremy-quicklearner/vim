@@ -31,7 +31,7 @@
 
 " Process v:count and v:count1 into a single count
 function! WinMappingProcessCounts(allow0)
-    call EchomLog('window-mappings', 'debug', 'WinMappingProcessCounts '  . a:allow0)
+    call EchomLog('window-mappings', 'debug', 'WinMappingProcessCounts ' , a:allow0)
     " v:count and v:count1 default to different values when no count is
     " provided
     if v:count !=# v:count1
@@ -49,7 +49,7 @@ endfunction
 
 " Map a command of the form <c-w><cmd> to run an Ex command with a count
 function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinterminalmode)
-    call EchomLog('window-mappings', 'debug', 'DefineMappings ' . a:cmd . ', ' . a:exCmd . ', [' . a:allow0 . ',' . a:mapinnormalmode . ',' . a:mapinvisualmode . ',' . a:mapinterminalmode . ']')
+    call EchomLog('window-mappings', 'debug', 'DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinterminalmode, ']')
     if a:mapinnormalmode
         execute 'nnoremap <silent> <c-w>' . a:cmd . ' :<c-u>execute WinMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . '"<cr>'
     endif
@@ -65,7 +65,7 @@ endfunction
 function! WinMappingMapCmd(cmds, exCmdName, allow0,
                          \ mapinnormalmode, mapinvisualmode,
                          \ mapinterminalmode)
-    call EchomLog('window-mappings', 'config', 'Map <c-w>' . string(a:cmds) . ' to ' . a:exCmdName)
+    call EchomLog('window-mappings', 'config', 'Map <c-w>', a:cmds, ' to ', a:exCmdName)
     for cmd in a:cmds
         call s:DefineMappings(cmd, a:exCmdName, a:allow0, a:mapinnormalmode, a:mapinvisualmode, a:mapinterminalmode)
     endfor
@@ -90,12 +90,12 @@ let s:sofar = ''
 
 " These functions call WinMappingScan() which will read more characters.
 function! WinMappingScanW(firstdigit)
-    call EchomLog('window-mappings', 'debug', 'WinMappingScanW ' . a:firstdigit)
+    call EchomLog('window-mappings', 'debug', 'WinMappingScanW ', a:firstdigit)
     let s:sofar = "\<c-w>" . a:firstdigit
     call WinMappingScan()
 endfunction
 function! WinMappingScanZ(firstdigit)
-    call EchomLog('window-mappings', 'debug', 'WinMappingScanZ ' . a:firstdigit)
+    call EchomLog('window-mappings', 'debug', 'WinMappingScanZ ', a:firstdigit)
     let s:sofar = "z" . a:firstdigit
     call WinMappingScan()
 endfunction
@@ -135,7 +135,7 @@ function! WinMappingScan()
 
     " A character is available. Read it.
     let s:sofar .= nr2char(getchar())
-    call EchomLog('window-mappings', 'debug', 'WinMappingScan captured ' . s:sofar)
+    call EchomLog('window-mappings', 'debug', 'WinMappingScan captured ', s:sofar)
     
     " If it was a number, setup another call because there may be more
     " characters
@@ -160,7 +160,7 @@ function! s:RunInfixCmd(cmd)
     if index(["\<c-w>", 'z'], a:cmd[0]) <# 0
         throw 's:RunInfixCmd on invalid command ' . a:cmd
     endif
-    call EchomLog('window-mappings', 'info', 'RunInfixCmd ' . a:cmd . ' -> ' . a:cmd[1:-2] . a:cmd[0] . a:cmd[-1:-1])
+    call EchomLog('window-mappings', 'info', 'RunInfixCmd ', a:cmd, ' -> ', a:cmd[1:-2], a:cmd[0], a:cmd[-1:-1])
     call feedkeys(a:cmd[1:-2] . a:cmd[0] . a:cmd[-1:-1])
 endfunction
 
