@@ -15,6 +15,11 @@ function! s:MaybeRedraw()
 endfunction
 
 " General Getters
+function! WinStateGetTabCount()
+    call EchomLog('window-state', 'debug', 'WinStateGetTabCount')
+    return tabpagenr('$')
+endfunction
+
 function! WinStateGetWinidsByCurrentTab()
     call EchomLog('window-state', 'debug', 'WinStateGetWinidsByCurrentTab')
     let winids = []
@@ -149,39 +154,28 @@ function! WinStateRestoreCursorPosition(pos)
     call s:MaybeRedraw()
 endfunction
 
-" Dimension freezing
-function! WinStateFreezeWindowSize(winid)
-    call EchomLog('window-state', 'info', 'WinStateFreezeWindowSize ', a:winid)
-    let curwinid = win_getid()
-    call WinStateMoveCursorToWinidSilently(a:winid)
-    try
-        let prefreeze = {
-       \    'w': &winfixwidth,
-       \    'h': &winfixheight,
-       \    'top': winsaveview().topline
-       \}
-        call EchomLog('window-state', 'verbose', 'Pre-freeze fixedness for window ', a:winid, ': ', prefreeze)
+" Window shielding
+function! WinStateShieldWindow(winid, onlyscroll)
+    call EchomLog('window-state', 'info', 'WinStateShieldWindow ', a:winid, ' ', a:onlyscroll)
+    let preshield = {
+   \    'w': getwinvar(a:winid, '&winfixwidth'),
+   \    'h': getwinvar(a:winid, '&winfixheight'),
+   \    'sb': getwinvar(a:winid, '&scrollbind')
+   \}
+    call EchomLog('window-state', 'verbose', 'Pre-shield fixedness for window ', a:winid, ': ', preshield)
+    if !a:onlyscroll
         call setwinvar(a:winid, '&winfixwidth', 1)
         call setwinvar(a:winid, '&winfixheight', 1)
-    finally
-        call WinStateMoveCursorToWinidSilently(curwinid)
-    endtry
-    return prefreeze
+    endif
+    call setwinvar(a:winid, '&scrollbind', 1)
+    return preshield
 endfunction
 
-function! WinStateThawWindowSize(winid, prefreeze)
-    let curwinid = win_getid()
-    call WinStateMoveCursorToWinidSilently(a:winid)
-    call EchomLog('window-state', 'info', 'WinStateThawWindowSize ', a:winid, ' ', a:prefreeze)
-    try
-        call setwinvar(a:winid, '&winfixwidth', a:prefreeze.w)
-        call setwinvar(a:winid, '&winfixheight', a:prefreeze.h)
-        let view = winsaveview()
-        let view.topline = a:prefreeze.top
-        call winrestview(view)
-    finally
-        call WinStateMoveCursorToWinidSilently(curwinid)
-    endtry
+function! WinStateUnshieldWindow(winid, preshield)
+    call EchomLog('window-state', 'info', 'WinStateUnshieldWindow ', a:winid, ' ', a:preshield)
+    call setwinvar(a:winid, '&winfixwidth', a:preshield.w)
+    call setwinvar(a:winid, '&winfixheight', a:preshield.h)
+    call setwinvar(a:winid, '&scrollbind', a:preshield.sb)
 endfunction
 
 " Generic Ctrl-W commands
@@ -674,6 +668,9 @@ function! WinStatePreCloseAndReopen(winid)
     " Preserve foldcolumn
     let foldcol = &foldcolumn
 
+    " Preserve scrollbind
+    let scrollb = &scrollbind
+
     call EchomLog('window-state', 'verbose', 'colorcolumn: ', colorcol, ' foldcolumn: ', foldcol, ' view: ', view)
 
     " Preserve folds
@@ -696,7 +693,8 @@ function! WinStatePreCloseAndReopen(winid)
    \    'sign': sign,
    \    'fold': fold,
    \    'foldcol': foldcol,
-   \    'colorcol': colorcol
+   \    'colorcol': colorcol,
+   \    'scrollb': scrollb
    \}
 endfunction
 
@@ -726,6 +724,9 @@ function! WinStatePostCloseAndReopen(winid, preserved)
     " Restore colorcolumn
     let &colorcolumn = a:preserved.colorcol
     call s:MaybeRedraw()
+
+    " Restore scrollbind
+    let &scrollbind = a:preserved.scrollb
   
     " Restore cursor and scroll position
     call winrestview(a:preserved.view)

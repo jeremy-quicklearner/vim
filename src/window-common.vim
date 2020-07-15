@@ -230,63 +230,34 @@ function! WinCommonReselectCursorWindow(oldpos)
     return pos
 endfunction
 
-" Freeze the width and height of all nonsupwins. Return information about the
-" frozen windows' previous fixedness and scroll position so that they can later
-" be thawed and restored
-function! WinCommonFreezeAllNonSupwinSizes()
-    call EchomLog('window-common', 'debug', 'WinCommonFreezeAllNonSupwinSizes')
-    let immunewinids = []
-    for supwinid in WinModelSupwinIds()
-        call EchomLog('window-common', 'verbose', 'Supwin ', supwinid, ' is immune from freezing')
-        call add(immunewinids, str2nr(supwinid))
-    endfor
+" Fix the width, height, and scroll position of all nonsupwins such that opening
+" and closing new windows won't change them. ('Shield' them). Return information
+" about the shielded windows' previous fixedness so that they can later
+" be unshielded. For supwins, only fix the scroll position
+function! WinCommonShieldAllWindows()
+    call EchomLog('window-common', 'debug', 'WinCommonShieldAllWindows')
+    let supwinids = copy(WinModelSupwinIds())
 
-    let prefreeze = {}
+    let preshield = {}
     for winid in WinStateGetWinidsByCurrentTab()
-        if index(immunewinids, str2nr(winid)) < 0
-            call EchomLog('window-common', 'verbose', 'Freeze ', winid)
-            let prefreeze[winid] = WinStateFreezeWindowSize(winid)
-        endif
+        let onlyscroll = (index(supwinids, str2nr(winid)) >= 0)
+        call EchomLog('window-common', 'verbose', 'Shield ', winid, ' ' . onlyscroll)
+        let preshield[winid] = WinStateShieldWindow(winid, onlyscroll)
     endfor
     
-    call EchomLog('window-common', 'verbose', 'Frozen: ', prefreeze)
-    return prefreeze
+    call EchomLog('window-common', 'verbose', 'Shielded: ', preshield)
+    return preshield
 endfunction
 
-" Freeze the width and height of all windows except for a given supwin and its
-" subwins. Return information about the frozen windows' fixedness and scroll
-" position so that they can later be thawed and restored
-function! WinCommonFreezeAllWindowSizesOutsideSupwin(immunesupwinid)
-    call EchomLog('window-common', 'debug', 'WinCommonFreezeAllWindowSizesOutsideSupwin ', a:immunesupwinid)
-    let immunewinids = [str2nr(a:immunesupwinid)]
-    for subwinid in WinModelShownSubwinIdsBySupwinId(a:immunesupwinid)
-        call EchomLog('window-common', 'verbose', 'Subwin ', subwinid, ' is immune from freezing')
-        call add(immunewinids, str2nr(subwinid))
-    endfor
-
-    let prefreeze = {}
-    for winid in WinStateGetWinidsByCurrentTab()
-        if index(immunewinids, str2nr(winid)) < 0
-            call EchomLog('window-common', 'verbose', 'Freeze ', winid)
-            let prefreeze[winid] = WinStateFreezeWindowSize(winid)
-        endif
-    endfor
-    
-    call EchomLog('window-common', 'verbose', 'Frozen: ', prefreeze)
-    return prefreeze
-endfunction
-
-" Thaw the height and width of all windows that were frozen with
-" WinCommonFreezeAllWindowSizesOutsideSupwin() or
-" WinCommonFreezeAllNonSupwinSizes()
-function! WinCommonThawWindowSizes(prefreeze)
-    call EchomLog('window-common', 'debug', 'WinCommonThawWindowSizes')
-    for winid in keys(a:prefreeze)
+" Unshield windows that were shielded with WinCommonShieldAllWindows()
+function! WinCommonUnshieldWindows(preshield)
+    call EchomLog('window-common', 'debug', 'WinCommonUnshieldWindows')
+    for winid in keys(a:preshield)
         if WinStateWinExists(winid)
-            call EchomLog('window-common', 'verbose', 'Thaw ', winid, ':', a:prefreeze[winid])
-            call WinStateThawWindowSize(winid, a:prefreeze[winid])
+            call EchomLog('window-common', 'verbose', 'Unshield ', winid, ':', a:preshield[winid])
+            call WinStateUnshieldWindow(winid, a:preshield[winid])
         else
-            call EchomLog('window-common', 'verbose', 'Window ', winid, ' does not exist in state and so cannot be thawed')
+            call EchomLog('window-common', 'verbose', 'Window ', winid, ' does not exist in state and so cannot be unshielded')
         endif
     endfor
 endfunction
@@ -305,17 +276,19 @@ function! WinCommonRestoreCursorPosition(info)
     endif
 endfunction
 
-" Wrapper for WinStateCloseUberwinsByGroupType that freezes windows whose
+" Wrapper for WinStateCloseUberwinsByGroupType that shields windows whose
 " dimensions shouldn't change and validates that the windows it removes from
 " the state are the ones associated with the correct uberwin group type in the
 " model
 function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonCloseUberwinsByGroupTypeName ', a:grouptypename)
     " When windows are closed, Vim needs to choose which other windows to
-    " expand to fill the free space. Sometimes Vim makes choices I don't like, such
-    " as expanding other uberwins. So before closing the uberwin,
-    " freeze the height and width of every window outside the uberwin group
-    let prefreeze = WinCommonFreezeAllNonSupwinSizes()
+    " expand to fill the free space and how to change those windows' scroll
+    " positions. Sometimes Vim makes choices I don't like, such as expanding
+    " fixed-height subwins or scrolling down in the windows it expands. So
+    " before closing the uberwin, fix the height, width, and scroll position
+    " of every nonsupwin.
+    let preshield = WinCommonShieldAllWindows()
     try
         let grouptype = g:uberwingrouptype[a:grouptypename]
         let preclosewinids = WinStateGetWinidsByCurrentTab()
@@ -339,7 +312,7 @@ function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
             endif
         endfor
     finally
-        call WinCommonThawWindowSizes(prefreeze)
+        call WinCommonUnshieldWindows(preshield)
     endtry
 endfunction
 
@@ -451,7 +424,7 @@ endfunction
 " dimensions shouldn't change and ensures no windows get bigger
 function! WinCommonOpenUberwins(grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonOpenUberwins ', a:grouptypename)
-    let prefreeze = WinCommonFreezeAllNonSupwinSizes()
+    let preshield = WinCommonShieldAllWindows()
     try
         let windims = WinCommonPreserveDimensions()
         try
@@ -463,7 +436,7 @@ function! WinCommonOpenUberwins(grouptypename)
         endtry
 
     finally
-        call WinCommonThawWindowSizes(prefreeze)
+        call WinCommonUnshieldWindows(preshield)
     endtry
     call EchomLog('window-common', 'verbose', 'Opened uberwin group ', a:grouptypename, ' with winids ', winids)
     return winids
@@ -514,17 +487,10 @@ function! WinCommonReopenUberwins(preserved)
 endfunction
 
 " Wrapper for WinStateCloseSubwinsByGroupType that falls back to
-" WinStateCloseWindow if any subwins in the group are afterimaged and freezes
-" windows whose dimensions shouldn't change
+" WinStateCloseWindow if any subwins in the group are afterimaged
 function! WinCommonCloseSubwins(supwinid, grouptypename)
-    " When windows are closed, Vim needs to choose which other windows to
-    " stretch to fill the empty space left. Sometimes Vim makes choices I
-    " don't like, such as filling space left behind by subwins with
-    " supwins other than the closed subwin's supwin. So before closing the
-    " subwin, freeze the height and width of every window except the
-    " supwin of the subwin being closed and its other subwins.
     call EchomLog('window-common', 'debug', 'WinCommonCloseSubwins ', a:supwinid, ':', a:grouptypename)
-    let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
+    let preshield = WinStateShieldWindow(a:supwinid, 1)
     try
         if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
             call EchomLog('window-common', 'debug', 'Subwin group ', a:supwinid, ':', a:grouptypename, ' is partially afterimaged. Stomping subwins individually.')
@@ -563,9 +529,8 @@ function! WinCommonCloseSubwins(supwinid, grouptypename)
                 endif
             endfor
         endif
-
     finally
-        call WinCommonThawWindowSizes(prefreeze)
+        call WinStateUnshieldWindow(a:supwinid, preshield)
     endtry
 endfunction
 
@@ -573,15 +538,13 @@ endfunction
 " dimensions shouldn't change
 function! WinCommonOpenSubwins(supwinid, grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonOpenSubwins ', a:supwinid, ':', a:grouptypename)
-    let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(a:supwinid)
+    let preshield = WinStateShieldWindow(a:supwinid, 1)
     try
         let grouptype = g:subwingrouptype[a:grouptypename]
         let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
-
     finally
-        call WinCommonThawWindowSizes(prefreeze)
+        call WinStateUnshieldWindow(a:supwinid, preshield)
     endtry
-
     call EchomLog('window-common', 'verbose', 'Opened subwin group ', a:supwinid, ':', a:grouptypename, ' with winids ', winids)
     return winids
 endfunction
@@ -922,7 +885,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
 
         " If the cursor is in a subwin, start with its supwin
         elseif a:curwin.category ==# 'subwin'
-            call EchomLog('window-common', 'verbose', 'Cursor is in subwin ', a:curwi,supwin, ':', a:curwin.grouptype, ':', a:curwin.typename, '. Subwins of supwin ', a:curwin.supwin, ' will be closed first')
+            call EchomLog('window-common', 'verbose', 'Cursor is in subwin ', a:curwin.supwin, ':', a:curwin.grouptype, ':', a:curwin.typename, '. Subwins of supwin ', a:curwin.supwin, ' will be closed first')
             let startwith = str2nr(a:curwin.supwin)
         endif
 

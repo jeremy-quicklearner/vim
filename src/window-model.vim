@@ -441,7 +441,7 @@ endfunction
 function! WinModelSetPreviousWinInfo(info)
     call EchomLog('window-model', 'info', 'WinModelSetPreviousWinInfo ', a:info)
     if !WinModelIdByInfo(a:info)
-        throw "Attempted to set previous window to one that doesn't exist in model"
+        throw "Attempted to set previous window to one that doesn't exist in model: " . string(a:info)
     endif
     let t:prevwin = a:info
 endfunction
@@ -457,7 +457,7 @@ endfunction
 function! WinModelSetCurrentWinInfo(info)
     call EchomLog('window-model', 'info', 'WinModelSetCurrentWinInfo ', a:info)
     if !WinModelIdByInfo(a:info)
-        throw "Attempted to set current window to one that doesn't exist in model"
+        throw "Attempted to set current window to one that doesn't exist in model: " . string(a:info)
     endif
     let t:curwin = a:info
 endfunction

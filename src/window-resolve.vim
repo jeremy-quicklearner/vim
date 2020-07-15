@@ -479,18 +479,8 @@ function! s:WinResolveModelToState()
        \    !WinModelSubwinGroupExists(wininfo.supwin, wininfo.grouptype) ||
        \    WinModelSubwinGroupIsHidden(wininfo.supwin, wininfo.grouptype)
        \)
-           " If the supwin exists, freeze dimensions of all windows
-           " outside it while closing. See comment in WinCommonCloseSubwins
-           if WinModelSupwinExists(wininfo.supwin)
-               let prefreeze = WinCommonFreezeAllWindowSizesOutsideSupwin(wininfo.supwin)
-           endif
-
            call EchomLog('window-resolve', 'info', 'Step 2.1 removing non-model-shown subwin ', wininfo.supwin, ':', wininfo.grouptype, ':', wininfo.typename, ' with winid ', winid, ' from state')
            call WinStateCloseWindow(winid)
-
-           if WinModelSupwinExists(wininfo.supwin)
-               call WinCommonThawWindowSizes(prefreeze)
-           endif
            continue
         endif
     endfor
@@ -762,6 +752,9 @@ function! WinResolve(arg)
     call EchomLog('window-resolve', 'verbose', 'Save cursor position')
     let s:curpos = WinCommonGetCursorPosition()
 
+    " Save the current number of tabs
+    let tabcount = WinStateGetTabCount()
+
     " Run the supwin-added callbacks
     if s:supwinsaddedcond
         call EchomLog('window-resolve', 'debug', 'Step 1 added a supwin. Running callbacks')
@@ -774,6 +767,16 @@ function! WinResolve(arg)
 
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinResolveModelToState()
+
+    " It is possible that STEP 2 closed the tab, and we are now in a
+    " different tab. If that is the case, end the resolver run
+    " immediately. We can tell the tab has been closed by checking the number
+    " of tabs. The resolver will never open a new tab or rearrange existing
+    " tabs.
+    if tabcount !=# WinStateGetTabCount()
+        let s:resolveIsRunning = 0
+        return
+    endif
 
     " STEP 3: The model and state are now consistent with each other, but
     "         afterimaging and tracked cursor positions may be inconsistent with the

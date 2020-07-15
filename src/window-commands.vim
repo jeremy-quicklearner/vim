@@ -206,6 +206,8 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinMoveToNewTab',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
+\   'WinResizeHorizontal',
+\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'

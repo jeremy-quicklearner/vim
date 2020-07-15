@@ -818,7 +818,7 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     call EchomLog('window-user', 'info', 'WinGotoSubwin ', a:dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename)
 
     if WinModelSubwinGroupIsHidden(dstsupwinid, a:dstgrouptypename)
-        call EchomLog('window-user', 'info', 'Showing subwin group ', a:dstsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
+        call EchomLog('window-user', 'info', 'Showing subwin group ', dstsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
         call WinShowSubwinGroup(dstsupwinid, a:dstgrouptypename)
     endif
 
