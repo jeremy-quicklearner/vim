@@ -81,7 +81,7 @@ function! WinCmdRunSpecialCmd(cmdname, range, count, handler)
 
         call Handler(opcount)
     catch /.*/
-        call EchomLog('window-commands', 'warning', v:throwpoint)
+        call EchomLog('window-commands', 'debug', v:throwpoint)
         call EchomLog('window-commands', 'warning', v:exception)
         return
     endtry
@@ -131,6 +131,22 @@ call WinCmdDefineSpecialCmd('WinGotoPrevious','WinGotoPrevious')
 " the subwin dangling, which will cause the resolver to exit the tab
 call WinCmdDefineSpecialCmd('WinOnly', 'WinOnly')
 
+" If WinResizeHorizontal and WinResizeVertical must run wincmd _ and
+" wincmd | with uberwins closed, they could change the uberwins's sizes and cause
+" the resolver to later close and reopen the uberwins. RestoreMaxDimensionsByWinid
+" would then mess up all the supwins' sizes, so the user's intent would be
+" lost. So WinResizeHorizontal and WinResizeVertical must run without
+" uberwins.
+" The user invokes WinResizeHorizontal and WinResizeVertical while looking at
+" a layout with uberwins, and supplies counts accordingly. However, when
+" wincmd _ and wincmd \| run, the closed uberwins may have given their screen
+" space to the supwin being resized. So the counts need to be normalized by
+" the supwin's change in dimension across the uberwins closing.
+" WinCommonDoWithout* shouldn't have to do the normalizing because these are
+" the only two commands that require it. So they have a custom implementation.
+call WinCmdDefineSpecialCmd('WinResizeHorizontal', 'WinResizeHorizontal')
+call WinCmdDefineSpecialCmd('WinResizeVertical',   'WinResizeVertical')
+
 " Movement commands are special because if the starting point is an uberwin,
 " using DoWithoutUberwins would change the starting point to be the first
 " supwin. But DoWithoutUberwins would be necessary because we don't want to
@@ -154,8 +170,6 @@ let s:allNonSpecialCmds = {
 \   'WinMoveToNewTab':    'T',
 \   'WinMoveToRightEdge': 'L',
 \   'WinMoveToTopEdge':   'K',
-\   'WinResizeHorizontal':'_',
-\   'WinResizeVertical':  '|',
 \   'WinReverseGoNext':   'W',
 \   'WinReverseRotate':   'R',
 \   'WinRotate':          'r'
@@ -170,8 +184,6 @@ let s:cmdsWithPreserveCursorPos = [
 \   'WinMoveToLeftEdge',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
-\   'WinResizeHorizontal',
-\   'WinResizeVertical',
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
@@ -187,8 +199,6 @@ let s:cmdsWithUberwinNop = [
 \   'WinMoveToNewTab',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
-\   'WinResizeHorizontal',
-\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'
@@ -206,8 +216,6 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinMoveToNewTab',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
-\   'WinResizeHorizontal',
-\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'
@@ -237,21 +245,17 @@ let s:cmdsWithoutSubwins = [
 \   'WinMoveToLeftEdge',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
-\   'WinResizeHorizontal',
-\   'WinResizeVertical',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
 \   'WinRotate'
 \]
+" TODO: Make this list as small as possible
 let s:cmdsThatRelyOnResolver = [
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinIncreaseHeight',
 \   'WinIncreaseWidth',
 \   'WinMoveToNewTab',
-\   'WinResizeHorizontal',
-\   'WinResizeVertical',
-\   'WinReverseRotate',
 \]
 
 for cmdname in keys(s:allNonSpecialCmds)

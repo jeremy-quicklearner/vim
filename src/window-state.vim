@@ -568,7 +568,7 @@ function! WinStateAfterimageWindow(winid)
         let folds = s:PreserveFolds()
     catch /.*/
         call EchomLog('window-state', 'warning', 'Failed to preserve folds for window ', a:winid, ':'))
-        call EchomLog('window-state', 'warning', v:throwpoint)
+        call EchomLog('window-state', 'debug', v:throwpoint)
         call EchomLog('window-state', 'warning', v:exception)
         let folds = {'method':'manual','data':{}}
     endtry
@@ -613,7 +613,7 @@ function! WinStateAfterimageWindow(winid)
         call s:RestoreFolds(folds.method, folds.data)
     catch /.*/
         call EchomLog('window-state', 'warning', 'Failed to restore folds for window ', a:winid, ':')
-        call EchomLog('window-state', 'warning', v:throwpoint)
+        call EchomLog('window-state', 'debug', v:throwpoint)
         call EchomLog('window-state', 'warning', v:exception)
     endtry
     call s:MaybeRedraw()
@@ -678,7 +678,7 @@ function! WinStatePreCloseAndReopen(winid)
         let fold = s:PreserveFolds()
     catch /.*/
         call EchomLog('window-state', 'warning', 'Failed to preserve folds for window ', a:winid, ':')
-        call EchomLog('window-state', 'warning', v:throwpoint)
+        call EchomLog('window-state', 'debug', v:throwpoint)
         call EchomLog('window-state', 'warning', v:exception)
         let fold = {'method':'manual','data':{}}
     endtry
@@ -712,7 +712,7 @@ function! WinStatePostCloseAndReopen(winid, preserved)
         call s:RestoreFolds(a:preserved.fold.method, a:preserved.fold.data)
     catch /.*/
         call EchomLog('window-state', 'warning', 'Failed to restore folds for window ', a:winid, ':')
-        call EchomLog('window-state', 'warning', v:throwpoint)
+        call EchomLog('window-state', 'debug', v:throwpoint)
         call EchomLog('window-state', 'warning', v:exception)
     endtry
     call s:MaybeRedraw()

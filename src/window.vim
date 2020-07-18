@@ -94,8 +94,6 @@
 "       all supwins have winfix(width|height) off? Do their subwins open
 "       correctly? Do they play well with CTRL-W _ and CTRL-W | ?
 "       use winsaveview().topline when opening uberwins.
-" TODO: Try to think of a way to make WinResizeHorizontal and
-"       WinResizeVertical work with open uberwins
 " TODO: Fix sessions. Start by removing all dependencies on Vim 8 winids
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
@@ -178,3 +176,9 @@ endif
 
 " Don't equalize window sizes when windows are closed
 set noequalalways
+
+" Allow windows to be arbitratily small
+set winheight=1
+set winwidth=1
+set winminheight=1
+set winminheight=1

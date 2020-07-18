@@ -894,6 +894,7 @@ function! WinGotoPrevious(count)
     call WinModelSetCurrentWinInfo(dst)
 
     call EchomLog('window-user', 'verbose', 'Previous window set to ', src)
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! s:GoInDirection(count, direction)
@@ -1007,6 +1008,7 @@ function! WinOnly(count)
     call s:GotoByInfo(info)
 
     call WinStateWincmd('', 'o')
+    call WinCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
 endfunction
 
@@ -1041,7 +1043,95 @@ function! WinExchange(count)
         call EchomLog('window-user', 'warning', v:exception)
         return
     endtry
+    call WinCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
+endfunction
+
+function! s:ResizeGivenNoSubwins(width, height)
+    call EchomLog('window-user', 'debug', 'ResizeGivenNoSubwins ', ', [', a:width, ',', a:height, ']')
+
+    let winid = WinModelIdByInfo(WinCommonGetCursorPosition().win)
+
+    let preclosedim = WinStateGetWinDimensions(winid)
+
+    call EchomLog('window-user', 'debug', 'Closing all uberwins')
+    let closeduberwingroups = WinCommonCloseUberwinsWithHigherPriority(-1)
+    try
+        call WinStateMoveCursorToWinid(winid)
+
+        let postclosedim = WinStateGetWinDimensions(winid)
+        let deltaw = postclosedim.w - preclosedim.w
+        let deltah = postclosedim.h - preclosedim.h
+        let finalw = a:width + deltaw
+        let finalh = a:height + deltah
+        let dow = 1
+        let doh = 1
+        call EchomLog('window-user', 'debug', 'Deltas: dw=', deltaw, ' dh=', deltah)
+
+        if a:width ==# ''
+            let finalw = ''
+        endif
+        if a:height ==# ''
+            let finalh = ''
+        endif
+        if type(a:width) ==# v:t_number && a:width <# 0
+            let dow = 0
+        endif
+        if type(a:height) ==# v:t_number && a:height <# 0
+            let doh = 0
+        endif
+
+        if dow
+            call EchomLog('window-user', 'debug', 'Resizing to width ', finalw)
+            call WinStateWincmd(finalw, '|')
+        endif
+        if doh
+            call EchomLog('window-user', 'debug', 'Resizing to height ', finalh)
+            call WinStateWincmd(finalh, '_')
+        endif
+    finally
+        call EchomLog('window-user', 'debug', 'Reopening all uberwins')
+        call WinCommonReopenUberwins(closeduberwingroups)
+    endtry
+endfunction
+
+function! WinResizeCurrentSupwin(width, height)
+    let info = WinCommonGetCursorPosition()
+
+    if info.win.category ==# 'uberwin'
+        throw 'Cannot resize an uberwin'
+        return
+    endif
+
+    call EchomLog('window-user', 'info', 'WinResizeCurrentSupwin ', a:width, ' ', a:height)
+
+    if info.win.category ==# 'subwin'
+        call EchomLog('window-user', 'debug', 'Moving to supwin first')
+        call WinGotoSupwin(info.win.supwin)
+    endif
+
+    let cmdinfo = WinCommonGetCursorPosition()
+    call EchomLog('window-user', 'verbose', 'Running command from window ', cmdinfo)
+
+    try
+        call WinCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height])
+
+    finally
+        call WinCommonRestoreCursorPosition(info)
+    endtry
+
+    call WinCommonRecordAllDimensions()
+    call s:RunPostUserOpCallbacks()
+endfunction
+
+function! WinResizeHorizontal(count)
+    call EchomLog('window-user', 'info', 'WinResizeHorizontal ' . a:count)
+    call WinResizeCurrentSupwin(-1, a:count)
+endfunction
+
+function! WinResizeVertical(count)
+    call EchomLog('window-user', 'info', 'WinResizeVertical ' . a:count)
+    call WinResizeCurrentSupwin(a:count, -1)
 endfunction
 
 " Run a command in every supwin

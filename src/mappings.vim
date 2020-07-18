@@ -22,8 +22,7 @@ nnoremap <silent> <c-l> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoRight'<
 
 " Use Ctrl-W z to set dimensions both vertically and horizontally
 function! WinZoom(count)
-    execute a:count . 'WinResizeHorizontal'
-    execute a:count . 'WinResizeVertical'
+    call WinResizeCurrentSupwin(a:count, a:count)
 endfunction
 nmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
 vmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
