@@ -265,6 +265,7 @@ function! WinStateCloseUberwinsByGroupType(grouptype)
     endif
 
     call call(ToClose, [])
+
     call s:MaybeRedraw()
 endfunction
 
@@ -288,7 +289,12 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
 
     call win_gotoid(a:supwinid)
 
+    let top = winsaveview().topline
     let winids = ToOpen()
+    let view = winsaveview()
+    let view.topline = top
+    call winrestview(view)
+
     call EchomLog('window-state', 'info', 'Opened subwin group ', a:supwinid, ':', a:grouptype.name, ' with winids ', winids)
 
     for idx in range(0, len(winids) - 1)
@@ -340,7 +346,13 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     endif
 
     call win_gotoid(a:supwinid)
+
+    let top = winsaveview().topline
     call call(ToClose, [])
+    let view = winsaveview()
+    let view.topline = top
+    call winrestview(view)
+
     call s:MaybeRedraw()
 endfunction
 

@@ -156,10 +156,9 @@ source <sfile>:p:h/window-commands.vim
 " Mappings
 source <sfile>:p:h/window-mappings.vim
 
-" Run the resolver whenever a tab is created
+" WHen the resolver runs in a new tab, it should run as if the tab was entered
 function! s:InitTab()
     let t:winresolvetabenteredcond = 1
-    call WinResolve([])
 endfunction
 
 " Every tab must be initialized

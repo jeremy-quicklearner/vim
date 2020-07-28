@@ -42,6 +42,7 @@ function! s:MaybeStartBuflog()
         return
     endif
     call setbufvar(g:j_buflog, '&buftype', 'nofile')
+    call setbufvar(g:j_buflog, '&swapfile', 0)
     call setbufvar(g:j_buflog, '&filetype', 'buflog')
     call setbufvar(g:j_buflog, '&bufhidden', 'hide')
     call setbufvar(g:j_buflog, '&buflisted', 1)
@@ -52,7 +53,7 @@ function! s:MaybeStartBuflog()
     catch /.*/
     endtry
 endfunction
-function! MaybeFlushBuflogQueue(arg)
+function! MaybeFlushBuflogQueue()
     if !g:j_buflog_lines
         call s:MaybeStartBuflog()
     endif
@@ -102,7 +103,7 @@ function! EchomLog(facility, loglevel, ...)
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentbufloglevel)
         let logstr = '[' . g:j_loglevel_data[a:loglevel].prefix . '][' . a:facility . '] ' . join(a:000, '')
         call add(g:j_buflog_queue, logstr)
-        call MaybeFlushBuflogQueue([])
+        call MaybeFlushBuflogQueue()
     endif
     if index(g:j_loglevels, a:loglevel) <=# index(g:j_loglevels, currentmsgloglevel)
         if empty(logstr)
@@ -169,6 +170,7 @@ endfunction
 " CursorHold callback infrastructure
 " TODO: Move this to a plugin so it can be used by the window engine when it
 " becomes a plugin
+call SetLogLevel('cursorhold-callback', 'config', 'warning')
 let s:callbacksRunning = 0
 
 " Self-explanatory
@@ -205,9 +207,31 @@ endfunction
 " another tab before the next CursorHold event. Otherwise, the callback will
 " run on the next CursorHold event that triggers in the current tab
 function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent, global)
-    "TODO: Validate params
+    if type(a:callback) != v:t_func
+        throw 'CursorHold Callback ' . string(a:callback) . ' is not a function'
+    endif
+    if type(a:data) != v:t_list
+        throw 'Data ' . string(a:data) . ' for CursorHold Callback ' . string(a:callback) . 'is not a list'
+    endif
+    if type(a:cascade) != v:t_number
+        throw 'Cascade flag ' . string(a:cascade) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
+    endif
+    if type(a:priority) != v:t_number
+        throw 'Priority ' . string(a:priority) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
+    endif
+    if type(a:permanent) != v:t_number
+        throw 'Permanent flag ' . string(a:permanent) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
+    endif
+    if type(a:global) != v:t_number
+        throw 'Global flag ' . string(a:global) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
+    endif
     if s:callbacksRunning
        throw 'Cannot register a CursorHold callback as part of running a different CursorHold callback'
+    endif
+    if a:permanent && a:global
+        call EchomLog('cursorhold-callback', 'config', 'Permanent Global CursorHold Callback: ', string(a:callback))
+    else
+        call EchomLog('cursorhold-callback', 'info', 'Register CursorHold Callback: ', string(a:callback))
     endif
     call EnsureCallbackListsExist()
     if a:cascade && a:global
@@ -245,6 +269,12 @@ endfunction
 
 " Run the registered callbacks
 function! RunCursorHoldCallbacks(cascading)
+    if a:cascading
+       call EchomLog('cursorhold-callback', 'info', 'Running CursorHold cascading callbacks')
+    else
+       call EchomLog('cursorhold-callback', 'info', 'Running CursorHold non-cascading callbacks')
+    endif
+
     call EnsureCallbackListsExist()
 
     if a:cascading
@@ -255,7 +285,8 @@ function! RunCursorHoldCallbacks(cascading)
 
     call sort(callbacks, function('ComparePriorities'))
     for callback in callbacks
-        call callback.callback(callback.data)
+        call EchomLog('cursorhold-callback', 'info', 'Running CursorHold Callback ', string(callback.callback))
+        call call(callback.callback, callback.data)
     endfor
 
     if a:cascading
@@ -300,13 +331,9 @@ function! HandleTerminalEnter()
         return
     endif
 
-    " Enter terminal-normal mode
-    call feedkeys("\<c-\>\<c-n>")
-
-    " Register a callback that goes back to terminal-job mode
-    " TODO: Fix the bug where extra I's get inserted if the same shell is open
-    " in two windows
-    call RegisterCursorHoldCallback(function('feedkeys'), 'i', 0, 100, 0, 0)
+    call EchomLog('cursorhold-callback', 'debug', 'Terminal in terminal-job mode detected in current window ', win_getid(), '. Force-running CursorHold Callbacks.')
+    call RunCursorHoldCallbacks(1)
+    noautocmd call RunCursorHoldCallbacks(0)
 endfunction
 
 augroup CursorHoldCallbacks
@@ -315,12 +342,8 @@ augroup CursorHoldCallbacks
     autocmd CursorHold * nested call RunCursorHoldCallbacks(1)
     autocmd CursorHold * call RunCursorHoldCallbacks(0)
 
-    " The CursorHold autocmd doesn't run in active terminal windows. When a
-    " terminal is opened or entered go to terminal-normal mode so the event
-    " will be called.
-    " Then register a callback to go back to terminal-job mode. Use a very low
-    " priority so all the other callbacks will have their chance to run before
-    " going back to terminal-job mode.
+    " The CursorHold autocmd doesn't run in active terminal windows, so
+    " force-run them whenever the cursor enters a terminal window
     autocmd TerminalOpen,WinEnter * call HandleTerminalEnter()
 augroup END
 

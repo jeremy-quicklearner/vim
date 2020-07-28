@@ -490,61 +490,51 @@ endfunction
 " WinStateCloseWindow if any subwins in the group are afterimaged
 function! WinCommonCloseSubwins(supwinid, grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonCloseSubwins ', a:supwinid, ':', a:grouptypename)
-    let preshield = WinStateShieldWindow(a:supwinid, 1)
-    try
-        if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
-            call EchomLog('window-common', 'debug', 'Subwin group ', a:supwinid, ':', a:grouptypename, ' is partially afterimaged. Stomping subwins individually.')
-            for subwinid in WinModelSubwinIdsByGroupTypeName(
-           \    a:supwinid,
-           \    a:grouptypename
-           \)
-                call EchomLog('window-common', 'verbose', 'Stomp subwin ', subwinid)
-                call WinStateCloseWindow(subwinid)
-            endfor
+    if WinModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
+        call EchomLog('window-common', 'debug', 'Subwin group ', a:supwinid, ':', a:grouptypename, ' is partially afterimaged. Stomping subwins individually.')
+        for subwinid in WinModelSubwinIdsByGroupTypeName(
+       \    a:supwinid,
+       \    a:grouptypename
+       \)
+            call EchomLog('window-common', 'verbose', 'Stomp subwin ', subwinid)
+            call WinStateCloseWindow(subwinid)
+        endfor
 
-            " Here, afterimaged subwins are removed from the state but not from
-            " the model. If they are opened again, they will not be afterimaged in
-            " the state. So deafterimage them in the model.
-            call WinModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
-        else
-            let grouptype = g:subwingrouptype[a:grouptypename]
-            let preclosewinids = WinStateGetWinidsByCurrentTab()
-            let subwinids = WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
-            for winid in subwinids
-                if index(preclosewinids, str2nr(winid)) < 0
-                    throw 'Model subwin ID ' . winid . ' from group ' . a:supwinid . ':' . a:grouptypename . ' not present in state'
-                endif
-            endfor
-            call EchomLog('window-common', 'debug', 'Subwin group ', a:supwinid, ':', a:grouptypename, ' is not afterimaged. Closing via toClose')
-            call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
-            let postclosewinids = WinStateGetWinidsByCurrentTab()
-            for winid in preclosewinids
-                let issubwinid = (index(subwinids, str2nr(winid)) >= 0)
-                let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
-                if !issubwinid && !ispresent
-                    throw 'toClose callback of subwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of subwin group ' . a:supwinid . ':' . a:grouptypename
-                endif
-                if issubwinid && ispresent
-                    throw 'toClose callback of subwin group type ' . a:grouptypename . ' did not close subwin ' . a:winid . ' of supwin ' . a:supwinid
-                endif
-            endfor
-        endif
-    finally
-        call WinStateUnshieldWindow(a:supwinid, preshield)
-    endtry
+        " Here, afterimaged subwins are removed from the state but not from
+        " the model. If they are opened again, they will not be afterimaged in
+        " the state. So deafterimage them in the model.
+        call WinModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
+    else
+        let grouptype = g:subwingrouptype[a:grouptypename]
+        let preclosewinids = WinStateGetWinidsByCurrentTab()
+        let subwinids = WinModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
+        for winid in subwinids
+            if index(preclosewinids, str2nr(winid)) < 0
+                throw 'Model subwin ID ' . winid . ' from group ' . a:supwinid . ':' . a:grouptypename . ' not present in state'
+            endif
+        endfor
+        call EchomLog('window-common', 'debug', 'Subwin group ', a:supwinid, ':', a:grouptypename, ' is not afterimaged. Closing via toClose')
+        call WinStateCloseSubwinsByGroupType(a:supwinid, grouptype)
+        let postclosewinids = WinStateGetWinidsByCurrentTab()
+        for winid in preclosewinids
+            let issubwinid = (index(subwinids, str2nr(winid)) >= 0)
+            let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
+            if !issubwinid && !ispresent
+                throw 'toClose callback of subwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of subwin group ' . a:supwinid . ':' . a:grouptypename
+            endif
+            if issubwinid && ispresent
+                throw 'toClose callback of subwin group type ' . a:grouptypename . ' did not close subwin ' . a:winid . ' of supwin ' . a:supwinid
+            endif
+        endfor
+    endif
 endfunction
 
-" Wrapper for WinStateOpenSubwinsByGroupType that freezes windows whose
-" dimensions shouldn't change
+" Wrapper for WinStateOpenSubwinsByGroupType that uses a group type from the
+" model
 function! WinCommonOpenSubwins(supwinid, grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonOpenSubwins ', a:supwinid, ':', a:grouptypename)
-    let preshield = WinStateShieldWindow(a:supwinid, 1)
-    try
-        let grouptype = g:subwingrouptype[a:grouptypename]
-        let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
-    finally
-        call WinStateUnshieldWindow(a:supwinid, preshield)
-    endtry
+    let grouptype = g:subwingrouptype[a:grouptypename]
+    let winids = WinStateOpenSubwinsByGroupType(a:supwinid, grouptype)
     call EchomLog('window-common', 'verbose', 'Opened subwin group ', a:supwinid, ':', a:grouptypename, ' with winids ', winids)
     return winids
 endfunction

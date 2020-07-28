@@ -126,7 +126,7 @@ call WinAddSubwinGroupType('loclist', ['loclist'],
 
 " For each supwin, make sure the loclist subwin exists if and only if that
 " supwin has a location list
-function! UpdateLoclistSubwins(arg)
+function! UpdateLoclistSubwins()
     call EchomLog('loclist-subwin', 'debug', 'UpdateLoclistSubwins')
     for supwinid in WinModelSupwinIds()
         let locwinexists = WinModelSubwinGroupExists(supwinid, 'loclist')

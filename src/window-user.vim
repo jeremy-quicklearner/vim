@@ -28,7 +28,7 @@ function! s:RunPostUserOpCallbacks()
     call EchomLog('window-user', 'debug', 'Running post-user-operation callbacks')
     for PostUserOpCallback in WinModelPostUserOperationCallbacks()
         call EchomLog('window-user', 'verbose', 'Running post-user-operation callback ', PostUserOpCallback)
-        call PostUserOpCallback([])
+        call PostUserOpCallback()
     endfor
 endfunction
 
@@ -140,43 +140,32 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', info)
     try
-        " TODO: Can probably skip this step as it is done in
-        "       WinCommonOpenUberwins
-        let windims = WinCommonPreserveDimensions()
-        call EchomLog('window-user', 'verbose', 'Preserved dimensions ', windims)
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let grouptype = g:uberwingrouptype[a:grouptypename]
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
         try
-            " Each uberwin must be, at the time it is opened, the one with the
-            " highest priority. So close all uberwins with higher priority.
-            let grouptype = g:uberwingrouptype[a:grouptypename]
-            let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-            call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
             try
-                try
-                    let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
-                    let dims = WinStateGetWinDimensionsList(winids)
-                    call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
-                    call WinModelAddUberwins(a:grouptypename, winids, dims)
-                    call EchomLog('window-user', 'verbose', 'Added uberwin group ', a:grouptypename, ' to model')
+                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
+                let dims = WinStateGetWinDimensionsList(winids)
+                call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
+                call WinModelAddUberwins(a:grouptypename, winids, dims)
+                call EchomLog('window-user', 'verbose', 'Added uberwin group ', a:grouptypename, ' to model')
 
-                catch /.*/
-                    call EchomLog('window-user', 'warning', 'WinAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                    call EchomLog('window-user', 'debug', v:throwpoint)
-                    call EchomLog('window-user', 'warning', v:exception)
-                    call WinAddUberwinGroup(a:grouptypename, 1)
-                    return
-                endtry
-
-            " Reopen the uberwins we closed
-            finally
-                call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
-                call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
+            catch /.*/
+                call EchomLog('window-user', 'warning', 'WinAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+                call EchomLog('window-user', 'debug', v:throwpoint)
+                call EchomLog('window-user', 'warning', v:exception)
+                call WinAddUberwinGroup(a:grouptypename, 1)
+                return
             endtry
 
+        " Reopen the uberwins we closed
         finally
-            call WinCommonRestoreMaxDimensions(windims)
-            call EchomLog('window-user', 'verbose', 'Restored dimensions')
+            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
+            call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
         endtry
-
     finally
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')
@@ -265,42 +254,29 @@ function! WinShowUberwinGroup(grouptypename)
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', info)
     try
-        " TODO: Can probably skip this step as it is done in
-        "       WinCommonOpenUberwins
-        let windims = WinCommonPreserveDimensions()
-        call EchomLog('window-user', 'verbose', 'Preserved dimensions ', windims)
+        " Each uberwin must be, at the time it is opened, the one with the
+        " highest priority. So close all uberwins with higher priority.
+        let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
         try
-            " Each uberwin must be, at the time it is opened, the one with the
-            " highest priority. So close all uberwins with higher priority.
-            let highertypes = WinCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-            call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
             try
-                try
-                    let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
-                    let dims = WinStateGetWinDimensionsList(winids)
-                    call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
-                    call WinModelShowUberwins(a:grouptypename, winids, dims)
-                    call EchomLog('window-user', 'verbose', 'Showed uberwin group ', a:grouptypename, ' in model')
+                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
+                let dims = WinStateGetWinDimensionsList(winids)
+                call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
+                call WinModelShowUberwins(a:grouptypename, winids, dims)
+                call EchomLog('window-user', 'verbose', 'Showed uberwin group ', a:grouptypename, ' in model')
 
-                catch /.*/
-                    call EchomLog('window-user', 'warning', 'WinShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                    call EchomLog('window-user', 'debug', v:throwpoint)
-                    call EchomLog('window-user', 'warning', v:exception)
-                    return
-                endtry
-
-
-            " Reopen the uberwins we closed
-            finally
-                call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
-                call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
+            catch /.*/
+                call EchomLog('window-user', 'warning', 'WinShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+                call EchomLog('window-user', 'debug', v:throwpoint)
+                call EchomLog('window-user', 'warning', v:exception)
+                return
             endtry
-        
+        " Reopen the uberwins we closed
         finally
-            call WinCommonRestoreMaxDimensions(windims)
-            call EchomLog('window-user', 'verbose', 'Restored dimensions')
+            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
+            call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
         endtry
-
     finally
         call WinCommonRestoreCursorPosition(info)
         call EchomLog('window-user', 'verbose', 'Restored cursor position')

@@ -196,7 +196,7 @@ call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
 
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
-function! UpdateUndotreeSubwins(arg)
+function! UpdateUndotreeSubwins()
     call EchomLog('undotree-subwin', 'debug', 'UpdateUndotreeSubwins')
     if !WinModelExists()
         return

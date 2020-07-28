@@ -1,7 +1,7 @@
 " Cosmetic adjustments
 
 " The active window is the only one with relative numbers and a CursorLine
-function! IndicateActiveWindow(arg)
+function! IndicateActiveWindow()
     let winids = WinStateGetWinidsByCurrentTab()
     for winid in winids
         call setwinvar(winid, '&relativenumber', 0)

@@ -1,6 +1,5 @@
 " Window infrastructure Resolve function
 " See window.vim
-" TODO: figure out why typing :tabnew in a help window does weird things
 
 " The cursor's final position is used in multiple places
 let s:curpos = {}
@@ -583,7 +582,7 @@ function! s:WinResolveModelToState()
                     let preservedsubwins[supwinid][grouptypename] =
                    \    WinCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
                     call EchomLog('window-resolve', 'verbose', 'Preserved info from subwin group ', supwinid, ':', grouptypename, ': ', preservedsubwins[supwinid][grouptypename])
-                    call EchomLog('window-resolve', 'debug', 'Step 2.2 removing subwin group ', supwinid, ':', grouptypename, ' from state')
+                    call EchomLog('window-resolve', 'info', 'Step 2.2 removing subwin group ', supwinid, ':', grouptypename, ' from state')
                     call WinCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1
                 endif
@@ -711,7 +710,7 @@ endfunction
 
 " Resolver
 let s:resolveIsRunning = 0
-function! WinResolve(arg)
+function! WinResolve()
     if s:resolveIsRunning
         call EchomLog('window-resolve', 'debug', 'Resolver reentrance detected')
         return

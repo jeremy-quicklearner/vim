@@ -77,13 +77,13 @@ function! SetSpecificStatusLine()
     execute 'setlocal statusline=' . WinNonDefaultStatusLine()
 endfunction
 
-function! CorrectAllStatusLines(arg)
+function! CorrectAllStatusLines()
     Windofast call SetSpecificStatusLine()
 endfunction
 
 " Register the above function to be called on the next CursorHold event
 function! RegisterCorrectStatusLines()
-    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), "", 0, 1, 0, 0)
+    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), [], 0, 1, 0, 0)
 endfunction
 
 augroup StatusLine
