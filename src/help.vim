@@ -5,9 +5,10 @@
 " interacts with it only via the resolver and ToOpenHelp only ever gets called
 " when the resolver closes and reopens the window. So the implementation of
 " ToOpenHelp assumes that ToCloseHelp has recently been called.
+" TODO: Add a default behaviour that just opens the help
 call SetLogLevel('help-uberwin', 'info', 'warning')
 
-augroup Help
+augroup HelpUberwin
     autocmd!
     autocmd VimEnter, TabNew * let t:j_help = {}
 augroup END
@@ -21,19 +22,19 @@ function! ToOpenHelp()
 
     for winid in WinStateGetWinidsByCurrentTab()
         " This check is intentionally case-insensitive
-        if getwinvar(winid, '&ft', '') == 'help'
+        if getwinvar(Win_id2win(winid), '&ft', '') == 'help'
             throw 'Help window already open'
         endif
     endfor
 
-    let prevwinid = win_getid()
+    let prevwinid = Win_getid_cur()
     noautocmd vertical botright 89 split
     noautocmd silent execute 'buffer ' . t:j_help.bufnr
-    let winid = win_getid()
+    let winid = Win_getid_cur()
     call WinStatePostCloseAndReopen(winid, t:j_help)
     let &winfixwidth = 1
 
-    noautocmd call win_gotoid(prevwinid)
+    noautocmd call Win_gotoid(prevwinid)
 
     return [winid]
 endfunction
@@ -43,7 +44,7 @@ function! ToCloseHelp()
     call EchomLog('help-uberwin', 'info', 'ToCloseHelp')
     let helpwinid = 0
     for winid in WinStateGetWinidsByCurrentTab()
-        if getwinvar(winid, '&ft', '') == 'help'
+        if getwinvar(Win_id2win(winid), '&ft', '') == 'help'
             let helpwinid = winid
         endif
     endfor
@@ -53,7 +54,14 @@ function! ToCloseHelp()
     endif
 
     let t:j_help = WinStatePreCloseAndReopen(helpwinid)
-    let t:j_help.bufnr = winbufnr(helpwinid)
+    let t:j_help.bufnr = winbufnr(Win_id2win(helpwinid))
+
+    " helpclose fails if the help window is the last window, so use :quit
+    " instead
+    if winnr('$') ==# 1 && tabpagenr('$') ==# 1
+        quit
+        return
+    endif
 
     helpclose
 endfunction
@@ -61,7 +69,7 @@ endfunction
 " Callback that returns 'help' if the supplied winid is for the help window
 function! ToIdentifyHelp(winid)
     call EchomLog('help-uberwin', 'debug', 'ToIdentifyHelp ', a:winid)
-    if getwinvar(a:winid, '&ft', '') == 'help'
+    if getwinvar(Win_id2win(a:winid), '&ft', '') == 'help'
         return 'help'
     endif
     return ''

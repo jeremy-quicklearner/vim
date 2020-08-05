@@ -4,33 +4,35 @@
 function! IndicateActiveWindow()
     let winids = WinStateGetWinidsByCurrentTab()
     for winid in winids
-        call setwinvar(winid, '&relativenumber', 0)
+        call setwinvar(Win_id2win(winid), '&relativenumber', 0)
 
         let idxline = 0
-        if !empty(ToIdentifyLoclist(winid))
-            let idxline = get(getloclist(winid,{'idx':0}),'idx',-1)
-        elseif !empty(ToIdentifyQuickfix(winid))
-            let idxline = get(getqflist({'idx':0}),'idx',-1)
+        if !g:legacywinid
+            if !empty(ToIdentifyLoclist(winid))
+                let idxline = get(getloclist(Win_id2win(winid),{'idx':0}),'idx',-1)
+            elseif !empty(ToIdentifyQuickfix(winid))
+                let idxline = get(getqflist({'idx':0}),'idx',-1)
+            endif
         endif
 
         if idxline
-            let curwinid = win_getid()
+            let curwinid = Win_getid_cur()
             call WinStateMoveCursorToWinidSilently(winid)
             let locline = line('.')
             call WinStateMoveCursorToWinidSilently(curwinid)
             if idxline ==# locline
-                call setwinvar(winid, '&cursorline', 0)
+                call setwinvar(Win_id2win(winid), '&cursorline', 0)
             else
-                call setwinvar(winid, '&cursorline', 1)
+                call setwinvar(Win_id2win(winid), '&cursorline', 1)
             endif
         else
-            call setwinvar(winid, '&cursorline', 1)
+            call setwinvar(Win_id2win(winid), '&cursorline', 1)
         endif
     endfor
 
     let winid = WinStateGetCursorWinId()
-    call setwinvar(winid, '&relativenumber', 1)
-    call setwinvar(winid, '&cursorline', 0)
+    call setwinvar(Win_id2win(winid), '&relativenumber', 1)
+    call setwinvar(Win_id2win(winid), '&cursorline', 0)
 endfunction
 if !exists('g:j_activewin_chc')
     let g:j_activewin_chc = 1

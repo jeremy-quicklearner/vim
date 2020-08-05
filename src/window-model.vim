@@ -124,12 +124,6 @@ function! WinModelExists()
     call EchomLog('window-model', 'debug', 'WinModelExists')
     return exists('t:uberwin')
 endfunction
-function! s:AssertWinModelExists()
-    call EchomLog('window-model', 'debug', 'AssertWinModelExists')
-    if !WinModelExists()
-        throw "tab-specific model doesn't exist"
-    endif
-endfunction
 
 " Initialize the tab-specific portion of the model
 function! WinModelInit()
@@ -143,6 +137,14 @@ function! WinModelInit()
     let t:supwin = {}
     let t:subwin = {}
 endfunction
+
+function! s:EnsureWinModelExists()
+    call EchomLog('window-model', 'debug', 'EnsureWinModelExists')
+    if !WinModelExists()
+        call WinModelInit()
+    endif
+endfunction
+
 
 " Resolve callback manipulation
 function! s:AddTypedCallback(type, callback)
@@ -433,7 +435,7 @@ endfunction
 " Previous window info manipulation
 function! WinModelPreviousWinInfo()
     call EchomLog('window-model', 'debug', 'WinModelPreviousWinInfo')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call EchomLog('window-model', 'debug', 'Previous window: ', t:prevwin)
     return t:prevwin
 endfunction
@@ -449,7 +451,7 @@ endfunction
 " Current window info manipulation
 function! WinModelCurrentWinInfo()
     call EchomLog('window-model', 'debug', 'WinModelCurrentWinInfo')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call EchomLog('window-model', 'debug', 'Current window: ', t:curwin)
     return t:curwin
 endfunction
@@ -467,7 +469,7 @@ endfunction
 " Returns the names of all uberwin groups in the current tab, shown or not
 function! WinModelUberwinGroups()
     call EchomLog('window-model', 'debug', 'WinModelUberwinGroups')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call EchomLog('window-model', 'debug', 'Uberwin groups: ', keys(t:uberwin))
     return keys(t:uberwin)
 endfunction
@@ -475,7 +477,7 @@ endfunction
 " Returns a list containing the IDs of all uberwins in an uberwin group
 function! WinModelUberwinIdsByGroupTypeName(grouptypename)
     call EchomLog('window-model', 'debug', 'WinModelUberwinIdsByGroupTypeName ', a:grouptypename)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     let uberwinids = []
     if !WinModelUberwinGroupExists(a:grouptypename) ||
@@ -494,7 +496,7 @@ endfunction
 " Returns a list containing all uberwin IDs
 function! WinModelUberwinIds()
     call EchomLog('window-model', 'debug', 'WinModelUberwinIds')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     let uberwinids = []
     for grouptype in keys(t:uberwin)
         if t:uberwin[grouptype].hidden
@@ -541,7 +543,7 @@ endfunction
 " Returns a list containing all supwin IDs
 function! WinModelSupwinIds()
     call EchomLog('window-model', 'debug', 'WinModelSupwinIds')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call EchomLog('window-model', 'debug', 'Supwin IDs: ', map(keys(t:supwin), 'str2nr(v:val)'))
     return map(keys(t:supwin), 'str2nr(v:val)')
 endfunction
@@ -605,7 +607,7 @@ endfunction
 " Returns a list containing all subwin IDs
 function! WinModelSubwinIds()
     call EchomLog('window-model', 'debug', 'WinModelSubwinIds')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call EchomLog('window-model', 'debug', 'Subwin IDs: ', map(keys(t:subwin), 'str2nr(v:val)'))
     return map(keys(t:subwin), 'str2nr(v:val)')
 endfunction
@@ -613,7 +615,7 @@ endfunction
 " Returns 1 if a winid is represented in the model. 0 otherwise.
 function! WinModelWinExists(winid)
     call EchomLog('window-model', 'debug', 'WinModelWinExists ', a:winid)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     if index(WinModelUberwinIds(), str2nr(a:winid)) > -1
         call EchomLog('window-model', 'debug', 'ID ', a:winid, ' found in uberwin list')
         return 1
@@ -635,6 +637,13 @@ function! s:AssertWinExists(winid)
         throw 'nonexistent window ' . a:winid
     endif
 endfunction
+function! s:AssertWinDoesntExist(winid)
+    call EchomLog('window-model', 'debug', 'AssertWinDoesntExist ', a:winid)
+    if WinModelWinExists(a:winid)
+        throw 'window ' . a:winid . ' exists'
+    endif
+endfunction
+
 
 " Given a window ID, return a dict that identifies it within the model
 function! WinModelInfoById(winid)
@@ -784,7 +793,7 @@ endfunction
 " priorities higher than a given, sorted in ascending order of priority
 function! WinModelUberwinGroupTypeNamesByMinPriority(minpriority)
     call EchomLog('window-model', 'debug', 'WinModelUberwinGroupTypeNamesByMinPriority ', a:minpriority)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     if type(a:minpriority) != v:t_number
         throw 'minpriority must be a number'
     endif
@@ -814,7 +823,7 @@ endfunction
 " of priority
 function! WinModelSubwinGroupTypeNamesByMinPriority(supwinid, minpriority)
     call EchomLog('window-model', 'debug', 'WinModelSubwinGroupTypeNamesByMinPriority ', a:supwinid, a:minpriority)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     if type(a:minpriority) != v:t_number
         throw 'minpriority must be a number'
     endif
@@ -953,6 +962,9 @@ function! s:ValidateNewDimensionsList(category, grouptypename, dims)
     for typeidx in range(len(g:uberwingrouptype[a:grouptypename].typenames))
         call EchomLog('window-model', 'verbose', 'Validate dimensions ', a:dims[typeidx])
         " TODO? Fill in missing dicts with -1,-1,-1
+        " - This will only be required if there's ever a case where multiple
+        "   windows are added to the model at the same time, but only some of
+        "   them have non-dummy dimensions
         let dim = a:dims[typeidx]
         let typename = g:uberwingrouptype[a:grouptypename].typenames[typeidx]
         if type(dim) !=# v:t_dict
@@ -1021,6 +1033,9 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
     for typeidx in range(len(g:subwingrouptype[a:grouptypename].typenames))
         call EchomLog('window-model', 'verbose', 'Validate dimensions ', a:dims[typeidx])
         " TODO? Fill in missing dicts with 0,-1,-1
+        " - This will only be required if there's ever a case where multiple
+        "   windows are added to the model at the same time, but only some of
+        "   them have non-dummy dimensions
         let typename = g:subwingrouptype[a:grouptypename].typenames[typeidx]
         let dim = a:dims[typeidx]
 
@@ -1068,7 +1083,7 @@ endfunction
 " Uberwin group manipulation
 function! WinModelUberwinGroupExists(grouptypename)
     call EchomLog('window-model', 'debug', 'WinModelUberwinGroupExists ', a:grouptypename)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call WinModelAssertUberwinGroupTypeExists(a:grouptypename)
     return has_key(t:uberwin, a:grouptypename )
 endfunction
@@ -1108,7 +1123,7 @@ function! WinModelUberwinGroupTypeNames()
 endfunction
 function! WinModelShownUberwinGroupTypeNames()
     call EchomLog('window-model', 'debug', 'WinModelShownUberwinGroupTypeNames')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     let grouptypenames = []
     for grouptypename in keys(t:uberwin)
         if !WinModelUberwinGroupIsHidden(grouptypename)
@@ -1282,7 +1297,7 @@ endfunction
 " Supwin manipulation
 function! WinModelSupwinExists(winid)
     call EchomLog('window-model', 'debug', 'WinModelSupwinExists ', a:winid)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     return has_key(t:supwin, a:winid)
 endfunction
 function! WinModelAssertSupwinExists(winid)
@@ -1410,7 +1425,7 @@ function! WinModelSubwinGroupHasAfterimagedSubwin(supwinid, grouptypename)
 endfunction
 function! s:SubwinidIsInSubwinList(subwinid)
     call EchomLog('window-model', 'debug', 'SubwinidIsInSubwinList ', a:subwinid)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     return has_key(t:subwin, a:subwinid)
 endfunction
 function! s:AssertSubwinidIsInSubwinList(subwinid)
@@ -1427,7 +1442,7 @@ function! s:AssertSubwinidIsNotInSubwinList(subwinid)
 endfunction
 function! s:SubwinIdFromSubwinList(supwinid, grouptypename, typename)
     call EchomLog('window-model', 'debug', 'SubwinIdFromSubwinList ', a:supwinid, ':', a:grouptypename, ':', a:typename)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     let foundsubwinid = 0
     for subwinid in keys(t:subwin)
         call EchomLog('window-model', 'verbose', 'Checking subwin ID ', subwinid)
@@ -1572,7 +1587,7 @@ function! WinModelSubwinDimensions(supwinid, grouptypename, typename)
 endfunction
 function! WinModelSubwinAibufBySubwinId(subwinid)
     call EchomLog('window-model', 'debug', 'WinModelSubwinAibufBySubwinId ', a:subwinid)
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     call s:AssertSubwinidIsInSubwinList(a:subwinid)
     call EchomLog('window-model', 'debug', 'Afterimage buffer for subwin ', a:subwinid, ': ', t:subwin[a:subwinid].aibuf)
     return t:subwin[a:subwinid].aibuf
@@ -1595,7 +1610,7 @@ endfunction
 
 function! WinModelAddSupwin(winid, nr, w, h)
     call EchomLog('window-model', 'info', 'WinModelAddSupwin ', a:winid, ' [', a:nr, ',', a:w, ',', a:h, ']')
-    call s:AssertWinModelExists()
+    call s:EnsureWinModelExists()
     if has_key(t:supwin, a:winid)
         throw 'window ' . a:winid . ' is already a supwin'
     endif
@@ -1856,6 +1871,40 @@ function! WinModelDeafterimageSubwinsByGroup(supwinid, grouptypename)
     endfor
 endfunction
 
+function! WinModelReplaceWinid(oldwinid, newwinid)
+    call EchomLog('window-model', 'info', 'WinModelReplaceWinid ', a:oldwinid, a:newwinid)
+    let info = WinModelInfoById(a:oldwinid)
+    call s:AssertWinDoesntExist(a:newwinid)
+
+    if info.category ==# 'uberwin'
+        let t:uberwin[info.grouptype].uberwin[info.typename].id = a:newwinid
+
+    elseif info.category ==# 'supwin'
+        let t:supwin[a:newwinid] = t:supwin[a:oldwinid]
+        unlet t:supwin[a:oldwinid]
+        for subwinid in keys(t:subwin)
+            if t:subwin[subwinid].supwin ==# a:oldwinid
+                let t:subwin[subwinid].supwin = a:newwinid
+            endif
+        endfor
+
+    elseif info.category ==# 'subwin'
+        let t:supwin[info.supwin].subwin[info.grouptype].subwin[info.typename].id = a:newwinid
+        let t:subwin[a:newwinid] = t:subwin[a:oldwinid]
+        unlet t:subwin[a:oldwinid]
+
+    else
+        throw 'Window with changed winid is neither uberwin nor supwin nor subwin'
+    endif
+
+    if t:curwin.id ==# a:oldwinid
+        let t:curwin.id = a:newwinid
+    endif
+    if t:prevwin.id ==# a:oldwinid
+        let t:prevwin.id = a:newwinid
+endfunction
+
 " TODO? Some individual types may need an option for a non-default toClose
 " callback so that the resolver doesn't have to stomp them with :q! when their groups
 " become incomplete
+" - So far that hasn't been needed

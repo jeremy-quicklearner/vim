@@ -7,7 +7,7 @@
 " ToOpenPreview assumes that ToClosePreview has recently been called.
 call SetLogLevel('preview-uberwin', 'info', 'warning')
 
-augroup Preview
+augroup PreviewUberwin
     autocmd!
     autocmd VimEnter, TabNew * let t:j_preview = {}
 augroup END
@@ -20,14 +20,13 @@ function! ToOpenPreview()
     endif
 
     for winid in WinStateGetWinidsByCurrentTab()
-        if getwinvar(winid, '&previewwindow', 0)
+        if getwinvar(Win_id2win(winid), '&previewwindow', 0)
             throw 'Preview window already open'
         endif
     endfor
 
-    let previouswinid = win_getid()
+    let previouswinid = Win_getid_cur()
     noautocmd execute 'topleft ' . &previewheight . 'split'
-    call WinStateWincmd(&previewheight, '_')
 
     " If the file being previewed is already open in another Vim instance,
     " this command throws ( but works )
@@ -37,7 +36,7 @@ function! ToOpenPreview()
        call EchomLog('preview-uberwin', 'warning', v:exception)
     endtry
 
-    let winid = win_getid()
+    let winid = Win_getid_cur()
     call WinStatePostCloseAndReopen(winid, t:j_preview)
     let &previewwindow = 1
     let &winfixheight = 1
@@ -46,7 +45,7 @@ function! ToOpenPreview()
     " the syntax option is set
     let &syntax = &syntax
 
-    noautocmd call win_gotoid(previouswinid)
+    noautocmd call Win_gotoid(previouswinid)
 
     return [winid]
 endfunction
@@ -56,7 +55,7 @@ function! ToClosePreview()
     call EchomLog('preview-uberwin', 'info', 'ToClosePreview')
     let previewwinid = 0
     for winid in WinStateGetWinidsByCurrentTab()
-        if getwinvar(winid, '&previewwindow', 0)
+        if getwinvar(Win_id2win(winid), '&previewwindow', 0)
             let previewwinid = winid
         endif
     endfor
@@ -73,7 +72,7 @@ function! ToClosePreview()
     endif
 
     let t:j_preview = WinStatePreCloseAndReopen(previewwinid)
-    let t:j_preview.bufnr = winbufnr(previewwinid)
+    let t:j_preview.bufnr = winbufnr(Win_id2win(previewwinid))
 
     pclose
 endfunction
@@ -82,7 +81,7 @@ endfunction
 " window
 function! ToIdentifyPreview(winid)
     call EchomLog('preview-uberwin', 'debug', 'ToIdentifyPreview ', a:winid)
-    if getwinvar(a:winid, '&previewwindow', 0)
+    if getwinvar(Win_id2win(a:winid), '&previewwindow', 0)
         return 'preview'
     endif
     return ''

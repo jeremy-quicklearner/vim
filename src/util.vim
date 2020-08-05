@@ -137,7 +137,15 @@ function! BufDo(command, range)
     execute a:range . 'bufdo ' . a:command
     execute 'buffer ' . currBuff
 endfunction
-command! -nargs=+ -complete=command Bufdo call BufDo(<q-args>)
+command! -nargs=+ -complete=command Bufdo call BufDo(<q-args>, '')
+
+" Just like tabdo, but restore the current buffer when done.
+function! TabDo(command, range)
+    let curtabnr = tabpagenr()
+    execute a:range . 'tabdo ' . a:command
+    execute curtabnr . 'tabnext'
+endfunction
+command! -nargs=+ -complete=command Tabdo call TabDo(<q-args>, '')
 
 " Make sure the current window has a variable defined in it
 function! MaybeLet(name, default)
@@ -148,9 +156,9 @@ endfunction
 
 " Make sure every window has a variable defined for it
 function! WinDoMaybeLet(name, default)
-   for winnum in range(1, winnr('$'))
-      if getwinvar(winnum, a:name, '$N$U$L$L$') ==# '$N$U$L$L$' 
-         call setwinvar(winnum, a:name, a:default)
+   for winnr in range(1, winnr('$'))
+      if getwinvar(winnr, a:name, '$N$U$L$L$') ==# '$N$U$L$L$' 
+         call setwinvar(winnr, a:name, a:default)
       endif
    endfor
 endfunction
@@ -178,14 +186,8 @@ function! EnsureCallbackListsExist()
     if !exists('g:cursorHoldCallbacks')
         let g:cursorHoldCallbacks = []
     endif
-    if !exists('g:cursorHoldCascadingCallbacks')
-        let g:cursorHoldCascadingCallbacks = []
-    endif
     if !exists('t:cursorHoldCallbacks')
         let t:cursorHoldCallbacks = []
-    endif
-    if !exists('t:cursorHoldCascadingCallbacks')
-        let t:cursorHoldCascadingCallbacks = []
     endif
 endfunction
 
@@ -234,94 +236,57 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
         call EchomLog('cursorhold-callback', 'info', 'Register CursorHold Callback: ', string(a:callback))
     endif
     call EnsureCallbackListsExist()
-    if a:cascade && a:global
-        call add(g:cursorHoldCascadingCallbacks, {
-       \    'callback': a:callback,
-       \    'data': a:data,
-       \    'priority': a:priority,
-       \    'permanent': a:permanent
-       \})
-    elseif !a:cascade && a:global
+    if a:global
         call add(g:cursorHoldCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
        \    'priority': a:priority,
-       \    'permanent': a:permanent
+       \    'permanent': a:permanent,
+       \    'cascade': a:cascade
        \})
-    elseif a:cascade && !a:global
-        call add(t:cursorHoldCascadingCallbacks, {
-       \    'callback': a:callback,
-       \    'data': a:data,
-       \    'priority': a:priority,
-       \    'permanent': a:permanent
-       \})
-    elseif !a:cascade && !a:global
+    else
         call add(t:cursorHoldCallbacks, {
        \    'callback': a:callback,
        \    'data': a:data,
        \    'priority': a:priority,
-       \    'permanent': a:permanent
+       \    'permanent': a:permanent,
+       \    'cascade': a:cascade
        \})
-    else
-        throw "Control should never reach here"
     endif
 endfunction
 
 " Run the registered callbacks
-function! RunCursorHoldCallbacks(cascading)
-    if a:cascading
-       call EchomLog('cursorhold-callback', 'info', 'Running CursorHold cascading callbacks')
-    else
-       call EchomLog('cursorhold-callback', 'info', 'Running CursorHold non-cascading callbacks')
-    endif
-
+function! RunCursorHoldCallbacks()
+    call EchomLog('cursorhold-callback', 'info', 'Running CursorHold non-cascading callbacks')
     call EnsureCallbackListsExist()
 
-    if a:cascading
-        let callbacks = g:cursorHoldCascadingCallbacks + t:cursorHoldCascadingCallbacks
-    else
-        let callbacks = g:cursorHoldCallbacks + t:cursorHoldCallbacks
-    endif
+    let callbacks = g:cursorHoldCallbacks + t:cursorHoldCallbacks
 
     call sort(callbacks, function('ComparePriorities'))
     for callback in callbacks
         call EchomLog('cursorhold-callback', 'info', 'Running CursorHold Callback ', string(callback.callback))
-        call call(callback.callback, callback.data)
+        if callback.cascade
+            call call(callback.callback, callback.data)
+        else
+            noautocmd call call(callback.callback, callback.data)
+        endif
     endfor
 
-    if a:cascading
-        let newCallbacks = []
-        for callback in g:cursorHoldCascadingCallbacks
-            if callback.permanent
-                call add(newCallbacks, callback)
-            endif
-        endfor
-        let g:cursorHoldCascadingCallbacks = newCallbacks
+    let newCallbacks = []
+    for callback in g:cursorHoldCallbacks
+        if callback.permanent
+            call add(newCallbacks, callback)
+        endif
+    endfor
+    let g:cursorHoldCallbacks = newCallbacks
 
-        let newCallbacks = []
-        for callback in t:cursorHoldCascadingCallbacks
-            if callback.permanent
-                call add(newCallbacks, callback)
-            endif
-        endfor
-        let t:cursorHoldCascadingCallbacks = newCallbacks
-    else
-        let newCallbacks = []
-        for callback in g:cursorHoldCallbacks
-            if callback.permanent
-                call add(newCallbacks, callback)
-            endif
-        endfor
-        let g:cursorHoldCallbacks = newCallbacks
-
-        let newCallbacks = []
-        for callback in t:cursorHoldCallbacks
-            if callback.permanent
-                call add(newCallbacks, callback)
-            endif
-        endfor
-        let t:cursorHoldCallbacks = newCallbacks
-    endif
+    let newCallbacks = []
+    for callback in t:cursorHoldCallbacks
+        if callback.permanent
+            call add(newCallbacks, callback)
+        endif
+    endfor
+    let t:cursorHoldCallbacks = newCallbacks
 endfunction
 
 function! HandleTerminalEnter()
@@ -331,20 +296,18 @@ function! HandleTerminalEnter()
         return
     endif
 
-    call EchomLog('cursorhold-callback', 'debug', 'Terminal in terminal-job mode detected in current window ', win_getid(), '. Force-running CursorHold Callbacks.')
-    call RunCursorHoldCallbacks(1)
-    noautocmd call RunCursorHoldCallbacks(0)
+    call EchomLog('cursorhold-callback', 'debug', 'Terminal in terminal-job mode detected in current window. Force-running CursorHold Callbacks.')
+    call RunCursorHoldCallbacks()
 endfunction
 
 augroup CursorHoldCallbacks
     autocmd!
     " The callbacks run on the CursorHold event
-    autocmd CursorHold * nested call RunCursorHoldCallbacks(1)
-    autocmd CursorHold * call RunCursorHoldCallbacks(0)
+    autocmd CursorHold * nested call RunCursorHoldCallbacks()
 
     " The CursorHold autocmd doesn't run in active terminal windows, so
     " force-run them whenever the cursor enters a terminal window
-    autocmd TerminalOpen,WinEnter * call HandleTerminalEnter()
+    autocmd TerminalOpen,WinEnter * nested call HandleTerminalEnter()
 augroup END
 
 " Flush the buflog queue at the end of every CursorHold event

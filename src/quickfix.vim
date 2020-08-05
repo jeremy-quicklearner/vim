@@ -1,6 +1,13 @@
 " Quickfix list and quickfix window manipulation
 call SetLogLevel('quickfix-uberwin', 'info', 'warning')
 
+" ToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
+" are required.. I see no other way to implement ToIdentifyQuickfix.
+if g:legacywinid
+    call EchomLog('quickfix-uberwin', 'error', 'The quickfix uberwin group is not supported for Vim versions older than 8.0')
+    finish
+endif
+
 " Callback that opens the quickfix window
 function! ToOpenQuickfix()
     call EchomLog('quickfix-uberwin', 'info', 'ToOpenQuickfix')
@@ -16,7 +23,7 @@ function! ToOpenQuickfix()
 
     " copen also moves the cursor to the quickfix window, so return the
     " current window ID
-    return [win_getid()]
+    return [Win_getid_cur()]
 endfunction
 
 " Callback that closes the quickfix window
@@ -43,7 +50,7 @@ endfunction
 function! ToIdentifyQuickfix(winid)
     call EchomLog('quickfix-uberwin', 'debug', 'ToIdentifyQuickfix ', a:winid)
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
-    if a:winid == qfwinid
+    if a:winid ==# qfwinid
         return 'quickfix'
     endif
     return ''
@@ -122,11 +129,30 @@ endfunction
 " If the uberwin needs to be added, make it hidden
 call WinAddTabEnterPreResolveCallback(function('UpdateQuickfixUberwinHide'))
 
-" Update the quickfix uberwin whenever the quickfix list is changed
-" If the uberwin needs to be added don't hide it
-augroup Quickfix
+function! CloseDanglingQuickfixWindows()
+    let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+    while qfwinid
+        call EchomLog('quickfix-uberwin', 'info', 'Closing dangling window ', qfwinid)
+        cclose
+        let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
+    endwhile
+endfunction
+
+augroup QuickfixUberwin
     autocmd!
+
+    " Update the quickfix uberwin whenever the quickfix list is changed
+    " If the uberwin needs to be added don't hide it
     autocmd QuickFixCmdPost * call UpdateQuickfixUberwinShow()
+
+    " If there are location windows when mksession is invoked, the locations lists
+    " they display do not persist. When the session is reloaded, the location
+    " windows are opened without location lists. If there is no quickfix
+    " window, Vim misidentifies the dangling location windows as quickfix
+    " windows. This breaks the assumption that there is only ever one quickfix
+    " window, which the Quickfix uberwin definition relies on. To be safe, invoke
+    " cclose from every window. This will close all dangling location windows.
+    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingQuickfixWindows'), [], 1, -99, 0, 0)
 augroup END
 
 " Mappings

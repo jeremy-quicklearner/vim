@@ -1,6 +1,114 @@
 " Window state manipulation functions
 " See window.vim
 
+" Vim-native winids were only introduced with Vim 8.0. For compatibility with
+" earlier versions of Vim, reimplement winids using window-local variables.
+" Also, if the Vim version does have native winids, cache their values in
+" window-local variables. This is done so that winid information can be
+" preserved across sessions.
+let s:forcelegacywinid = 0
+if v:version >=# 800 && !s:forcelegacywinid
+    let g:legacywinid = 0
+    function! Win_getid_tab(winnr, tabnr)
+        return win_getid(a:winnr, a:tabnr)
+    endfunction
+    function! Win_getid(winnr)
+        return win_getid(a:winnr)
+    endfunction
+    function! Win_getid_cur()
+        return win_getid()
+    endfunction
+    
+    function! Win_id2win(winid)
+        return win_id2win(a:winid)
+    endfunction
+
+    function! Win_gotoid(winid)
+        call win_gotoid(a:winid)
+    endfunction
+
+else
+    let g:legacywinid = 1
+    if !exists('s:maxwinid')
+        let s:maxwinid = 999
+    endif
+    function! s:MakeWinid()
+        let s:maxwinid += 1
+        return s:maxwinid
+    endfunction
+
+    function! Win_getid_tab(winnr, tabnr)
+        if a:tabnr <=# 0 || a:tabnr ># tabpagenr('$')
+            return 0
+        endif
+        if a:winnr <=# 0 || a:winnr ># tabpagewinnr(a:tabnr, '$')
+            return 0
+        endif
+        let existingwinid = gettabwinvar(a:tabnr, a:winnr, 'win_id', 999)
+        if existingwinid !=# 999
+            return existingwinid
+        endif
+        let newwinid = s:MakeWinid()
+        call settabwinvar(a:tabnr, a:winnr, 'win_id', newwinid)
+        call EchomLog('window-state', 'verbose', 'Assigned synthetic winid ', newwinid, ' to window with winnr ', a:winnr, ' in tab with tabnr ', a:tabnr)
+        return newwinid
+    endfunction
+
+    function! Win_getid(winnr)
+        let winnrarg = a:winnr
+        if a:winnr == '.'
+            let winnrarg = winnr()
+        endif
+        return Win_getid_tab(winnrarg, tabpagenr())
+    endfunction
+    function! Win_getid_cur()
+        return Win_getid(winnr())
+    endfunction
+
+    function! Win_id2win(winid)
+        if a:winid <# 1000 || a:winid ># s:maxwinid
+            call EchomLog('window-state', 'info', 'DOODLE ', a:winid)
+            call EchomLog('window-state', 'info', 'DOODLE ', s:maxwinid)
+            return 0
+        endif
+        for winnr in range(1, winnr('$'))
+            if getwinvar(winnr, 'win_id', 999) ==# a:winid
+                return winnr
+            endif
+        endfor
+        return 0
+    endfunction
+
+    function! Win_gotoid(winid)
+        let winnr = Win_id2win(a:winid)
+        if winnr <=# 0 || winnr ># winnr('$')
+            return
+        endif
+        execute winnr . 'wincmd w'
+    endfunction
+endif
+
+" Returns a list of lists [old, new] - one for each window whose cached winid
+" does not match its current winid. 'old' is the cached winid and 'new' is the
+" current winid.
+function! WinStateChangedWinidsByCurrentTab()
+    call EchomLog('window-state', 'debug', 'WinStateChangedWinidsByCurrentTab')
+    let changedwinids = []
+    for winnr in range(1, winnr('$'))
+        let cachedwinid = getwinvar(winnr, 'win_id', 999)
+        if cachedwinid ==# 999
+            continue
+        endif
+        let winid = Win_getid(winnr)
+        if cachedwinid ==# winid
+            continue
+        endif
+        call EchomLog('window-state', 'debug', 'Winid changed from ', cachedwinid, ' to ', winid)
+        call add(changedwinids, [cachedwinid, winid])
+    endfor
+    return changedwinids
+endfunction
+
 " Just for fun - lots of extra redrawing
 if !exists('g:windraw')
     call EchomLog('window-state', 'config', 'windraw initially false')
@@ -24,7 +132,7 @@ function! WinStateGetWinidsByCurrentTab()
     call EchomLog('window-state', 'debug', 'WinStateGetWinidsByCurrentTab')
     let winids = []
     for winnr in range(1, winnr('$'))
-        call add(winids, win_getid(winnr))
+        call add(winids, Win_getid(winnr))
     endfor
     call EchomLog('window-state', 'debug', 'Winids: ', winids)
     return winids
@@ -32,7 +140,7 @@ endfunction
 
 function! WinStateWinExists(winid)
     call EchomLog('window-state', 'debug', 'WinStateWinExists ', a:winid)
-    let winexists = win_id2win(a:winid) != 0
+    let winexists = Win_id2win(a:winid) != 0
     if winexists
         call EchomLog('window-state', 'debug', 'Window exists with winid ', a:winid)
     else
@@ -50,14 +158,14 @@ endfunction
 function! WinStateGetWinnrByWinid(winid)
     call EchomLog('window-state', 'debug', 'WinStateGetWinnrByWinid ', a:winid)
     call WinStateAssertWinExists(a:winid)
-    let winnr = win_id2win(a:winid)
+    let winnr = Win_id2win(a:winid)
     call EchomLog('window-state', 'debug', 'Winnr is ', winnr, ' for winid ', a:winid)
     return winnr
 endfunction
 
 function! WinStateGetWinidByWinnr(winnr)
     call EchomLog('window-state', 'debug', 'WinStateGetWinidByWinnr ', a:winnr)
-    let winid = win_getid(a:winnr)
+    let winid = Win_getid(a:winnr)
     call WinStateAssertWinExists(winid)
     call EchomLog('window-state', 'debug', 'Winid is ', winid, ' for winnr ', a:winnr)
     return winid
@@ -73,7 +181,7 @@ endfunction
 
 function! WinStateWinIsTerminal(winid)
     call EchomLog('window-state', 'debug', 'WinStateWinIsTerminal ', a:winid)
-    let isterm = WinStateWinExists(a:winid) && getwinvar(a:winid, '&buftype') ==# 'terminal'
+    let isterm = WinStateWinExists(a:winid) && getwinvar(Win_id2win(a:winid), '&buftype') ==# 'terminal'
     if isterm
         call EchomLog('window-state', 'debug', 'Window ', a:winid, ' is a terminal window')
     else
@@ -86,7 +194,7 @@ function! WinStateGetWinDimensions(winid)
     call EchomLog('window-state', 'debug', 'WinStateGetWinDimensions ', a:winid)
     call WinStateAssertWinExists(a:winid)
     let dims = {
-   \    'nr': win_id2win(a:winid),
+   \    'nr': Win_id2win(a:winid),
    \    'w': winwidth(a:winid),
    \    'h': winheight(a:winid)
    \}
@@ -114,7 +222,7 @@ function! WinStateGetWinRelativeDimensions(winid, offset)
         throw 'offset is not a number'
     endif
     let dims = {
-   \    'relnr': win_id2win(a:winid) - a:offset,
+   \    'relnr': Win_id2win(a:winid) - a:offset,
    \    'w': winwidth(a:winid),
    \    'h': winheight(a:winid)
    \}
@@ -138,7 +246,7 @@ endfunction
 " Cursor position preserve/restore
 function! WinStateGetCursorWinId()
     call EchomLog('window-state', 'debug', 'WinStateGetCursorWinId')
-    let winid = win_getid()
+    let winid = Win_getid_cur()
     call EchomLog('window-state', 'debug', 'Winid of current window: ', winid)
     return winid
 endfunction!
@@ -158,24 +266,24 @@ endfunction
 function! WinStateShieldWindow(winid, onlyscroll)
     call EchomLog('window-state', 'info', 'WinStateShieldWindow ', a:winid, ' ', a:onlyscroll)
     let preshield = {
-   \    'w': getwinvar(a:winid, '&winfixwidth'),
-   \    'h': getwinvar(a:winid, '&winfixheight'),
-   \    'sb': getwinvar(a:winid, '&scrollbind')
+   \    'w': getwinvar(Win_id2win(a:winid), '&winfixwidth'),
+   \    'h': getwinvar(Win_id2win(a:winid), '&winfixheight'),
+   \    'sb': getwinvar(Win_id2win(a:winid), '&scrollbind')
    \}
     call EchomLog('window-state', 'verbose', 'Pre-shield fixedness for window ', a:winid, ': ', preshield)
     if !a:onlyscroll
-        call setwinvar(a:winid, '&winfixwidth', 1)
-        call setwinvar(a:winid, '&winfixheight', 1)
+        call setwinvar(Win_id2win(a:winid), '&winfixwidth', 1)
+        call setwinvar(Win_id2win(a:winid), '&winfixheight', 1)
     endif
-    call setwinvar(a:winid, '&scrollbind', 1)
+    call setwinvar(Win_id2win(a:winid), '&scrollbind', 1)
     return preshield
 endfunction
 
 function! WinStateUnshieldWindow(winid, preshield)
     call EchomLog('window-state', 'info', 'WinStateUnshieldWindow ', a:winid, ' ', a:preshield)
-    call setwinvar(a:winid, '&winfixwidth', a:preshield.w)
-    call setwinvar(a:winid, '&winfixheight', a:preshield.h)
-    call setwinvar(a:winid, '&scrollbind', a:preshield.sb)
+    call setwinvar(Win_id2win(a:winid), '&winfixwidth', a:preshield.w)
+    call setwinvar(Win_id2win(a:winid), '&winfixheight', a:preshield.h)
+    call setwinvar(Win_id2win(a:winid), '&scrollbind', a:preshield.sb)
 endfunction
 
 " Generic Ctrl-W commands
@@ -194,14 +302,14 @@ endfunction
 function! WinStateMoveCursorToWinid(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinid ', a:winid)
     call WinStateAssertWinExists(a:winid)
-    call win_gotoid(a:winid)
+    call Win_gotoid(a:winid)
     call s:MaybeRedraw()
 endfunction
 
 function! WinStateMoveCursorToWinidSilently(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinidSilently ', a:winid)
     call WinStateAssertWinExists(a:winid)
-    noautocmd call win_gotoid(a:winid)
+    noautocmd call Win_gotoid(a:winid)
     call s:MaybeRedraw()
 endfunction
 
@@ -225,27 +333,27 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
     for idx in range(0, len(winids) - 1)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixwidth', 1)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixwidth', 1)
         else
             call EchomLog('window-state', 'verbose', 'Free width for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixwidth', 0)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixwidth', 0)
         endif
 
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixheight', 1)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixheight', 1)
         else
             call EchomLog('window-state', 'verbose', 'Free height for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixheight', 0)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for uberwin ', a:grouptype.name, ':', a:grouptype.typenames[idx], ' to ', a:grouptype.statuslines[idx])
-        call setwinvar(winids[idx], '&statusline', a:grouptype.statuslines[idx])
+        call setwinvar(Win_id2win(winids[idx]), '&statusline', a:grouptype.statuslines[idx])
 
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
         " loclists
-        call setloclist(winids[idx], [])
+        call setloclist(Win_id2win(winids[idx]), [])
     endfor
 
     call s:MaybeRedraw()
@@ -283,11 +391,11 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
         throw 'Given group type has nonfunc toOpen member'
     endif
 
-    if !win_id2win(a:supwinid)
+    if !Win_id2win(a:supwinid)
         throw 'Given supwinid ' . a:supwinid . ' does not exist'
     endif
 
-    call win_gotoid(a:supwinid)
+    call Win_gotoid(a:supwinid)
 
     let top = winsaveview().topline
     let winids = ToOpen()
@@ -300,28 +408,29 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
     for idx in range(0, len(winids) - 1)
         if a:grouptype.widths[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed width for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixwidth', 1)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixwidth', 1)
         else
             call EchomLog('window-state', 'verbose', 'Free width for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixwidth', 0)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixwidth', 0)
         endif
         if a:grouptype.heights[idx] >= 0
             call EchomLog('window-state', 'verbose', 'Fixed height for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixheight', 1)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixheight', 1)
         else
             call EchomLog('window-state', 'verbose', 'Free height for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(winids[idx], '&winfixheight', 0)
+            call setwinvar(Win_id2win(winids[idx]), '&winfixheight', 0)
         endif
 
         call EchomLog('window-state', 'verbose', 'Set statusline for subwin ', a:supwinid, ':', a:grouptype.name, ':', a:grouptype.typenames[idx], ' to ', a:grouptype.statuslines[idx])
-        call setwinvar(winids[idx], '&statusline', a:grouptype.statuslines[idx])
+        call setwinvar(Win_id2win(winids[idx]), '&statusline', a:grouptype.statuslines[idx])
 
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
         " loclists... Unless the window is itself a location window, in which
-        " case of course it should keep its location list
-        if !getwininfo(winids[idx])[0]['loclist']
-            call setloclist(winids[idx], [])
+        " case of course it should keep its location list. Unfortunately this
+        " constitutes special support for the loclist subwin group.
+        if a:grouptype.name !=# 'loclist'
+            call setloclist(Win_id2win(winids[idx]), [])
         endif
     endfor
 
@@ -341,11 +450,11 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
         throw 'Given group type has nonfunc toClose member'
     endif
 
-    if !win_id2win(a:supwinid)
+    if !Win_id2win(a:supwinid)
         throw 'Given supwinid ' . a:supwinid . ' does not exist'
     endif
 
-    call win_gotoid(a:supwinid)
+    call Win_gotoid(a:supwinid)
 
     let top = winsaveview().topline
     call call(ToClose, [])
@@ -556,7 +665,7 @@ function! WinStateAfterimageWindow(winid)
     call EchomLog('window-state', 'debug', 'WinStateAfterimageWindow ', a:winid)
     " Silent movement (noautocmd) is used here because we want to preserve the
     " state of the window exactly as it was when the function was first
-    " called, and autocmds may fire on win_gotoid that change the state
+    " called, and autocmds may fire on Win_gotoid that change the state
     call WinStateMoveCursorToWinidSilently(a:winid)
 
     " Preserve cursor and scroll position
@@ -661,7 +770,7 @@ function! WinStateCloseWindow(winid)
         quit
     endif
     
-    let winnr = win_id2win(a:winid)
+    let winnr = Win_id2win(a:winid)
     execute winnr . 'close'
     call s:MaybeRedraw()
 endfunction
@@ -756,7 +865,7 @@ function! WinStateResizeHorizontal(winid, width, preferleftdivider)
         return
     endif
     call WinStateSilentWincmd('','h')
-    if win_getid() ==# a:winid
+    if Win_getid_cur() ==# a:winid
         call WinStateResizeHorizontal(a:winid, a:width, 0)
         let &winfixwidth = wasfixed
         return
@@ -765,8 +874,8 @@ function! WinStateResizeHorizontal(winid, width, preferleftdivider)
         call WinStateResizeHorizontal(a:winid, a:width, 0)
         return
     endif
-    let otherwidth = getwininfo(win_getid())[0].width
-    let oldwidth = getwininfo(a:winid)[0].width
+    let otherwidth = winwidth(0)
+    let oldwidth = winwidth(Win_id2win(a:winid))
     let newwidth = otherwidth + oldwidth - a:width
     call WinStateSilentWincmd(newwidth, '|')
 endfunction
@@ -782,7 +891,7 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
         return
     endif
     call WinStateSilentWincmd('','k')
-    if win_getid() ==# a:winid
+    if Win_getid_cur() ==# a:winid
         call WinStateResizeVertical(a:winid, a:height, 0)
         let &winfixheight = wasfixed
         return
@@ -791,8 +900,8 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
         call WinStateResizeVertical(a:winid, a:height, 0)
         return
     endif
-    let otherheight = getwininfo(win_getid())[0].height
-    let oldheight = getwininfo(a:winid)[0].height
+    let otherheight = winheight(0)
+    let oldheight = winheight(Win_id2win(a:winid))
     let newheight = otherheight + oldheight - a:height
     call WinStateSilentWincmd(newheight, '_')
 endfunction

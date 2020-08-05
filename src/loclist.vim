@@ -1,11 +1,19 @@
 " Location list and location window manipulation
 call SetLogLevel('loclist-subwin', 'info', 'warning')
 
+" ToIdentifyLoclist relies on getwininfo, and also on getloclist with the
+" winid key. So Vim-native winids are required.. I see no other way to implement
+" ToIdentifyLoclist.
+if g:legacywinid
+    call EchomLog('loclist-subwin', 'error', 'The loclist subwin group is not supported for Vim versions older than 8.0')
+    finish
+endif
+
 " Callback that opens the location window for the current window
 function! ToOpenLoclist()
     call EchomLog('loclist-subwin', 'info', 'ToOpenLoclist')
     let supwinnr = winnr()
-    let supwinid = win_getid()
+    let supwinid = Win_getid_cur()
 
     " Fail if the location window is already open
     let locwinid = get(getloclist(supwinnr, {'winid':0}), 'winid', -1)
@@ -26,10 +34,10 @@ function! ToOpenLoclist()
 
     " lopen also moves the cursor to the location window, so return the
     " current window ID
-    let locwinid = win_getid()
+    let locwinid = Win_getid_cur()
 
     " Go back to the supwin
-    noautocmd call win_gotoid(supwinid)
+    noautocmd call Win_gotoid(supwinid)
 
     return [locwinid]
 endfunction
@@ -38,7 +46,7 @@ endfunction
 function! ToCloseLoclist()
     call EchomLog('loclist-subwin', 'info', 'ToCloseLoclist')
     let supwinnr = winnr()
-    let supwinid = win_getid()
+    let supwinid = Win_getid_cur()
 
     " Fail if the location window is already closed
     let locwinid = get(getloclist(supwinnr, {'winid':0}), 'winid', -1)
@@ -73,9 +81,9 @@ function! ToIdentifyLoclist(winid)
     call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ', a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
-            if winnr != win_id2win(a:winid) &&
+            if winnr != Win_id2win(a:winid) &&
            \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
-                return {'typename':'loclist','supwin':win_getid(winnr)}
+                return {'typename':'loclist','supwin':Win_getid(winnr)}
             endif
         endfor
         return {'typename':'loclist','supwin':-1}
@@ -85,7 +93,7 @@ endfunction
 
 function! LoclistFieldForStatusline(fieldname)
     call EchomLog('loclist-subwin', 'debug', 'LoclistFieldForStatusline')
-    return SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
+    return SanitizeForStatusLine('', getloclist(winnr(),{a:fieldname:0})[a:fieldname])
 endfunction
 
 " Returns the statusline of the location window
@@ -130,7 +138,7 @@ function! UpdateLoclistSubwins()
     call EchomLog('loclist-subwin', 'debug', 'UpdateLoclistSubwins')
     for supwinid in WinModelSupwinIds()
         let locwinexists = WinModelSubwinGroupExists(supwinid, 'loclist')
-        let loclistexists = len(getloclist(supwinid))
+        let loclistexists = len(getloclist(Win_id2win(supwinid)))
 
         if locwinexists && !loclistexists
             call EchomLog('loclist-subwin', 'info', 'Remove loclist subwin from supwin ', supwinid, ' because it has no location list')
@@ -150,13 +158,13 @@ endfunction
 " model are certain to be consistent
 if !exists('g:j_loclist_chc')
     let g:j_loclist_chc = 1
-    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 0, 20, 1, 1)
+    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 1, 20, 1, 1)
 endif
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateLoclistSubwins.
 nnoremap <silent> <leader>lc :lexpr []<cr>
-nnoremap <silent> <leader>ls :call WinShowSubwinGroup(win_getid(), 'loclist')<cr>
-nnoremap <silent> <leader>lh :call WinHideSubwinGroup(win_getid(), 'loclist')<cr>
-nnoremap <silent> <leader>ll :call WinGotoSubwin(win_getid(), 'loclist', 'loclist')<cr>
+nnoremap <silent> <leader>ls :call WinShowSubwinGroup(Win_getid_cur(), 'loclist')<cr>
+nnoremap <silent> <leader>lh :call WinHideSubwinGroup(Win_getid_cur(), 'loclist')<cr>
+nnoremap <silent> <leader>ll :call WinGotoSubwin(Win_getid_cur(), 'loclist', 'loclist')<cr>

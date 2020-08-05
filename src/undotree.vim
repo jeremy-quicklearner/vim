@@ -1,6 +1,15 @@
 " Undotree plugin manipulation
 call SetLogLevel('undotree-subwin', 'info', 'warning')
 
+if !exists('g:undotree_subwin_statusline')
+    let g:undotree_subwin_statusline = '%!UndotreeStatusLine()'
+endif
+
+if !exists('g:undodiff_subwin_statusline')
+    let g:undodiff_subwin_statusline = '%!UndodiffStatusLine()'
+endif
+
+
 " Cause UndotreeShow to open the undotree windows relative to the current
 " window, instead of relative to the whole tab
 let g:undotree_CustomUndotreeCmd = 'vertical 25 new'
@@ -39,7 +48,7 @@ function! ToOpenUndotree()
         throw 'Not enough room'
     endif
 
-    let jtarget = win_getid()
+    let jtarget = Win_getid_cur()
 
     
     " Open the undotree window on the left side
@@ -57,7 +66,7 @@ function! ToOpenUndotree()
     " the undotree is drawn before ToOpenUndotree returns, which is required
     " for signs and folds to be properly restored when the undotree window is
     " closed and reopened.
-    noautocmd call win_gotoid(jtarget)
+    noautocmd call Win_gotoid(jtarget)
     call undotree#UndotreeUpdate()
 
     let treeid = -1
@@ -68,21 +77,21 @@ function! ToOpenUndotree()
         endif
 
         if t:undotree.bufname ==# bufname(winbufnr(winnr))
-            let treeid = win_getid(winnr)
+            let treeid = Win_getid(winnr)
             continue
         endif
         
         if t:diffpanel.bufname ==# bufname(winbufnr(winnr))
-            let diffid = win_getid(winnr)
+            let diffid = Win_getid(winnr)
             continue
         endif
     endfor
 
-    call setwinvar(treeid, '&number', 1)
-    call setwinvar(diffid, '&number', 1)
+    call setwinvar(Win_id2win(treeid), '&number', 1)
+    call setwinvar(Win_id2win(diffid), '&number', 1)
 
-    call setwinvar(treeid, 'j_undotree_target', jtarget)
-    call setwinvar(diffid, 'j_undotree_target', jtarget)
+    call setwinvar(Win_id2win(treeid), 'j_undotree_target', jtarget)
+    call setwinvar(Win_id2win(diffid), 'j_undotree_target', jtarget)
 
     return [treeid, diffid]
 endfunction
@@ -125,15 +134,15 @@ function! ToIdentifyUndotree(winid)
         return {}
     endif
 
-    let jtarget = getwinvar(a:winid, 'j_undotree_target', 0)
+    let jtarget = getwinvar(Win_id2win(a:winid), 'j_undotree_target', 0)
     if jtarget
         let supwinid = jtarget
     else
         let supwinid = -1
         for winnr in range(1, winnr('$'))
             if getwinvar(winnr, 'undotree_id') == t:undotree.targetid
-                let supwinid = win_getid(winnr)
-                call setwinvar(a:winid, 'j_undotree_target', supwinid)
+                let supwinid = Win_getid(winnr)
+                call setwinvar(Win_id2win(a:winid), 'j_undotree_target', supwinid)
                 break
             endif
         endfor
@@ -184,8 +193,8 @@ endfunction
 " The undotree and diffpanel are a subwin group
 call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
                           \[
-                          \    '%!UndotreeStatusLine()',
-                          \    '%!UndodiffStatusLine()'
+                          \    g:undotree_subwin_statusline,
+                          \    g:undodiff_subwin_statusline
                           \],
                           \'U', 'u', 5,
                           \40, [1, 1],
@@ -202,6 +211,7 @@ function! UpdateUndotreeSubwins()
         return
     endif
     let info = WinCommonGetCursorPosition()
+    try
         for supwinid in WinModelSupwinIds()
             let undotreewinsexist = WinModelSubwinGroupExists(supwinid, 'undotree')
 
@@ -227,7 +237,9 @@ function! UpdateUndotreeSubwins()
                 continue
             endif
         endfor
-    call WinCommonRestoreCursorPosition(info)
+    finally
+        call WinCommonRestoreCursorPosition(info)
+    endtry
 endfunction
 
 " Update the undotree subwins after each resolver run, when the state and
@@ -237,9 +249,34 @@ if !exists('g:j_undotree_chc')
     call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 1)
 endif
 
+function! CloseDanglingUndotreeWindows()
+    for winid in WinStateGetWinidsByCurrentTab()
+        let statusline = getwinvar(Win_id2win(winid), '&statusline', '')
+        if statusline ==# g:undotree_subwin_statusline || statusline ==# g:undodiff_subwin_statusline
+            call EchomLog('undotree-subwin', 'info', 'Closing dangling window ', winid)
+            call WinStateCloseWindow(winid)
+        endif
+    endfor
+endfunction
+
+augroup UndotreeSubwin
+    autocmd!
+
+    " If there are undotree subwins open when mksession is invoked, their
+    " contents do not persist. When the session is reloaded, the undotree
+    " windows are opened without content or window-local variables and are
+    " therefore not compliant with toIdentify. The first resolver run will
+    " notice this and relist the windows as supwins - so now there are a bunch
+    " of extra supwins with the undotree filetype and no content. I see no
+    " reason why the user would ever want to keep these windows around, so
+    " they are removed here
+    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingUndotreeWindows'), [], 1, -100, 0, 0)
+augroup END
+
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateUndotreeSubwins.
-nnoremap <silent> <leader>us :call WinShowSubwinGroup(win_getid(), 'undotree')<cr>
-nnoremap <silent> <leader>uh :call WinHideSubwinGroup(win_getid(), 'undotree')<cr>
-nnoremap <silent> <leader>uu :call WinGotoSubwin(win_getid(), 'undotree', 'tree')<cr>
+nnoremap <silent> <leader>us :call WinShowSubwinGroup(Win_getid_cur(), 'undotree')<cr>
+nnoremap <silent> <leader>uh :call WinHideSubwinGroup(Win_getid_cur(), 'undotree')<cr>
+nnoremap <silent> <leader>uu :call WinGotoSubwin(Win_getid_cur(), 'undotree', 'tree')<cr>
+nnoremap <silent> <leader>ud :call WinGotoSubwin(Win_getid_cur(), 'undotree', 'diff')<cr>

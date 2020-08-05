@@ -24,3 +24,14 @@ set shortmess=I
 
 " There's a security vulnerability in the modelines feature, so disable it
 set nomodeline
+
+augroup Misc
+    autocmd!
+
+    " If a session is loaded while the current window has a location list, that
+    " location list will be added to every window from the session. So remove it.
+    " TODO: Move this to some kind of session management plugin if I ever
+    "       write one
+    autocmd SessionLoadPost * Windofast lexpr []
+augroup END
+
