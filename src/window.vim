@@ -168,6 +168,7 @@
 " TODO: Audit all the user operations for redundancy
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit every function for calls to it
+" TODO: Audit all files for ignoble terminology
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
 " TODO: Move the whole window engine to a plugin

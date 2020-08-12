@@ -111,6 +111,7 @@ endfunction
 
 " Just for fun - lots of extra redrawing
 if !exists('g:windraw')
+    " TODO: Rename
     call EchomLog('window-state', 'config', 'windraw initially false')
     let g:windraw = 0
 endif
@@ -259,7 +260,6 @@ endfunction
 function! WinStateRestoreCursorPosition(pos)
     call EchomLog('window-state', 'debug', 'WinStateRestoreCursorPosition ', a:pos)
     call winrestview(a:pos)
-    call s:MaybeRedraw()
 endfunction
 
 " Window shielding
@@ -303,14 +303,12 @@ function! WinStateMoveCursorToWinid(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinid ', a:winid)
     call WinStateAssertWinExists(a:winid)
     call Win_gotoid(a:winid)
-    call s:MaybeRedraw()
 endfunction
 
 function! WinStateMoveCursorToWinidSilently(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinidSilently ', a:winid)
     call WinStateAssertWinExists(a:winid)
     noautocmd call Win_gotoid(a:winid)
-    call s:MaybeRedraw()
 endfunction
 
 " Open windows using the toOpen function from a group type and return the

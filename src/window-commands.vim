@@ -251,10 +251,6 @@ let s:cmdsWithoutSubwins = [
 \]
 " TODO: Make this list as small as possible
 let s:cmdsThatRelyOnResolver = [
-\   'WinDecreaseHeight',
-\   'WinDecreaseWidth',
-\   'WinIncreaseHeight',
-\   'WinIncreaseWidth',
 \   'WinMoveToNewTab',
 \]
 
