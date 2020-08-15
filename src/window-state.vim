@@ -903,3 +903,19 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
     let newheight = otherheight + oldheight - a:height
     call WinStateSilentWincmd(newheight, '_')
 endfunction
+
+function! WinStateUnfixDimensions(winid)
+    call EchomLog('window-state', 'info', 'WinStateUnfixDimensions ', a:winid)
+    call WinStateMoveCursorToWinidSilently(a:winid)
+    let preunfix = {'w':&winfixwidth,'h':&winfixheight}
+    let &winfixwidth = 0
+    let &winfixheight = 0
+    return preunfix
+endfunction
+
+function! WinStateRefixDimensions(winid, preunfix)
+    call EchomLog('window-state', 'info', 'WinStateRefixDimensions ', a:winid, ' ', a:preunfix)
+    call WinStateMoveCursorToWinidSilently(a:winid)
+    let &winfixwidth = a:preunfix.w
+    let &winfixheight = a:preunfix.h
+endfunction

@@ -28,7 +28,12 @@ function! ToOpenHelp()
     endfor
 
     let prevwinid = Win_getid_cur()
-    noautocmd vertical botright 89 split
+
+    " These two commands need to be separate. Combining them may cause
+    " width not to be applied correctly
+    noautocmd vertical botright split
+    noautocmd vertical resize 89
+
     noautocmd silent execute 'buffer ' . t:j_help.bufnr
     let winid = Win_getid_cur()
     call WinStatePostCloseAndReopen(winid, t:j_help)

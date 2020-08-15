@@ -129,11 +129,6 @@
 "    TODO: Investigate whether the undotree can be persisted outside the
 "          session and restored after this happens
 "
-" TODO: Decide how to approach fixed-width and fixed-height supwins. Do they
-"       work well already? Does the Resolver need a new step that makes sure
-"       all supwins have winfix(width|height) off? Do their subwins open
-"       correctly? Do they play well with CTRL-W _ and CTRL-W | ?
-"       use winsaveview().topline when opening uberwins.
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
@@ -142,13 +137,15 @@
 " TODO? Figure out why folds keep appearing in the help window on
 "       WinShowUberwin. Haven't seen this happen in some time - maybe it's
 "       fixed?
-" TODO: Run the resolver on WinResize
-" TODO: Add an uberwin to show the buflog
-" TODO: Make the Option window an uberwin
 " TODO? Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
 "       - This would mean reusing buffers and completely cleaning them between
-"         uses - may not be worth it.
+"         uses
+"       - Buffer numbers need to be 'freed' every time an afterimaged subwin is
+"         closed, but the user (or some plugin) may do it directly without
+"         freeing
+" TODO: Add an uberwin to show the buflog
+" TODO: Make the Option window an uberwin
 " TODO? Make the Command-line window an uberwin?
 " TODO: Actually make the mappings optional
 " TODO: Actually make the reference definitions disable-able
@@ -199,22 +196,26 @@ source <sfile>:p:h/window-commands.vim
 " Mappings
 source <sfile>:p:h/window-mappings.vim
 
-" WHen the resolver runs in a new tab, it should run as if the tab was entered
-function! s:InitTab()
-    let t:winresolvetabenteredcond = 1
-endfunction
-
-" Every tab must be initialized
-augroup Window
-    autocmd!
-    autocmd VimEnter,TabNew * call s:InitTab()
-augroup END
-
 " The resolver should run after any changes to the state
 if !exists('g:j_winresolve_chc')
     let g:j_winresolve_chc = 1
     call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1, 1)
 endif
+
+" When the resolver runs in a new tab, it should run as if the tab was entered
+function! s:InitTab()
+    let t:winresolvetabenteredcond = 1
+endfunction
+
+augroup Window
+    autocmd!
+
+    " Every tab must be initialized
+    autocmd VimEnter,TabNew * call s:InitTab()
+
+    " Run the resolver when Vim is resized
+    autocmd VimResized * call WinResolve()
+augroup END
 
 " Don't equalize window sizes when windows are closed
 set noequalalways

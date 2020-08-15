@@ -26,14 +26,18 @@ function! ToOpenPreview()
     endfor
 
     let previouswinid = Win_getid_cur()
-    noautocmd execute 'topleft ' . &previewheight . 'split'
+
+    " These two commands need to be separate. Combining them may cause
+    " the window height not to be applied correctly
+    noautocmd topleft split
+    noautocmd execute 'resize ' . &previewheight
 
     " If the file being previewed is already open in another Vim instance,
-    " this command throws ( but works )
+    " this command throws (but works)
     try
-       noautocmd silent execute 'buffer ' . t:j_preview.bufnr
+        noautocmd silent execute 'buffer ' . t:j_preview.bufnr
     catch /.*/
-       call EchomLog('preview-uberwin', 'warning', v:exception)
+        call EchomLog('preview-uberwin', 'warning', v:exception)
     endtry
 
     let winid = Win_getid_cur()

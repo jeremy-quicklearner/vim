@@ -110,6 +110,7 @@
 " }
 
 " Resolver and post-user-operation callbacks and group types are global
+" TODO: rename
 if !exists('g:uberwingrouptype')
     call EchomLog('window-model', 'info', 'Initializing global model')
     let g:tabenterpreresolvecallbacks = []
@@ -1260,11 +1261,9 @@ function! WinModelChangeUberwinIds(grouptypename, winids)
 
     let uberwindict = {}
     for i in range(len(a:winids))
-        let uberwindict[g:uberwingrouptype[a:grouptypename].typenames[i]] = {
-       \     'id': a:winids[i]
-       \}
+        let typename = g:uberwingrouptype[a:grouptypename].typenames[i]
+        let t:uberwin[a:grouptypename].uberwin[typename].id = a:winids[i]
     endfor
-    let t:uberwin[a:grouptypename].uberwin = uberwindict
 endfunction
 
 function! WinModelChangeUberwinDimensions(grouptypename, typename, nr, w, h)
