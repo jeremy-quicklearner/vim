@@ -152,7 +152,7 @@ augroup QuickfixUberwin
     " windows. This breaks the assumption that there is only ever one quickfix
     " window, which the Quickfix uberwin definition relies on. To be safe, invoke
     " cclose from every window. This will close all dangling location windows.
-    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingQuickfixWindows'), [], 1, -99, 0, 0)
+    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingQuickfixWindows'), [], 1, -99, 0, 0, 0)
 augroup END
 
 " Mappings

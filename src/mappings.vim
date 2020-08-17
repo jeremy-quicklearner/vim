@@ -1,5 +1,4 @@
 " mappings
-" TODO: Make sure these mappings are compatible with all modes
 
 " Biting the bullet
 inoremap <left> <nop>

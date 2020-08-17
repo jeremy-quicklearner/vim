@@ -158,7 +158,7 @@ endfunction
 " model are certain to be consistent
 if !exists('g:j_loclist_chc')
     let g:j_loclist_chc = 1
-    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 1, 20, 1, 1)
+    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 1, 20, 1, 0, 1)
 endif
 
 " Mappings

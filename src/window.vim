@@ -144,9 +144,6 @@
 "       - Buffer numbers need to be 'freed' every time an afterimaged subwin is
 "         closed, but the user (or some plugin) may do it directly without
 "         freeing
-" TODO: Add an uberwin to show the buflog
-" TODO: Make the Option window an uberwin
-" TODO? Make the Command-line window an uberwin?
 " TODO: Actually make the mappings optional
 " TODO: Actually make the reference definitions disable-able
 " TODO: Allow for customization of a bunch of parameters to the reference
@@ -170,7 +167,8 @@
 " TODO: Audit all files for 'endfunction!'
 " TODO: Move the whole window engine to a plugin
 " TODO: Autoload everything
-" TODO: Move subwin and uberwin group definitions to their own plugins
+" TODO: Move undotree subwin to its own plugin so that the window engine
+"       doesn't depend on mbbill/undotree
 
 " Logging facilities - all in one place so they can be changed easily
 call SetLogLevel('window-mappings', 'info',    'warning')
@@ -199,7 +197,7 @@ source <sfile>:p:h/window-mappings.vim
 " The resolver should run after any changes to the state
 if !exists('g:j_winresolve_chc')
     let g:j_winresolve_chc = 1
-    call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1, 1)
+    call RegisterCursorHoldCallback(function('WinResolve'), [], 1, 0, 1, 0, 1)
 endif
 
 " When the resolver runs in a new tab, it should run as if the tab was entered

@@ -70,6 +70,31 @@ function! SetDefaultStatusLine()
     set statusline+=%3*[%c][%l/%L][%p%%]
 endfunction
 
+function! SetCmdwinStatusLine()
+    let statusline = ''
+
+    " 'Preview' string
+    let statusline .= '%7*[Command-Line]'
+
+    " Start truncating
+    let statusline .= '%<'
+
+    " Buffer number
+    let statusline .= '%1*[%n]'
+
+    " Reminder
+    let statusline .= '[<cr> to execute][<C-c> to cancel]'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Column][Current line/Total lines][% of buffer]
+    let statusline .= '%7*[%c][%l/%L][%p%%]'
+
+    let &l:statusline = statusline
+endfunction
+
+
 " The window engine dictates that some windows have non-default status lines.
 " It defers to the default by returning an empty string that won't supersede
 " the global default statusline
@@ -83,7 +108,7 @@ endfunction
 
 " Register the above function to be called on the next CursorHold event
 function! RegisterCorrectStatusLines()
-    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), [], 0, 1, 0, 0)
+    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), [], 0, 1, 0, 0, 0)
 endfunction
 
 augroup StatusLine
@@ -92,6 +117,9 @@ augroup StatusLine
     " when they open or buffers enter them, so overwrite all non-default
     " statuslines after that happens
     autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
+
+    " Apply the command-line window's statusline on entering
+    autocmd CmdWinEnter * call SetCmdwinStatusLine()
 
     " Netrw windows also have local statuslines that get set by some autocmd
     " someplace. Overwrite them as well.

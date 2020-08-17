@@ -246,7 +246,7 @@ endfunction
 " model are certain to be consistent
 if !exists('g:j_undotree_chc')
     let g:j_undotree_chc = 1
-    call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 1)
+    call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 0, 1)
 endif
 
 function! CloseDanglingUndotreeWindows()
@@ -270,7 +270,7 @@ augroup UndotreeSubwin
     " of extra supwins with the undotree filetype and no content. I see no
     " reason why the user would ever want to keep these windows around, so
     " they are removed here
-    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingUndotreeWindows'), [], 1, -100, 0, 0)
+    autocmd SessionLoadPost * Tabdo call RegisterCursorHoldCallback(function('CloseDanglingUndotreeWindows'), [], 1, -100, 0, 0, 0)
 augroup END
 
 " Mappings

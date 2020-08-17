@@ -27,9 +27,8 @@ function! ToOpenPreview()
 
     let previouswinid = Win_getid_cur()
 
-    " These two commands need to be separate. Combining them may cause
-    " the window height not to be applied correctly
     noautocmd topleft split
+    let &l:scrollbind = 0
     noautocmd execute 'resize ' . &previewheight
 
     " If the file being previewed is already open in another Vim instance,

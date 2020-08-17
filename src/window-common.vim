@@ -230,16 +230,19 @@ function! WinCommonReselectCursorWindow(oldpos)
     return pos
 endfunction
 
-" Fix the width, height, and scroll position of all nonsupwins such that opening
-" and closing new windows won't change them. ('Shield' them). Return information
-" about the shielded windows' previous fixedness so that they can later
-" be unshielded. For supwins, only fix the scroll position
-function! WinCommonShieldAllWindows()
+" Fix the scroll position of all windows such that opening and closing new windows
+" won't change them. ('Shield' them). Return information about the shielded windows'
+" previous fixedness so that they can later be unshielded. Exclude some
+" windows.
+function! WinCommonShieldAllWindows(excludedwinids)
     call EchomLog('window-common', 'debug', 'WinCommonShieldAllWindows')
     let supwinids = copy(WinModelSupwinIds())
 
     let preshield = {}
     for winid in WinStateGetWinidsByCurrentTab()
+        if index(a:excludedwinids, str2nr(winid)) >=# 0
+            continue
+        endif
         let onlyscroll = (index(supwinids, str2nr(winid)) >= 0)
         call EchomLog('window-common', 'verbose', 'Shield ', winid, ' ' . onlyscroll)
         let preshield[winid] = WinStateShieldWindow(winid, onlyscroll)
@@ -284,15 +287,26 @@ function! WinCommonCloseUberwinsByGroupTypeName(grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonCloseUberwinsByGroupTypeName ', a:grouptypename)
     " When windows are closed, Vim needs to choose which other windows to
     " expand to fill the free space and how to change those windows' scroll
-    " positions. Sometimes Vim makes choices I don't like, such as expanding
-    " fixed-height subwins or scrolling down in the windows it expands. So
-    " before closing the uberwin, fix the height, width, and scroll position
-    " of every nonsupwin.
-    let preshield = WinCommonShieldAllWindows()
+    " positions. Sometimes Vim makes choices I don't like, such as scrolling
+    " down in the windows it expands. So before closing the uberwin, fix the
+    " scroll position of every window except the ones being closed.
+    " Do ***NOT*** optimize this by not excluding the windows being closed! It
+    " leads to trouble.
+    " While the scrollbind option is said to be window-local in Vim's Help, a
+    " particularly nasty undocumented behaviour applies when a scrollbound window
+    " is closed: Vim preserves the scrollbind option for that window's buffer and
+    " then applies it to the next window that the buffer enters. That's what
+    " would happen here: WinCommonShieldAllWindows() would set scrollbind on
+    " the uberwins, then WinStateCloseUberwinsByGroupType would close them.
+    " Vim would internally preserve scrollbind for the uberwins' buffers,
+    " which could then be opened in other windows causing scrollbind to be
+    " restored to those windows. Now we have scrollbind set for windows that
+    " should not have it set, and a very confused user.
+    let uberwinids = WinModelUberwinIdsByGroupTypeName(a:grouptypename)
+    let preshield = WinCommonShieldAllWindows(uberwinids)
     try
         let grouptype = g:uberwingrouptype[a:grouptypename]
         let preclosewinids = WinStateGetWinidsByCurrentTab()
-        let uberwinids = WinModelUberwinIdsByGroupTypeName(a:grouptypename)
         for winid in uberwinids
             if index(preclosewinids, str2nr(winid)) < 0
                 throw 'Model uberwin ID ' . winid . ' from group ' . a:grouptypename . ' not present in state'
@@ -321,7 +335,7 @@ endfunction
 " windows along the way. This function can be called before opening a window,
 " to remember the dimensions of all the windows that are already open. The
 " remembered dimensions can then be somewhat restored using
-" WinCommonRestoreMaxDimensions
+" WinCommonRestoreDimensions
 function! WinCommonPreserveDimensions()
     call EchomLog('window-common', 'debug', 'WinCommonPreserveDimensions')
     let winids = WinStateGetWinidsByCurrentTab()
@@ -342,21 +356,25 @@ function! s:CompareWinidsByWinnr(winid1, winid2)
     let winnr2 = WinStateGetWinnrByWinid(a:winid2)
     return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? 1 : -1
 endfunction
-function! s:RestoreMaxDimensionsByWinid(winid, olddims, prefertopleftdividers)
-    call EchomLog('window-common', 'verbose', 'RestoreMaxDimensionsByWinid ', a:winid, ' ', a:olddims, ' ', a:prefertopleftdividers)
+function! s:RestoreDimensionsByWinid(winid, olddims, prefertopleftdividers)
+    call EchomLog('window-common', 'verbose', 'RestoreDimensionsByWinid ', a:winid, ' ', a:olddims, ' ', a:prefertopleftdividers)
     let newdims = WinStateGetWinDimensions(a:winid)
-    if a:olddims.w <# newdims.w
+    " This function gets called only when there are no subwins, so any
+    " non-supwin must be an uberwin.
+    let isuberwin = (index(WinModelSupwinIds(), str2nr(a:winid)) <# 0 )
+    let fixed = WinStateFixednessByWinid(a:winid)
+    if a:olddims.w <# newdims.w || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
         call EchomLog('window-common', 'debug', 'Set width for window ', a:winid, ' to ', a:olddims.w)
         call WinStateResizeHorizontal(a:winid, a:olddims.w, a:prefertopleftdividers)
     endif
-    if a:olddims.h <# newdims.h
+    if a:olddims.h <# newdims.h || (isuberwin && fixed.h && a:olddims.h ># newdims.h)
         call EchomLog('window-common', 'debug', 'Set height for window ', a:winid, ' to ', a:olddims.h)
         call WinStateResizeVertical(a:winid, a:olddims.h, a:prefertopleftdividers)
     endif
 endfunction
 " Restore dimensions remembered with WinCommonPreserveDimensions
-function! WinCommonRestoreMaxDimensions(windims)
-    call EchomLog('window-common', 'debug', 'WinCommonRestoreMaxDimensions')
+function! WinCommonRestoreDimensions(windims)
+    call EchomLog('window-common', 'debug', 'WinCommonRestoreDimensions')
     let sorted = copy(keys(a:windims))
     call sort(sorted, function('s:CompareWinidsByWinnr'))
     for winid in sorted
@@ -366,11 +384,11 @@ function! WinCommonRestoreMaxDimensions(windims)
         endif
     endfor
     for winid in sorted
-        call s:RestoreMaxDimensionsByWinid(winid, a:windims[winid], 0)
+        call s:RestoreDimensionsByWinid(winid, a:windims[winid], 0)
     endfor
     call reverse(sorted)
     for winid in sorted
-        call s:RestoreMaxDimensionsByWinid(winid, a:windims[winid], 1)
+        call s:RestoreDimensionsByWinid(winid, a:windims[winid], 1)
     endfor
 endfunction
 
@@ -420,11 +438,20 @@ function! WinCommonRecordAllDimensions()
     endfor
 endfunction
 
-" Wrapper for WinStateOpenUberwinsByGroupType that freezes windows whose
-" dimensions shouldn't change and ensures no windows get bigger
+" Wrapper for WinStateOpenUberwinsByGroupType that freezes scroll positions
+" and corrects dimensions for existing windows
 function! WinCommonOpenUberwins(grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonOpenUberwins ', a:grouptypename)
-    let preshield = WinCommonShieldAllWindows()
+    " Shielding only protects windows from scrolling when they are not
+    " the current window, so explicitly save and restore the current
+    " window's scroll position. Shielding is preferred for other
+    " windows due to performance. This is the reason why it is required that
+    " uberwin groups' toOpen callbacks not move the cursor before opening the
+    " uberwin
+    let curtopline = WinStatePreserveScrollPosition
+    let curwin = WinStateGetCursorWinId()
+
+    let preshield = WinCommonShieldAllWindows([])
     try
         let windims = WinCommonPreserveDimensions()
         try
@@ -432,11 +459,19 @@ function! WinCommonOpenUberwins(grouptypename)
             let winids = WinStateOpenUberwinsByGroupType(grouptype)
 
         finally
-            call WinCommonRestoreMaxDimensions(windims)
+            call WinCommonRestoreDimensions(windims)
         endtry
 
     finally
         call WinCommonUnshieldWindows(preshield)
+
+        " The ToOpen callback may have moved the cursor, so move it back
+        " before restoring the scroll position
+        call Win_gotoid(curwin)
+
+        " The scroll position must be restored after unshielding, or else it
+        " may cause other windows to scroll
+        call WinStateRestoreCursorPosition(curtopline)
     endtry
     call EchomLog('window-common', 'verbose', 'Opened uberwin group ', a:grouptypename, ' with winids ', winids)
     return winids

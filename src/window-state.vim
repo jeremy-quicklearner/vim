@@ -262,6 +262,20 @@ function! WinStateRestoreCursorPosition(pos)
     call winrestview(a:pos)
 endfunction
 
+" Scroll position preserve/restore
+function! WinStatePreserveScrollPosition()
+    call EchomLog('window-state', 'debug', 'WinStatePreserveScrollPosition')
+    let topline = winsaveview().topline
+    call EchomLog('window-state', 'debug', 'Scroll position preserved: ', topline)
+    return topline
+endfunction
+function! WinStateRestoreScrollPosition(topline)
+    call EchomLog('window-state', 'debug', 'WinStateRestoreScrollPosition ', topline)
+    let newview = winsaveview()
+    let newview.topline = a:topline
+    call WinStateRestoreCursorPosition(newview)
+endfunction
+
 " Window shielding
 function! WinStateShieldWindow(winid, onlyscroll)
     call EchomLog('window-state', 'info', 'WinStateShieldWindow ', a:winid, ' ', a:onlyscroll)
@@ -272,8 +286,8 @@ function! WinStateShieldWindow(winid, onlyscroll)
    \}
     call EchomLog('window-state', 'verbose', 'Pre-shield fixedness for window ', a:winid, ': ', preshield)
     if !a:onlyscroll
-        call setwinvar(Win_id2win(a:winid), '&winfixwidth', 1)
-        call setwinvar(Win_id2win(a:winid), '&winfixheight', 1)
+        "call setwinvar(Win_id2win(a:winid), '&winfixwidth', 1)
+        "call setwinvar(Win_id2win(a:winid), '&winfixheight', 1)
     endif
     call setwinvar(Win_id2win(a:winid), '&scrollbind', 1)
     return preshield
@@ -281,8 +295,8 @@ endfunction
 
 function! WinStateUnshieldWindow(winid, preshield)
     call EchomLog('window-state', 'info', 'WinStateUnshieldWindow ', a:winid, ' ', a:preshield)
-    call setwinvar(Win_id2win(a:winid), '&winfixwidth', a:preshield.w)
-    call setwinvar(Win_id2win(a:winid), '&winfixheight', a:preshield.h)
+    "call setwinvar(Win_id2win(a:winid), '&winfixwidth', a:preshield.w)
+    "call setwinvar(Win_id2win(a:winid), '&winfixheight', a:preshield.h)
     call setwinvar(Win_id2win(a:winid), '&scrollbind', a:preshield.sb)
 endfunction
 
@@ -308,7 +322,7 @@ endfunction
 function! WinStateMoveCursorToWinidSilently(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinidSilently ', a:winid)
     call WinStateAssertWinExists(a:winid)
-    noautocmd call Win_gotoid(a:winid)
+    noautocmd silent call Win_gotoid(a:winid)
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -370,7 +384,7 @@ function! WinStateCloseUberwinsByGroupType(grouptype)
         throw 'Given group type has nonfunc toClose member'
     endif
 
-    call call(ToClose, [])
+    call ToClose()
 
     call s:MaybeRedraw()
 endfunction
@@ -455,7 +469,7 @@ function! WinStateCloseSubwinsByGroupType(supwinid, grouptype)
     call Win_gotoid(a:supwinid)
 
     let top = winsaveview().topline
-    call call(ToClose, [])
+    call ToClose()
     let view = winsaveview()
     let view.topline = top
     call winrestview(view)
@@ -672,6 +686,7 @@ function! WinStateAfterimageWindow(winid)
     " Preserve some window options
     let bufft = &ft
     let bufwrap = &wrap
+    let list = &list
     let statusline = &statusline
 
     " Preserve colorcolumn
@@ -745,6 +760,7 @@ function! WinStateAfterimageWindow(winid)
     let &ft = bufft
     let &wrap = bufwrap
     let &l:statusline = statusline
+    let &list = list
     call s:MaybeRedraw()
 
     " Restore cursor and scroll position
@@ -781,14 +797,11 @@ function! WinStatePreCloseAndReopen(winid)
     " Preserve cursor position
     let view = winsaveview()
 
-    " Preserve colorcolumn
+    " Preserve some options
     let colorcol = &colorcolumn
-
-    " Preserve foldcolumn
     let foldcol = &foldcolumn
-
-    " Preserve scrollbind
     let scrollb = &scrollbind
+    let list = &list
 
     call EchomLog('window-state', 'verbose', 'colorcolumn: ', colorcol, ' foldcolumn: ', foldcol, ' view: ', view)
 
@@ -813,7 +826,8 @@ function! WinStatePreCloseAndReopen(winid)
    \    'fold': fold,
    \    'foldcol': foldcol,
    \    'colorcol': colorcol,
-   \    'scrollb': scrollb
+   \    'scrollb': scrollb,
+   \    'list': list
    \}
 endfunction
 
@@ -836,16 +850,11 @@ function! WinStatePostCloseAndReopen(winid, preserved)
     endtry
     call s:MaybeRedraw()
 
-    " Restore foldcolumn
+    " Restore some options
     let &foldcolumn = a:preserved.foldcol
-    call s:MaybeRedraw()
-
-    " Restore colorcolumn
     let &colorcolumn = a:preserved.colorcol
-    call s:MaybeRedraw()
-
-    " Restore scrollbind
     let &scrollbind = a:preserved.scrollb
+    let &list = a:preserved.list
   
     " Restore cursor and scroll position
     call winrestview(a:preserved.view)
@@ -904,10 +913,18 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
     call WinStateSilentWincmd(newheight, '_')
 endfunction
 
+function! WinStateFixednessByWinid(winid)
+    call EchomLog('window-state', 'debug', 'WinStateFixednessByWinid ', a:winid)
+    call WinStateMoveCursorToWinidSilently(a:winid)
+    let fixedness = {'w':&winfixwidth,'h':&winfixheight}
+    call EchomLog('window-state', 'verbose', fixedness)
+    return fixedness
+endfunction
+
 function! WinStateUnfixDimensions(winid)
     call EchomLog('window-state', 'info', 'WinStateUnfixDimensions ', a:winid)
-    call WinStateMoveCursorToWinidSilently(a:winid)
-    let preunfix = {'w':&winfixwidth,'h':&winfixheight}
+    let preunfix = WinStateFixednessByWinid(a:winid)
+    " WinStateFixednessByWinid moves to the window
     let &winfixwidth = 0
     let &winfixheight = 0
     return preunfix
@@ -919,3 +936,4 @@ function! WinStateRefixDimensions(winid, preunfix)
     let &winfixwidth = a:preunfix.w
     let &winfixheight = a:preunfix.h
 endfunction
+

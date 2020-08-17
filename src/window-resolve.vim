@@ -103,8 +103,8 @@ function! WinResolveGroupInfo(wininfos)
             if !has_key(uberwingroupinfo, wininfo.grouptype)
                 let uberwingroupinfo[wininfo.grouptype] = {}
             endif
-            " TODO? Handle case where two uberwins of the same type are
-            "       present
+            " If there are two uberwins of the same type, whichever one this
+            " loop sees last will survive
             let uberwingroupinfo[wininfo.grouptype][wininfo.typename] = wininfo.id
         elseif wininfo.category ==# 'subwin'
             if !has_key(subwingroupinfo, wininfo.supwin)
@@ -113,8 +113,8 @@ function! WinResolveGroupInfo(wininfos)
             if !has_key(subwingroupinfo[wininfo.supwin], wininfo.grouptype)
                 let subwingroupinfo[wininfo.supwin][wininfo.grouptype] = {}
             endif
-            " TODO? Handle case where two subwins of the same type are present
-            "       for the same supwin
+            " If there are two subwins of the same type for the same supwin,
+            " whichever one this loop sees last will survive
             let subwingroupinfo[wininfo.supwin]
                               \[wininfo.grouptype]
                               \[wininfo.typename] = wininfo.id
@@ -453,7 +453,10 @@ function! s:WinResolveModelToState()
     " STEP 2.1: Purge the state of windows that aren't in the model
     " TODO? Do something more civilized than stomping each window
     "       individually. So far it's ok but some other group type
-    "       may require it in the future
+    "       may require it in the future. This would require a new
+    "       parameter for WinAdd(Uber|Sub)winGroupType - a list of
+    "       callbacks which close individual windows and not whole
+    "       groups
     call EchomLog('window-resolve', 'verbose', 'Step 2.1')
     for winid in WinStateGetWinidsByCurrentTab()
         " I did actually see this get logged once, so I'm leaving it in

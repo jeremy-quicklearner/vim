@@ -205,10 +205,12 @@ endfunction
 " The callback will only called once, on the next CursorHold event, unless
 " permanent is true. In that case, the callback will be called for every
 " CursorHold event from now on
+" Callbacks with a false inCmdWin flag will not run while the command-line
+" window is open.
 " If global is truthy, the callback will execute even if the user switches to
 " another tab before the next CursorHold event. Otherwise, the callback will
 " run on the next CursorHold event that triggers in the current tab
-function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent, global)
+function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanent, inCmdWin, global)
     if type(a:callback) != v:t_func
         throw 'CursorHold Callback ' . string(a:callback) . ' is not a function'
     endif
@@ -223,6 +225,9 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
     endif
     if type(a:permanent) != v:t_number
         throw 'Permanent flag ' . string(a:permanent) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
+    endif
+    if type(a:inCmdWin) != v:t_number
+        throw 'Even-in-command-window flag ' . string(a:inCmdWin) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
     endif
     if type(a:global) != v:t_number
         throw 'Global flag ' . string(a:global) . ' for CursorHold Callback ' . string(a:callback) . 'is not a number'
@@ -242,7 +247,8 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'data': a:data,
        \    'priority': a:priority,
        \    'permanent': a:permanent,
-       \    'cascade': a:cascade
+       \    'cascade': a:cascade,
+       \    'inCmdWin': a:inCmdWin
        \})
     else
         call add(t:cursorHoldCallbacks, {
@@ -250,7 +256,8 @@ function! RegisterCursorHoldCallback(callback, data, cascade, priority, permanen
        \    'data': a:data,
        \    'priority': a:priority,
        \    'permanent': a:permanent,
-       \    'cascade': a:cascade
+       \    'cascade': a:cascade,
+       \    'inCmdWin': a:inCmdWin
        \})
     endif
 endfunction
@@ -258,12 +265,16 @@ endfunction
 " Run the registered callbacks
 function! RunCursorHoldCallbacks()
     call EchomLog('cursorhold-callback', 'info', 'Running CursorHold non-cascading callbacks')
+
     call EnsureCallbackListsExist()
 
     let callbacks = g:cursorHoldCallbacks + t:cursorHoldCallbacks
 
     call sort(callbacks, function('ComparePriorities'))
     for callback in callbacks
+        if s:inCmdWin && !callback.inCmdWin
+            continue
+        endif
         call EchomLog('cursorhold-callback', 'info', 'Running CursorHold Callback ', string(callback.callback))
         if callback.cascade
             call call(callback.callback, callback.data)
@@ -274,7 +285,7 @@ function! RunCursorHoldCallbacks()
 
     let newCallbacks = []
     for callback in g:cursorHoldCallbacks
-        if callback.permanent
+        if callback.permanent || (s:inCmdWin && !callback.inCmdWin)
             call add(newCallbacks, callback)
         endif
     endfor
@@ -282,7 +293,7 @@ function! RunCursorHoldCallbacks()
 
     let newCallbacks = []
     for callback in t:cursorHoldCallbacks
-        if callback.permanent
+        if callback.permanent || (s:inCmdWin && !callback.inCmdWin)
             call add(newCallbacks, callback)
         endif
     endfor
@@ -302,6 +313,10 @@ endfunction
 
 augroup CursorHoldCallbacks
     autocmd!
+    " Detect when the command window is open
+    autocmd CmdWinEnter * let s:inCmdWin = 1
+    autocmd CmdWinLeave,VimEnter * let s:inCmdWin = 0
+
     " The callbacks run on the CursorHold event
     autocmd CursorHold * nested call RunCursorHoldCallbacks()
 
@@ -313,5 +328,5 @@ augroup END
 " Flush the buflog queue at the end of every CursorHold event
 if !exists('g:j_buflog_chc')
     let g:j_buflog_chc = 1
-    call RegisterCursorHoldCallback(function('MaybeFlushBuflogQueue'), [], 0, 1000, 1, 1)
+    call RegisterCursorHoldCallback(function('MaybeFlushBuflogQueue'), [], 0, 1000, 1, 1, 1)
 endif

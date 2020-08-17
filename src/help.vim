@@ -1,42 +1,36 @@
 " Help window manipulation
 
-" The help uberwin is intended to only ever be opened by native commands like
-" help and helpgrep - no user operations. Therefore the window engine code
-" interacts with it only via the resolver and ToOpenHelp only ever gets called
-" when the resolver closes and reopens the window. So the implementation of
-" ToOpenHelp assumes that ToCloseHelp has recently been called.
-" TODO: Add a default behaviour that just opens the help
 call SetLogLevel('help-uberwin', 'info', 'warning')
-
-augroup HelpUberwin
-    autocmd!
-    autocmd VimEnter, TabNew * let t:j_help = {}
-augroup END
 
 " Callback that opens the help window
 function! ToOpenHelp()
     call EchomLog('help-uberwin', 'info', 'ToOpenHelp')
-    if empty(t:j_help)
-       throw 'Help window has not been closed yet'
-    endif
-
     for winid in WinStateGetWinidsByCurrentTab()
-        " This check is intentionally case-insensitive
-        if getwinvar(Win_id2win(winid), '&ft', '') == 'help'
+        if getwinvar(Win_id2win(winid), '&ft', '') ==? 'help'
             throw 'Help window already open'
         endif
     endfor
 
     let prevwinid = Win_getid_cur()
 
-    " These two commands need to be separate. Combining them may cause
-    " width not to be applied correctly
-    noautocmd vertical botright split
-    noautocmd vertical resize 89
+    if !exists('t:j_help')
+        call EchomLog('help-uberwin', 'debug', 'Help window has not been closed yet')
+        " noautocmd is intentionally left out here so that syntax highlighting
+        " is applied
+        silent vertical botright help
+    else
+        noautocmd vertical botright split
+    endif
 
-    noautocmd silent execute 'buffer ' . t:j_help.bufnr
+    let &l:scrollbind = 0
+    noautocmd vertical resize 89
     let winid = Win_getid_cur()
-    call WinStatePostCloseAndReopen(winid, t:j_help)
+
+    if exists('t:j_help')
+        silent execute 'buffer ' . t:j_help.bufnr
+        call WinStatePostCloseAndReopen(winid, t:j_help)
+    endif
+
     let &winfixwidth = 1
 
     noautocmd call Win_gotoid(prevwinid)
@@ -49,7 +43,7 @@ function! ToCloseHelp()
     call EchomLog('help-uberwin', 'info', 'ToCloseHelp')
     let helpwinid = 0
     for winid in WinStateGetWinidsByCurrentTab()
-        if getwinvar(Win_id2win(winid), '&ft', '') == 'help'
+        if getwinvar(Win_id2win(winid), '&ft', '') ==? 'help'
             let helpwinid = winid
         endif
     endfor
@@ -74,7 +68,7 @@ endfunction
 " Callback that returns 'help' if the supplied winid is for the help window
 function! ToIdentifyHelp(winid)
     call EchomLog('help-uberwin', 'debug', 'ToIdentifyHelp ', a:winid)
-    if getwinvar(Win_id2win(a:winid), '&ft', '') == 'help'
+    if getwinvar(Win_id2win(a:winid), '&ft', '') ==? 'help'
         return 'help'
     endif
     return ''
@@ -115,7 +109,12 @@ call WinAddUberwinGroupType('help', ['help'],
                            \function('ToCloseHelp'),
                            \function('ToIdentifyHelp'))
 
+augroup HelpUberwin
+    autocmd!
+    autocmd VimEnter, TabNew * let t:j_help = {}
+augroup END
+
 " Mappings
 nnoremap <silent> <leader>hc :call WinRemoveUberwinGroup('help')<cr>
 nnoremap <silent> <leader>hs :call WinShowUberwinGroup('help')<cr>
-nnoremap <silent> <leader>hh :call WinGotoUberwin('help','help')<cr>
+nnoremap <silent> <leader>hh :call WinAddOrGotoUberwin('help','help')<cr>

@@ -20,6 +20,7 @@ source <sfile>:p:h/plugin.vim
 source <sfile>:p:h/help.vim
 source <sfile>:p:h/preview.vim
 source <sfile>:p:h/quickfix.vim
+source <sfile>:p:h/option.vim
 " Files that define Subwindow group types are together
 source <sfile>:p:h/loclist.vim
 source <sfile>:p:h/undotree.vim
@@ -40,3 +41,4 @@ source <sfile>:p:h/mappings.vim
 
 " Do I even need to say anything about this?
 source <sfile>:p:h/miscellaneous.vim
+

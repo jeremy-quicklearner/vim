@@ -48,7 +48,8 @@ endfunction
 " widths:      Widths of uberwins. -1 means variable width.
 " heights:     Heights of uberwins. -1 means variable height.
 " toOpen:      Function that opens uberwins of this group type and returns their
-"              window IDs.
+"              window IDs. This function is required not to move the cursor
+"              between windows before opening the uberwins
 " toClose:     Function that closes the uberwins of this group type.
 " toIdentify:  Function that, when called in an uberwin of a type from this group
 "              type, returns the type name. Returns an empty string if called from
@@ -832,6 +833,22 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
     call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
     call s:RunPostUserOpCallbacks()
+endfunction
+
+function! WinAddOrGotoUberwin(grouptypename, typename)
+    call EchomLog('window-user', 'info', 'WinAddOrGotoUberwin ', a:grouptypename, ':', a:typename)
+    if !WinModelUberwinGroupExists(a:grouptypename)
+        call WinAddUberwinGroup(a:grouptypename, 0)
+    endif
+    call WinGotoUberwin(a:grouptypename, a:typename)
+endfunction
+
+function! WinAddOrGotoSubwin(supwinid, grouptypename, typename)
+    call EchomLog('window-user', 'info', 'WinAddOrGotoSubwin ', a:supwinid, ':', a:grouptypename, ':', a:typename)
+    if !WinModelSubwinGroupExists(a:supwinid, a:grouptypename)
+        call WinAddSubwinGroup(a:supwinid, a:grouptypename, 0)
+    endif
+    call WinGotoSubwin(a:supwinid, a:grouptypename, a:typename)
 endfunction
 
 function! s:GotoByInfo(info)
