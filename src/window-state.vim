@@ -673,6 +673,8 @@ function! s:RestoreFolds(method, data)
     endif
 endfunction
 
+" TODO: Go through every buffer-local option and decide whether to preserve it
+" across afterimaging
 function! WinStateAfterimageWindow(winid)
     call EchomLog('window-state', 'debug', 'WinStateAfterimageWindow ', a:winid)
     " Silent movement (noautocmd) is used here because we want to preserve the
@@ -790,6 +792,8 @@ function! WinStateCloseWindow(winid)
 endfunction
 
 " Preserve/Restore for individual windows
+" TODO: Go through every window-local option and decide whether to preserve it
+" across close-and-reopen
 function! WinStatePreCloseAndReopen(winid)
     call EchomLog('window-state', 'info', 'WinStatePreCloseAndReopen ', a:winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
