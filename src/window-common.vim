@@ -448,7 +448,7 @@ function! WinCommonOpenUberwins(grouptypename)
     " windows due to performance. This is the reason why it is required that
     " uberwin groups' toOpen callbacks not move the cursor before opening the
     " uberwin
-    let curtopline = WinStatePreserveScrollPosition
+    let curtopline = WinStatePreserveScrollPosition()
     let curwin = WinStateGetCursorWinId()
 
     let preshield = WinCommonShieldAllWindows([])
@@ -471,7 +471,7 @@ function! WinCommonOpenUberwins(grouptypename)
 
         " The scroll position must be restored after unshielding, or else it
         " may cause other windows to scroll
-        call WinStateRestoreCursorPosition(curtopline)
+        call WinStateRestoreScrollPosition(curtopline)
     endtry
     call EchomLog('window-common', 'verbose', 'Opened uberwin group ', a:grouptypename, ' with winids ', winids)
     return winids

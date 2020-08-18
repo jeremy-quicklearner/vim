@@ -27,6 +27,10 @@ endfunction
 nmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
 vmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
 
+" The window engine matches Vim's default behaviour by treating z<cr> differently
+" from <c-w>_, but I'd rather z<cr> act the same way as <c-w>_
+nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
+vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
 
 " Faster scrolling
 nnoremap <c-e> 2<c-e>

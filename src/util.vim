@@ -93,6 +93,7 @@ function! ClearBufLog()
     silent call setbufline(g:j_buflog, 1, '[INF][buflog] Log cleared')
     let g:j_buflog_lines = 1
 endfunction
+" TODO: Rename this function
 function! EchomLog(facility, loglevel, ...)
     if index(g:j_loglevels, a:loglevel) <# 0
         throw 'Invalid log level ' . a:loglevel

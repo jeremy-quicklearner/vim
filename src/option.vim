@@ -152,5 +152,5 @@ call WinAddUberwinGroupType('option', ['option'],
 " Mappings
 nnoremap <silent> <leader>oc :call WinRemoveUberwinGroup('option')<cr>
 nnoremap <silent> <leader>oo :call WinAddOrGotoUberwin('option','option')<cr>
-nnoremap <silent> <leader>os :call WinShowUberwinGroup('option')<cr>
-nnoremap <silent> <leader>oh :call WinHideUberwinGroup('option')<cr>
+nnoremap <silent> <leader>os :call WinAddOrShowUberwinGroup('option')<cr>
+nnoremap <silent> <leader>oh :call WinRemoveUberwinGroup('option')<cr>

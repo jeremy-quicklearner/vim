@@ -131,21 +131,24 @@ call WinCmdDefineSpecialCmd('WinGotoPrevious','WinGotoPrevious')
 " the subwin dangling, which will cause the resolver to exit the tab
 call WinCmdDefineSpecialCmd('WinOnly', 'WinOnly')
 
-" If WinResizeHorizontal and WinResizeVertical must run wincmd _ and
-" wincmd | with uberwins closed, they could change the uberwins's sizes and cause
-" the resolver to later close and reopen the uberwins. RestoreMaxDimensionsByWinid
+" If WinResizeHorizontal and WinResizeVertical ran run wincmd _ and wincmd | with
+" uberwins closed, they could change the uberwins' sizes and cause the resolver to
+" later close and reopen the uberwins. RestoreMaxDimensionsByWinid
 " would then mess up all the supwins' sizes, so the user's intent would be
 " lost. So WinResizeHorizontal and WinResizeVertical must run without
 " uberwins.
 " The user invokes WinResizeHorizontal and WinResizeVertical while looking at
 " a layout with uberwins, and supplies counts accordingly. However, when
-" wincmd _ and wincmd \| run, the closed uberwins may have given their screen
+" wincmd _ and wincmd | run, the closed uberwins may have given their screen
 " space to the supwin being resized. So the counts need to be normalized by
 " the supwin's change in dimension across the uberwins closing.
 " WinCommonDoWithout* shouldn't have to do the normalizing because these are
 " the only two commands that require it. So they have a custom implementation.
-call WinCmdDefineSpecialCmd('WinResizeHorizontal', 'WinResizeHorizontal')
-call WinCmdDefineSpecialCmd('WinResizeVertical',   'WinResizeVertical')
+call WinCmdDefineSpecialCmd('WinResizeVertical',             'WinResizeVertical')
+call WinCmdDefineSpecialCmd('WinResizeHorizontal',           'WinResizeHorizontal')
+" This command exists because the default behaviour of z<cr> (a nop) is
+" different from the default behaviour of <c-w>_
+call WinCmdDefineSpecialCmd('WinResizeHorizontalDefaultNop', 'WinResizeHorizontalDefaultNop')
 
 " Movement commands are special because if the starting point is an uberwin,
 " using DoWithoutUberwins would change the starting point to be the first

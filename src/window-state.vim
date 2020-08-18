@@ -270,7 +270,7 @@ function! WinStatePreserveScrollPosition()
     return topline
 endfunction
 function! WinStateRestoreScrollPosition(topline)
-    call EchomLog('window-state', 'debug', 'WinStateRestoreScrollPosition ', topline)
+    call EchomLog('window-state', 'debug', 'WinStateRestoreScrollPosition ', a:topline)
     let newview = winsaveview()
     let newview.topline = a:topline
     call WinStateRestoreCursorPosition(newview)

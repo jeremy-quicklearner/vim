@@ -115,6 +115,6 @@ augroup HelpUberwin
 augroup END
 
 " Mappings
-nnoremap <silent> <leader>hc :call WinRemoveUberwinGroup('help')<cr>
+nnoremap <silent> <leader>hc :call WinHideUberwinGroup('help')<cr>
 nnoremap <silent> <leader>hs :call WinShowUberwinGroup('help')<cr>
 nnoremap <silent> <leader>hh :call WinAddOrGotoUberwin('help','help')<cr>

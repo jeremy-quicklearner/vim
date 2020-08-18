@@ -1117,14 +1117,20 @@ function! WinResizeCurrentSupwin(width, height)
     call s:RunPostUserOpCallbacks()
 endfunction
 
+function! WinResizeVertical(count)
+    call EchomLog('window-user', 'info', 'WinResizeVertical ' . a:count)
+    call WinResizeCurrentSupwin(a:count, -1)
+endfunction
 function! WinResizeHorizontal(count)
     call EchomLog('window-user', 'info', 'WinResizeHorizontal ' . a:count)
     call WinResizeCurrentSupwin(-1, a:count)
 endfunction
-
-function! WinResizeVertical(count)
-    call EchomLog('window-user', 'info', 'WinResizeVertical ' . a:count)
-    call WinResizeCurrentSupwin(a:count, -1)
+function! WinResizeHorizontalDefaultNop(count)
+    call EchomLog('window-user', 'info', 'WinResizeHorizontalDefaultNop ' . a:count)
+    if a:count ==# ''
+        return
+    endif
+    call WinResizeCurrentSupwin(-1, a:count)
 endfunction
 
 " Run a command in every supwin

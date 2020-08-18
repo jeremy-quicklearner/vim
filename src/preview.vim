@@ -139,7 +139,7 @@ endfunction
 call WinCmdDefineSpecialCmd('WinGotoPreview', 'WinGotoPreview')
 call WinMappingMapCmd(['P'], 'WinGotoPreview', 0, 1,1,1)
 
-nnoremap <silent> <leader>pc :call WinRemoveUberwinGroup('preview')<cr>
+nnoremap <silent> <leader>pc :call WinHideUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>ps :call WinShowUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>ph :call WinHideUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>pp :call WinGotoUberwin('preview', 'preview')<cr>

@@ -77,7 +77,9 @@
 "     4 The Commands - A collection of custom commands that make calls to the
 "                      user operations
 "     5 The Mappings - A collection of mappings that replace native Vim window
-"                      operations with invocations of the custom commands
+"                      operations with invocations of the custom commands.
+"                      These mappings may interact in unwelcome ways with
+"                      scripts, so they are optional
 "
 " If the State were to be mutated by *only* the user operations, it would
 " always be consistent with the model... but unfortunately we can't make that
@@ -98,6 +100,8 @@
 " visible only for a split second. I recommend an updatetime of 100, as I've
 " found that anything shorter can sometimes lead to weird race conditions
 "
+" EXTENSIONS
+"
 " Extensions of this system take the form of definitions of uberwin and subwin group
 " types (i.e. calls to the WinAddUberwinGroupType and WinAddSubwinGroupType user
 " operations). Reference definitions are provided for help, preview, and
@@ -105,13 +109,17 @@
 " These reference definitions are enabled by default, and easily disabled
 " in case an alternate definition (or no definition) is desired
 "
-" The mappings may interact in unwelcome ways with other scripts, so they are
-" optional. If they are enabled, they have some minor side effects such as:
-"  - All window commands, even ones cancelled partway through with <esc> or
-"    <c-c>, kick you out of visual mode
-"    TODO? Fix
-"  - z<cr>, which does nothing natively, is now equivalent to <c-w>_
-"    TODO? Fix
+" LIMITATIONS
+"
+" - If the mappings are enabled then every window command kicks you into normal
+"   mode -  even ones cancelled partway through with <esc> or <c-c>
+"   TODO? Fix
+"
+" - If the resolver has to change the state, you are kicked into normal mode
+"   This is hard to run into by accident, because you need to enter visual
+"   mode after making the state and model inconsistent but before the resolver
+"   starts.
+"   TODO? Fix
 "
 " Compatibility with session reloading is dubious. In theory, the resolver is
 " defensive enough to handle any and all possible changes to the state - but
@@ -128,6 +136,7 @@
 "          session, and restores it after this happens
 "    TODO: Investigate whether the undotree can be persisted outside the
 "          session and restored after this happens
+"
 "
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
@@ -163,10 +172,11 @@
 " TODO: Audit all the asserts for redundancy
 " TODO: Audit every function for calls to it
 " TODO: Audit all files for ignoble terminology
+" TODO: Audit all files for insufficient documentation
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
 " TODO: Move the whole window engine to a plugin
-" TODO: Autoload everything
+" TODO: Autoload where appropriate
 " TODO: Move undotree subwin to its own plugin so that the window engine
 "       doesn't depend on mbbill/undotree
 

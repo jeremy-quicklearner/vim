@@ -3,7 +3,6 @@
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine to one of the custom commands from window-commands.vim
 
-" TODO: Make sure these mappings are compatible with all modes
 " TODO: Test WinOnly
 " TODO: Test WinDecreaseHeight
 " TODO: Test WinDecreaseWidth
@@ -103,7 +102,8 @@ endfunction
 
 " These two mappings contain <plug>, so the user will never invoke them.
 " They both start with <plug>WinMappingParse, so they are ambiguous.
-" WinMappingScan exploits Vim's behaviour with ambiguous mappings.
+" WinMappingScan exploits Vim's behaviour with ambiguous mappings - more on
+" this below
 map <silent> <plug>WinMappingParse :call WinMappingScan()<cr>
 map <silent> <plug>WinMappingParse<plug> <nop>
 
@@ -155,8 +155,7 @@ endfunction
 
 " Given a command with an infixed count, use feedkeys to run it but with the
 " count prefixed instead of infixed. If there is a non-hacky mapping that uses
-" v:count, it will be triggered. Otherwise the top-level mappings will be
-" triggered. 
+" v:count, it will be triggered.
 function! s:RunInfixCmd(cmd)
     if index(["\<c-w>", 'z'], a:cmd[0]) <# 0
         throw 's:RunInfixCmd on invalid command ' . a:cmd
@@ -205,8 +204,8 @@ let s:cmdsWithAllow0 = [
 \]
 
 " {nr}z<cr> is a special case because it doesn't start with <c-w>
-nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
-vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
+nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontalDefaultNop'<cr>
+vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontalDefaultNop'<cr>
 
 
 let s:cmdsWithNormalModeMapping = keys(s:allCmds)
