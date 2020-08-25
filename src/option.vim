@@ -2,6 +2,7 @@
 " TODO? Close and reopen the option window whenever the current window
 "       changes, so as to update its record of window-local options
 "       - Probably not worth doing
+" TODO: Check if this uberwin group plays well with session reloading
 
 call SetLogLevel('option-uberwin', 'info', 'warning')
 
@@ -30,6 +31,7 @@ function! ToOpenOption()
     " buffer for the ephemeral window to avoid creating a new buffer
     noautocmd silent vertical topleft sbuffer j_buflog
     let &l:scrollbind = 0
+    let &l:cursorbind = 0
     noautocmd vertical resize 85
     options
     noautocmd wincmd j

@@ -2,32 +2,9 @@
 " See window.vim
 " This file defines several custom commands that call user operations
 
-" TODO: Test WinOnly
-" TODO: Test WinDecreaseHeight
-" TODO: Test WinDecreaseWidth
-" TODO: Test WinEqualize
-" TODO: Test WinExchange
-" TODO: Test WinGoDown
-" TODO: Test WinGoFirst
-" TODO: Test WinGoLast
-" TODO: Test WinGoLeft
-" TODO: Test WinGoNext
-" TODO: Test WinGoRight
-" TODO: Test WinGoUp
-" TODO: Test WinGotoPrevious
-" TODO: Test WinIncreaseHeight
-" TODO: Test WinIncreaseWidth
-" TODO: Test WinMoveToBottomEdge
-" TODO: Test WinMoveToLeftEdge
-" TODO: Test WinMoveToNewTab
-" TODO: Test WinMoveToRightEdge
-" TODO: Test WinMoveToTopEdge
-" TODO: Test WinResizeHorizontal
-" TODO: Test WinResizeVertical
-" TODO: Test WinReverseGoNext
-" TODO: Test WinReverseRotate
-" TODO: Test WinRotate
-
+" TODO: Ensure all commands behave similarly to their native counterparts when
+"       invoked from visual mode
+" TODO: Thoroughly test every command
 
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
     call EchomLog('window-commands', 'debug', 'SanitizeRange ', a:cmdname, ', [', a:range, ',', a:count, ',', a:defaultcount, ']')
@@ -175,7 +152,14 @@ let s:allNonSpecialCmds = {
 \   'WinMoveToTopEdge':   'K',
 \   'WinReverseGoNext':   'W',
 \   'WinReverseRotate':   'R',
-\   'WinRotate':          'r'
+\   'WinRotate':          'r',
+\   'WinSplitHorizontal': 's',
+\   'WinSplitVertical':   'v',
+\   'WinSplitNew':        'n',
+\   'WinSplitAlternate':  '^',
+\   'WinQuit':            'q',
+\   'WinClose':           'c',
+\   'WinGotoPreview':     'P'
 \} 
 let s:cmdsWithPreserveCursorPos = [
 \   'WinDecreaseHeight',
@@ -204,7 +188,11 @@ let s:cmdsWithUberwinNop = [
 \   'WinMoveToTopEdge',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
-\   'WinRotate'
+\   'WinRotate',
+\   'WinSplitHorizontal',
+\   'WinSplitVertical',
+\   'WinSplitNew',
+\   'WinSplitAlternate',
 \]
 let s:cmdsWithSubwinToSupwin = [
 \   'WinDecreaseHeight',
@@ -221,7 +209,11 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinMoveToTopEdge',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
-\   'WinRotate'
+\   'WinRotate',
+\   'WinSplitHorizontal',
+\   'WinSplitVertical',
+\   'WinSplitNew',
+\   'WinSplitAlternate',
 \]
 let s:cmdsWithoutUberwins = [
 \   'WinGoFirst',
@@ -250,11 +242,24 @@ let s:cmdsWithoutSubwins = [
 \   'WinMoveToTopEdge',
 \   'WinReverseGoNext',
 \   'WinReverseRotate',
-\   'WinRotate'
+\   'WinRotate',
+\   'WinSplitHorizontal',
+\   'WinSplitVertical',
+\   'WinSplitNew',
+\   'WinSplitAlternate',
 \]
-" TODO: Make this list as small as possible
+
+" Commands in this list are the ones that WinDoCmdWithFlags isn't
+" smart enough to handle, but the resolver is smart enough for
 let s:cmdsThatRelyOnResolver = [
 \   'WinMoveToNewTab',
+\   'WinSplitHorizontal',
+\   'WinSplitVertical',
+\   'WinSplitNew',
+\   'WinSplitAlternate',
+\   'WinQuit',
+\   'WinClose',
+\   'WinGotoPreview'
 \]
 
 for cmdname in keys(s:allNonSpecialCmds)

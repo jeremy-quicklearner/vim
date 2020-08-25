@@ -467,7 +467,7 @@ function! WinCommonOpenUberwins(grouptypename)
 
         " The ToOpen callback may have moved the cursor, so move it back
         " before restoring the scroll position
-        call Win_gotoid(curwin)
+        call WinStateMoveCursorToWinidSilently(curwin)
 
         " The scroll position must be restored after unshielding, or else it
         " may cause other windows to scroll
@@ -916,8 +916,8 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
-function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
-    call EchomLog('window-common', 'debug', 'DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ']')
+function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
+    call EchomLog('window-common', 'debug', 'DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ']')
     let supwinids = WinModelSupwinIds()
     let closedsubwingroupsbysupwin = {}
     for supwinid in supwinids
@@ -988,24 +988,28 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins)
             call WinCommonAfterimageSubwinsBySupwin(supwinid)
             call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
         endfor
-        call WinCommonRestoreCursorPosition(info)
-        call WinCommonUpdateAfterimagingByCursorWindow(info.win)
+        if a:reselect
+            call WinCommonRestoreCursorPosition(info)
+            call WinCommonUpdateAfterimagingByCursorWindow(info.win)
+        else
+            call WinStateMoveCursorToWinid(info.win.id)
+        endif
     endtry
     return retval
 endfunction
-function! WinCommonDoWithoutUberwins(curwin, callback, args)
-    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwins ', a:curwin, ', ', a:callback, ', ', a:args)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0)
+function! WinCommonDoWithoutUberwins(curwin, callback, args, reselect)
+    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0, a:reselect)
 endfunction
 
-function! WinCommonDoWithoutSubwins(curwin, callback, args)
-    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutSubwins ', a:curwin, ', ', a:callback, ', ', a:args)
-    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1)
+function! WinCommonDoWithoutSubwins(curwin, callback, args, reselect)
+    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
+    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1, a:reselect)
 endfunction
 
-function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args)
-    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1)
+function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args, reselect)
+    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1, a:reselect)
 endfunction
 
 function! s:Nop()
@@ -1016,7 +1020,7 @@ endfunction
 " afterimaging ones that need it
 function! WinCommonCloseAndReopenAllShownSubwins(curwin)
     call EchomLog('window-common', 'debug', 'WinCommonCloseAndReopenAllShownSubwins ', a:curwin)
-     call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'), [])
+     call WinCommonDoWithoutSubwins(a:curwin, function('s:Nop'), [], 1)
 endfunction
 
 " Returns a statusline-friendly string that will evaluate to the correct

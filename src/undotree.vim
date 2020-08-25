@@ -172,7 +172,7 @@ endfunction
 
 " Returns the statusline of the undodiff window
 function! UndodiffStatusLine()
-    call EchomLog('undotree-subwin', 'info', 'UndodiffStatusLine')
+    call EchomLog('undotree-subwin', 'debug', 'UndodiffStatusLine')
     let statusline = ''
 
     " 'Undodiff' string
@@ -222,7 +222,7 @@ function! UpdateUndotreeSubwins()
                 continue
             endif
 
-            call WinStateMoveCursorToWinid(supwinid)
+            noautocmd silent call WinStateMoveCursorToWinid(supwinid)
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
@@ -247,6 +247,7 @@ endfunction
 if !exists('g:j_undotree_chc')
     let g:j_undotree_chc = 1
     call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 0, 1)
+    call WinAddPostUserOperationCallback(function('UpdateUndotreeSubwins'))
 endif
 
 function! CloseDanglingUndotreeWindows()

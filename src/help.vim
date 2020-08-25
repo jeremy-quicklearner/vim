@@ -23,6 +23,7 @@ function! ToOpenHelp()
     endif
 
     let &l:scrollbind = 0
+    let &l:cursorbind = 0
     noautocmd vertical resize 89
     let winid = Win_getid_cur()
 

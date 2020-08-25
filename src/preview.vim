@@ -29,6 +29,7 @@ function! ToOpenPreview()
 
     noautocmd topleft split
     let &l:scrollbind = 0
+    let &l:cursorbind = 0
     noautocmd execute 'resize ' . &previewheight
 
     " If the file being previewed is already open in another Vim instance,
@@ -133,12 +134,6 @@ call WinAddUberwinGroupType('preview', ['preview'],
                            \function('ToIdentifyPreview'))
 
 " Mappings
-function! WinGotoPreview(count)
-    call WinGotoUberwin('preview', 'preview')
-endfunction
-call WinCmdDefineSpecialCmd('WinGotoPreview', 'WinGotoPreview')
-call WinMappingMapCmd(['P'], 'WinGotoPreview', 0, 1,1,1)
-
 nnoremap <silent> <leader>pc :call WinHideUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>ps :call WinShowUberwinGroup('preview')<cr>
 nnoremap <silent> <leader>ph :call WinHideUberwinGroup('preview')<cr>

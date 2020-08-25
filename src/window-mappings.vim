@@ -3,31 +3,9 @@
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine to one of the custom commands from window-commands.vim
 
-" TODO: Test WinOnly
-" TODO: Test WinDecreaseHeight
-" TODO: Test WinDecreaseWidth
-" TODO: Test WinEqualize
-" TODO: Test WinExchange
-" TODO: Test WinGoDown
-" TODO: Test WinGoFirst
-" TODO: Test WinGoLast
-" TODO: Test WinGoLeft
-" TODO: Test WinGoNext
-" TODO: Test WinGoRight
-" TODO: Test WinGoUp
-" TODO: Test WinGotoPrevious
-" TODO: Test WinIncreaseHeight
-" TODO: Test WinIncreaseWidth
-" TODO: Test WinMoveToBottomEdge
-" TODO: Test WinMoveToLeftEdge
-" TODO: Test WinMoveToNewTab
-" TODO: Test WinMoveToRightEdge
-" TODO: Test WinMoveToTopEdge
-" TODO: Test WinResizeHorizontal
-" TODO: Test WinResizeVertical
-" TODO: Test WinReverseGoNext
-" TODO: Test WinReverseRotate
-" TODO: Test WinRotate
+" TODO: Ensure all mappings behave similarly to their native counterparts when
+"       invoked from visual mode
+" TODO: Thoroughly test every mapping
 
 " Process v:count and v:count1 into a single count
 function! WinMappingProcessCounts(allow0)
@@ -175,8 +153,8 @@ let s:allCmds = {
 \   'WinEqualize':        ['='                        ],
 \   'WinExchange':        ['x','<c-x>'                ],
 \   'WinGoDown':          ['j','<down>','<c-j>'       ],       
-\   'WinGoFirst':         ['t'                        ],
-\   'WinGoLast':          ['b'                        ],
+\   'WinGoFirst':         ['t','<c-t>'                ],
+\   'WinGoLast':          ['b','<c-b>'                ],
 \   'WinGoLeft':          ['h','<left>','<c-h>','<bs>'],
 \   'WinGoNext':          ['w','<c-w>'                ],
 \   'WinGoRight':         ['l','<right>','<c-l>'      ],      
@@ -189,18 +167,25 @@ let s:allCmds = {
 \   'WinMoveToNewTab':    ['T'                        ],
 \   'WinMoveToRightEdge': ['L'                        ],
 \   'WinMoveToTopEdge':   ['K'                        ],
-\   'WinResizeHorizontal':['_'                        ],                        
+\   'WinResizeHorizontal':['_','<c-_>'                ],                        
 \   'WinResizeVertical':  ['\|'                       ],                       
 \   'WinReverseGoNext':   ['W'                        ],
 \   'WinReverseRotate':   ['R'                        ],
-\   'WinRotate':          ['r','<c-r>'                ]
+\   'WinRotate':          ['r','<c-r>'                ],
+\   'WinSplitHorizontal': ['s','S','<c-s>'            ],
+\   'WinSplitVertical':   ['v','<c-v>'                ],
+\   'WinSplitNew':        ['n','<c-n>'                ],
+\   'WinSplitAlternate':  ['^','<c-^>'                ],
+\   'WinQuit':            ['q','<c-q>'                ],
+\   'WinClose':           ['c'                        ],
+\   'WinGotoPreview':     ['P'                        ]
 \}
 
 let s:cmdsWithAllow0 = [
 \   'WinExchange',
 \   'WinGotoPrevious',
 \   'WinResizeHorizontal',
-\   'WinResizeVertical',
+\   'WinResizeVertical'
 \]
 
 " {nr}z<cr> is a special case because it doesn't start with <c-w>

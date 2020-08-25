@@ -113,15 +113,17 @@
 "
 " - If the mappings are enabled then every window command kicks you into normal
 "   mode -  even ones cancelled partway through with <esc> or <c-c>
-"   TODO? Fix
+"   TODO: Fix
 "
 " - If the resolver has to change the state, you are kicked into normal mode
 "   This is hard to run into by accident, because you need to enter visual
 "   mode after making the state and model inconsistent but before the resolver
 "   starts.
-"   TODO? Fix
+"   TODO? It may be possible to fix this, but I'm willing to bet that it won't
+"   bother anyone... at least no more than the resolver changing the state
+"   bothers them.
 "
-" Compatibility with session reloading is dubious. In theory, the resolver is
+" - Compatibility with session reloading is dubious. In theory, the resolver is
 " defensive enough to handle any and all possible changes to the state - but
 " consistency between the state and model may not reasonably be enough for a
 " smooth experience. For instance, sessions do not preserve location lists. So
@@ -168,8 +170,11 @@
 "       the state and model
 " TODO: Audit the common code for functions that are not common to the
 "       resolver and user operations
-" TODO: Audit all the user operations for redundancy
-" TODO: Audit all the asserts for redundancy
+" TODO: Audit all the asserts (especially in the model) for redundancy
+" TODO: Audit all of the code for performance improvements
+" TODO: Comment out every logging statement that gets skipped by the default
+"       levels. Write some kind of awk or sed script that uncomments and
+"       recomments them
 " TODO: Audit every function for calls to it
 " TODO: Audit all files for ignoble terminology
 " TODO: Audit all files for insufficient documentation
@@ -181,6 +186,7 @@
 "       doesn't depend on mbbill/undotree
 
 " Logging facilities - all in one place so they can be changed easily
+" TODO: Move facilities from reference definitions to this block
 call SetLogLevel('window-mappings', 'info',    'warning')
 call SetLogLevel('window-commands', 'info',    'warning')
 call SetLogLevel('window-user',     'info',    'warning')

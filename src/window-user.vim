@@ -148,7 +148,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
         call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
         try
             try
-                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
+                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename], 1)
                 let dims = WinStateGetWinDimensionsList(winids)
                 call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
                 call WinModelAddUberwins(a:grouptypename, winids, dims)
@@ -164,7 +164,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
 
         " Reopen the uberwins we closed
         finally
-            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
+            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes], 1)
             call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
         endtry
     finally
@@ -261,7 +261,7 @@ function! WinShowUberwinGroup(grouptypename)
         call EchomLog('window-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
         try
             try
-                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename])
+                let winids = WinCommonDoWithoutSubwins(info.win, function('WinCommonOpenUberwins'), [a:grouptypename], 1)
                 let dims = WinStateGetWinDimensionsList(winids)
                 call EchomLog('window-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
                 call WinModelShowUberwins(a:grouptypename, winids, dims)
@@ -275,7 +275,7 @@ function! WinShowUberwinGroup(grouptypename)
             endtry
         " Reopen the uberwins we closed
         finally
-            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes])
+            call WinCommonDoWithoutSubwins(info.win, function('WinCommonReopenUberwins'), [highertypes], 1)
             call EchomLog('window-user', 'verbose', 'Reopened higher-priority uberwins groups')
         endtry
     finally
@@ -506,10 +506,9 @@ endfunction
 " Execute a Ctrl-W command under various conditions specified by flags
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. It is designed to be used only by the Commands and
-" Mappings, which ensure consistency by passing carefully-chosen flags (and
-" sometimes relying on the resolver).
-" In particular, a true 'relyonresolver' signifies that this call will leave
-" the state and model inconsistent
+" Mappings, which ensure consistency by passing carefully-chosen flags.
+" In particular, the 'relyonresolver' flag causes the resolver to be invoked
+" at the end of the operation
 function! WinDoCmdWithFlags(cmd,
                           \ count,
                           \ preservecursor,
@@ -521,7 +520,7 @@ function! WinDoCmdWithFlags(cmd,
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', info)
 
     if info.win.category ==# 'uberwin' && a:ifuberwindonothing
-        call EchomLog('window-user', 'debug', 'Doing nothing in uberwin')
+        call EchomLog('window-user', 'warning', 'Cannot run ', a:cmd, ' in uberwin')
         return
     endif
 
@@ -533,38 +532,49 @@ function! WinDoCmdWithFlags(cmd,
     let cmdinfo = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Running command from window ', cmdinfo)
 
+    let reselect = 1
+    if a:relyonresolver
+        let reselect = 0
+    endif
+
     try
         if a:dowithoutuberwins && a:dowithoutsubwins
             call EchomLog('window-user', 'debug', 'Running command without uberwins or subwins')
-            call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
         elseif a:dowithoutuberwins
             call EchomLog('window-user', 'debug', 'Running command without uberwins')
-            call WinCommonDoWithoutUberwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutUberwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
         elseif a:dowithoutsubwins
             call EchomLog('window-user', 'debug', 'Running command without subwins')
-            call WinCommonDoWithoutSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd])
+            call WinCommonDoWithoutSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
         else
             call EchomLog('window-user', 'debug', 'Running command')
             call WinStateWincmd(a:count, a:cmd)
         endif
+    " TODO: Figure out some way of aborting the whole mess if the command
+    "       moves us to a different tab
     catch /.*/
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
     finally
+        if a:relyonresolver
+            " This call to the resolver from the user operations is
+            " unfortunate, but necessary
+            call WinResolve()
+        else
+            call WinCommonRecordAllDimensions()
+        endif
         let endinfo = WinCommonGetCursorPosition()
         if a:preservecursor
             call WinCommonRestoreCursorPosition(info)
             call EchomLog('window-user', 'verbose', 'Restored cursor position')
-        elseif WinModelIdByInfo(info.win) !=# WinModelIdByInfo(endinfo.win)
+        elseif !a:relyonresolver && WinModelIdByInfo(info.win) !=# WinModelIdByInfo(endinfo.win)
             call WinModelSetPreviousWinInfo(info.win)
             call WinModelSetCurrentWinInfo(endinfo.win)
         endif
     endtry
-    if !a:relyonresolver
-        call WinCommonRecordAllDimensions()
-        call s:RunPostUserOpCallbacks()
-    endif
+    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Navigation
@@ -1026,7 +1036,7 @@ function! WinExchange(count)
     call EchomLog('window-user', 'verbose', 'Running command from window ', cmdinfo)
 
     try
-        call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, 'x'])
+        call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, 'x'], 1)
         if info.win.category ==# 'subwin'
             call EchomLog('window-user', 'verbose', 'Returning to subwin ' info.win)
             call WinGotoSubwin(WinStateGetCursorWinId(), info.win.grouptype, info.win.typename)
@@ -1107,8 +1117,7 @@ function! WinResizeCurrentSupwin(width, height)
     call EchomLog('window-user', 'verbose', 'Running command from window ', cmdinfo)
 
     try
-        call WinCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height])
-
+        call WinCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height], 1)
     finally
         call WinCommonRestoreCursorPosition(info)
     endtry
