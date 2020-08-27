@@ -111,15 +111,23 @@
 "
 " LIMITATIONS
 "
-" - If the mappings are enabled then every window command kicks you into normal
-"   mode -  even ones cancelled partway through with <esc> or <c-c>
-"   TODO: Fix
+" - If the mappings are enabled, invoking a mapped command of the form
+"   <c-w>{nr}<cr> or z{nr}<cr> from visual or select mode will cause the
+"   mode indicator to disappear while {nr} is being typed in
+"   TODO? See if there's some way to avoid this
+"
+" - If the mappings are enabled, invoking a mapped command in visual or
+"   select mode will cause the mode indicator and highlighted area to
+"   flicker - even if the mapped command has no effect (e.g. <c-w>j when
+"   there's only one window)
+"   TODO? See if there's some way to avoid this
 "
 " - If the resolver has to change the state, you are kicked into normal mode
 "   This is hard to run into by accident, because you need to enter visual
 "   mode after making the state and model inconsistent but before the resolver
 "   starts.
-"   TODO? It may be possible to fix this, but I'm willing to bet that it won't
+"   TODO: Preserve mode in mappings from reference definitions
+"   TODO: It may be possible to fix this, but I'm willing to bet that it won't
 "   bother anyone... at least no more than the resolver changing the state
 "   bothers them.
 "

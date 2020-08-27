@@ -26,26 +26,29 @@ function! WinMappingProcessCounts(allow0)
 endfunction
 
 " Map a command of the form <c-w><cmd> to run an Ex command with a count
-function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinterminalmode)
-    call EchomLog('window-mappings', 'debug', 'DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinterminalmode, ']')
+function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinselectmode, mapinterminalmode)
+    call EchomLog('window-mappings', 'debug', 'DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinselectmode, ',', a:mapinterminalmode, ']')
     if a:mapinnormalmode
-        execute 'nnoremap <silent> <c-w>' . a:cmd . ' :<c-u>execute WinMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . '"<cr>'
+        execute 'nnoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"n\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
     if a:mapinvisualmode
-        execute 'vnoremap <silent> <c-w>' . a:cmd . ' :<c-u>execute WinMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . '"<cr>'
+        execute 'xnoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"v\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
+    endif
+    if a:mapinselectmode
+        execute 'snoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"s\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
     if a:mapinterminalmode
-        execute 'tnoremap <silent> <c-w>' . a:cmd . ' <c-w>:<c-u>execute WinMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . '"<cr>'
+        execute 'tnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinStateDetectMode(\"t\")<cr><c-w>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
 endfunction
 
 " Create an Ex command and mappings that run a Ctrl-W command with flags
 function! WinMappingMapCmd(cmds, exCmdName, allow0,
-                         \ mapinnormalmode, mapinvisualmode,
+                         \ mapinnormalmode, mapinvisualmode, mapinselectmode,
                          \ mapinterminalmode)
-    call EchomLog('window-mappings', 'config', 'Map <c-w>', a:cmds, ' to ', a:exCmdName)
+    call EchomLog('window-mappings', 'config', 'Map ', a:cmds, ' to ', a:exCmdName)
     for cmd in a:cmds
-        call s:DefineMappings(cmd, a:exCmdName, a:allow0, a:mapinnormalmode, a:mapinvisualmode, a:mapinterminalmode)
+        call s:DefineMappings(cmd, a:exCmdName, a:allow0, a:mapinnormalmode, a:mapinvisualmode, a:mapinselectmode, a:mapinterminalmode)
     endfor
 endfunction
 
@@ -57,10 +60,14 @@ endfunction
 " {nr}. 0 Is ommitted because Vim's default behaviour on <c-w>0 and z0 is
 " already a nop
 for idx in range(1,9)
-    execute 'nnoremap <silent> <c-w>' . idx . ' :call WinMappingScanW(' . idx . ')<cr>'
-    execute 'vnoremap <silent> <c-w>' . idx . ' :<c-u>call WinMappingScanW(' . idx . ')<cr>'
-    execute 'nnoremap <silent> z' . idx . ' :call WinMappingScanZ(' . idx . ')<cr>'
-    execute 'vnoremap <silent> z' . idx . ' :<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'nnoremap <silent> <c-w>' . idx . ' :<c-u>call WinStateDetectMode("n")<cr>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
+    execute 'xnoremap <silent> <c-w>' . idx . ' :<c-u>call WinStateDetectMode("v")<cr>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
+    " There is no snoremap for <c-w> because no <c-w> commands can be run from
+    " select mode
+
+    execute 'nnoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("n")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'xnoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("v")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'snoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("s")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
 endfor
 
 " Tracks the characters typed so far
@@ -108,6 +115,7 @@ function! WinMappingScan()
     " If no characters are available now, setup another call.
     if !getchar(1)
         call EchomLog('window-mappings', 'verbose', 'WinMappingScan sees no new characters')
+        call WinStateRestoreMode()
         call feedkeys("\<plug>WinMappingParse")
         return
     endif
@@ -115,11 +123,11 @@ function! WinMappingScan()
     " A character is available. Read it.
     let s:sofar .= nr2char(getchar())
     call EchomLog('window-mappings', 'debug', 'WinMappingScan captured ', s:sofar)
-    
     " If it was a number, setup another call because there may be more
     " characters
     if s:sofar[1:] =~# '^\d*$'
         call EchomLog('window-mappings', 'debug', 'Not finished scanning yet')
+        call WinStateRestoreMode()
         call feedkeys("\<plug>WinMappingParse")
         return
     endif
@@ -139,46 +147,47 @@ function! s:RunInfixCmd(cmd)
         throw 's:RunInfixCmd on invalid command ' . a:cmd
     endif
     call EchomLog('window-mappings', 'info', 'RunInfixCmd ', a:cmd, ' -> ', a:cmd[1:-2], a:cmd[0], a:cmd[-1:-1])
+    call WinStateRestoreMode()
     call feedkeys(a:cmd[1:-2] . a:cmd[0] . a:cmd[-1:-1])
 endfunction
 
 " The tower of hacks ends here
 
 " Command mappings
-" Window commands that aren't in this list will not be remapped
 let s:allCmds = {
-\   'WinOnly':            ['o','<c-o>'                ],
-\   'WinDecreaseHeight':  ['-'                        ],
-\   'WinDecreaseWidth':   ['<'                        ],
-\   'WinEqualize':        ['='                        ],
-\   'WinExchange':        ['x','<c-x>'                ],
-\   'WinGoDown':          ['j','<down>','<c-j>'       ],       
-\   'WinGoFirst':         ['t','<c-t>'                ],
-\   'WinGoLast':          ['b','<c-b>'                ],
-\   'WinGoLeft':          ['h','<left>','<c-h>','<bs>'],
-\   'WinGoNext':          ['w','<c-w>'                ],
-\   'WinGoRight':         ['l','<right>','<c-l>'      ],      
-\   'WinGoUp':            ['k','<up>','<c-k>'         ],         
-\   'WinGotoPrevious':    ['p','<c-p>'                ],
-\   'WinIncreaseHeight':  ['+'                        ],
-\   'WinIncreaseWidth':   ['>'                        ],
-\   'WinMoveToBottomEdge':['J'                        ],
-\   'WinMoveToLeftEdge':  ['H'                        ],
-\   'WinMoveToNewTab':    ['T'                        ],
-\   'WinMoveToRightEdge': ['L'                        ],
-\   'WinMoveToTopEdge':   ['K'                        ],
-\   'WinResizeHorizontal':['_','<c-_>'                ],                        
-\   'WinResizeVertical':  ['\|'                       ],                       
-\   'WinReverseGoNext':   ['W'                        ],
-\   'WinReverseRotate':   ['R'                        ],
-\   'WinRotate':          ['r','<c-r>'                ],
-\   'WinSplitHorizontal': ['s','S','<c-s>'            ],
-\   'WinSplitVertical':   ['v','<c-v>'                ],
-\   'WinSplitNew':        ['n','<c-n>'                ],
-\   'WinSplitAlternate':  ['^','<c-^>'                ],
-\   'WinQuit':            ['q','<c-q>'                ],
-\   'WinClose':           ['c'                        ],
-\   'WinGotoPreview':     ['P'                        ]
+\   'WinOnly':                      ['<c-w>o','<c-w><c-o>'                ],
+\   'WinDecreaseHeight':            ['<c-w>-'                             ],
+\   'WinDecreaseWidth':             ['<c-w><'                             ],
+\   'WinEqualize':                  ['<c-w>='                             ],
+\   'WinExchange':                  ['<c-w>x','<c-w><c-x>'                ],
+\   'WinGoDown':                    ['<c-w>j','<c-w><down>','<c-j>'       ],
+\   'WinGoFirst':                   ['<c-w>t','<c-w><c-t>'                ],
+\   'WinGoLast':                    ['<c-w>b','<c-w><c-b>'                ],
+\   'WinGoLeft':                    ['<c-w>h','<c-w><left>','<c-h>','<bs>'],
+\   'WinGoNext':                    ['<c-w>w','<c-w><c-w>'                ],
+\   'WinGoRight':                   ['<c-w>l','<c-w><right>','<c-l>'      ],
+\   'WinGoUp':                      ['<c-w>k','<c-w><up>','<c-k>'         ],
+\   'WinGotoPrevious':              ['<c-w>p','<c-w><c-p>'                ],
+\   'WinIncreaseHeight':            ['<c-w>+'                             ],
+\   'WinIncreaseWidth':             ['<c-w>>'                             ],
+\   'WinMoveToBottomEdge':          ['<c-w>J'                             ],
+\   'WinMoveToLeftEdge':            ['<c-w>H'                             ],
+\   'WinMoveToNewTab':              ['<c-w>T'                             ],
+\   'WinMoveToRightEdge':           ['<c-w>L'                             ],
+\   'WinMoveToTopEdge':             ['<c-w>K'                             ],
+\   'WinResizeHorizontal':          ['<c-w>_','<c-w><c-_>'                ],
+\   'WinResizeHorizontalDefaultNop':['z<cr>'                              ],
+\   'WinResizeVertical':            ['<c-w>\|'                            ],
+\   'WinReverseGoNext':             ['<c-w>W'                             ],
+\   'WinReverseRotate':             ['<c-w>R'                             ],
+\   'WinRotate':                    ['<c-w>r','<c-w><c-r>'                ],
+\   'WinSplitHorizontal':           ['<c-w>s','<c-w>S','<c-s>'            ],
+\   'WinSplitVertical':             ['<c-w>v','<c-w><c-v>'                ],
+\   'WinSplitNew':                  ['<c-w>n','<c-w><c-n>'                ],
+\   'WinSplitAlternate':            ['<c-w>^','<c-w><c-^>'                ],
+\   'WinQuit':                      ['<c-w>q','<c-w><c-q>'                ],
+\   'WinClose':                     ['<c-w>c'                             ],
+\   'WinGotoPreview':               ['<c-w>P'                             ]
 \}
 
 let s:cmdsWithAllow0 = [
@@ -188,13 +197,12 @@ let s:cmdsWithAllow0 = [
 \   'WinResizeVertical'
 \]
 
-" {nr}z<cr> is a special case because it doesn't start with <c-w>
-nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontalDefaultNop'<cr>
-vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontalDefaultNop'<cr>
-
 
 let s:cmdsWithNormalModeMapping = keys(s:allCmds)
 let s:cmdsWithVisualModeMapping = keys(s:allCmds)
+" This matches Vim's native behaviour. Sticks out like a sore thumb, dooesn't
+" it?
+let s:cmdsWithSelectModeMapping = ['WinResizeHorizontalDefuaultNop']
 let s:cmdsWithTerminalModeMapping = keys(s:allCmds)
 
 for cmdname in keys(s:allCmds)
@@ -203,6 +211,7 @@ for cmdname in keys(s:allCmds)
    \    index(s:cmdsWithAllow0,              cmdname) >=# 0,
    \    index(s:cmdsWithNormalModeMapping,   cmdname) >=# 0,
    \    index(s:cmdsWithVisualModeMapping,   cmdname) >=# 0,
+   \    index(s:cmdsWithSelectModeMapping,   cmdname) >=# 0,
    \    index(s:cmdsWithTerminalModeMapping, cmdname) >=# 0
    \)
 endfor

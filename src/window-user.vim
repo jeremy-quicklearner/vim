@@ -526,7 +526,13 @@ function! WinDoCmdWithFlags(cmd,
 
     if info.win.category ==# 'subwin' && a:ifsubwingotosupwin
         call EchomLog('window-user', 'debug', 'Going from subwin to supwin')
+        if a:preservecursor
+            let mode = WinStateRetrievePreservedMode()
+        endif
         call WinGotoSupwin(info.win.supwin)
+        if a:preservecursor
+            call WinStateForcePreserveMode(mode)
+        endif
     endif
 
     let cmdinfo = WinCommonGetCursorPosition()
@@ -540,16 +546,16 @@ function! WinDoCmdWithFlags(cmd,
     try
         if a:dowithoutuberwins && a:dowithoutsubwins
             call EchomLog('window-user', 'debug', 'Running command without uberwins or subwins')
-            call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
+            call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd, 1], reselect)
         elseif a:dowithoutuberwins
             call EchomLog('window-user', 'debug', 'Running command without uberwins')
-            call WinCommonDoWithoutUberwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
+            call WinCommonDoWithoutUberwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd, 1], reselect)
         elseif a:dowithoutsubwins
             call EchomLog('window-user', 'debug', 'Running command without subwins')
-            call WinCommonDoWithoutSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd], reselect)
+            call WinCommonDoWithoutSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, a:cmd, 1], reselect)
         else
             call EchomLog('window-user', 'debug', 'Running command')
-            call WinStateWincmd(a:count, a:cmd)
+            call WinStateWincmd(a:count, a:cmd, 1)
         endif
     " TODO: Figure out some way of aborting the whole mess if the command
     "       moves us to a different tab
@@ -601,12 +607,12 @@ function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
    \    'typename': a:dsttypename
    \})
     call EchomLog('window-user', 'verbose', 'Destination winid is ', winid)
-    call WinStateMoveCursorToWinid(winid)
+    call WinStateMoveCursorToWinidAndUpdateMode(winid)
 endfunction
 
 function! s:GoUberwinToSupwin(dstsupwinid)
     call EchomLog('window-user', 'debug', 'GoUberwinToSupwin ', a:dstsupwinid)
-    call WinStateMoveCursorToWinid(a:dstsupwinid)
+    call WinStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid)
     let cur = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', cur)
         call EchomLog('window-user', 'verbose', 'Deafterimaging subwins of destination supwin ', a:dstsupwinid)
@@ -637,14 +643,18 @@ function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
    \    'typename': a:dsttypename
    \})
     call EchomLog('window-user', 'verbose', 'Destination winid is ', winid)
-    call WinStateMoveCursorToWinid(winid)
+    call WinStateMoveCursorToWinidAndUpdateMode(winid)
 endfunction
 
 function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid)
     call EchomLog('window-user', 'debug', 'GoSupwinToSupwin ', a:srcsupwinid, ', ', a:dstsupwinid)
     call EchomLog('window-user', 'verbose', 'Afterimaging subwins of soruce supwin ',a:srcsupwinid)
     call WinCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
-    call WinStateMoveCursorToWinid(a:dstsupwinid)
+    " This is done so that WinStateMoveCursorToWinidAndUpdateMode will restore
+    " the mode in the source supwin, and not in whatever the last subwin to be
+    " afterimaged turns out to be
+    call WinStateMoveCursorToWinid(a:srcsupwinid)
+    call WinStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid)
     let cur = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', cur)
         call EchomLog('window-user', 'verbose', 'Deafterimaging subwins of destination supwin ', a:dstsupwinid)
@@ -677,12 +687,12 @@ function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
    \    'typename': a:dsttypename
    \})
     call EchomLog('window-user', 'verbose', 'Destination winid is ', winid)
-    call WinStateMoveCursorToWinid(winid)
+    call WinStateMoveCursorToWinidAndUpdateMode(winid)
 endfunction
 
 function! s:GoSubwinToSupwin(srcsupwinid)
     call EchomLog('window-user', 'debug', 'GoSubwinToSupwin ', a:srcsupwinid)
-    call WinStateMoveCursorToWinid(a:srcsupwinid)
+    call WinStateMoveCursorToWinidAndUpdateMode(a:srcsupwinid)
     let cur = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', cur)
         call EchomLog('window-user', 'verbose', 'Deafterimaging subwins of source supwin ', a:srcsupwinid)
@@ -699,7 +709,7 @@ function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename)
    \    'typename': a:dsttypename
    \})
     call EchomLog('window-user', 'verbose', 'Destination winid is ', winid)
-    call WinStateMoveCursorToWinid(winid)
+    call WinStateMoveCursorToWinidAndUpdateMode(winid)
 endfunction
 
 " Move the cursor to a given uberwin
@@ -924,7 +934,7 @@ function! s:GoInDirection(count, direction)
         while 1
             let prvwinid = curwinid
             call EchomLog('window-user', 'verbose', 'Silently moving cursor in direction ', a:direction)
-            call WinStateSilentWincmd(1, a:direction)
+            call WinStateSilentWincmd(1, a:direction, 0)
 
             let curwinid = WinStateGetCursorWinId()
             let curwininfo = WinModelInfoById(curwinid)
@@ -1010,7 +1020,7 @@ function! WinOnly(count)
 
     call s:GotoByInfo(info)
 
-    call WinStateWincmd('', 'o')
+    call WinStateWincmd('', 'o', 1)
     call WinCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
 endfunction
@@ -1036,7 +1046,7 @@ function! WinExchange(count)
     call EchomLog('window-user', 'verbose', 'Running command from window ', cmdinfo)
 
     try
-        call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, 'x'], 1)
+        call WinCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinStateWincmd'), [a:count, 'x', 1], 1)
         if info.win.category ==# 'subwin'
             call EchomLog('window-user', 'verbose', 'Returning to subwin ' info.win)
             call WinGotoSubwin(WinStateGetCursorWinId(), info.win.grouptype, info.win.typename)
@@ -1086,11 +1096,11 @@ function! s:ResizeGivenNoSubwins(width, height)
 
         if dow
             call EchomLog('window-user', 'debug', 'Resizing to width ', finalw)
-            call WinStateWincmd(finalw, '|')
+            call WinStateWincmd(finalw, '|', 0)
         endif
         if doh
             call EchomLog('window-user', 'debug', 'Resizing to height ', finalh)
-            call WinStateWincmd(finalh, '_')
+            call WinStateWincmd(finalh, '_', 0)
         endif
     finally
         call EchomLog('window-user', 'debug', 'Reopening all uberwins')
@@ -1110,7 +1120,9 @@ function! WinResizeCurrentSupwin(width, height)
 
     if info.win.category ==# 'subwin'
         call EchomLog('window-user', 'debug', 'Moving to supwin first')
+        let mode = WinStateRetrievePreservedMode()
         call WinGotoSupwin(info.win.supwin)
+        call WinStateForcePreserveMode(mode)
     endif
 
     let cmdinfo = WinCommonGetCursorPosition()

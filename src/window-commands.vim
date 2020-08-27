@@ -109,7 +109,7 @@ call WinCmdDefineSpecialCmd('WinGotoPrevious','WinGotoPrevious')
 call WinCmdDefineSpecialCmd('WinOnly', 'WinOnly')
 
 " If WinResizeHorizontal and WinResizeVertical ran run wincmd _ and wincmd | with
-" uberwins closed, they could change the uberwins' sizes and cause the resolver to
+" uberwins open, they could change the uberwins' sizes and cause the resolver to
 " later close and reopen the uberwins. RestoreMaxDimensionsByWinid
 " would then mess up all the supwins' sizes, so the user's intent would be
 " lost. So WinResizeHorizontal and WinResizeVertical must run without

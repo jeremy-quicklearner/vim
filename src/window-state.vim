@@ -88,25 +88,59 @@ else
     endfunction
 endif
 
-" Returns a list of lists [old, new] - one for each window whose cached winid
-" does not match its current winid. 'old' is the cached winid and 'new' is the
-" current winid.
-function! WinStateChangedWinidsByCurrentTab()
-    call EchomLog('window-state', 'debug', 'WinStateChangedWinidsByCurrentTab')
-    let changedwinids = []
-    for winnr in range(1, winnr('$'))
-        let cachedwinid = getwinvar(winnr, 'win_id', 999)
-        if cachedwinid ==# 999
-            continue
+" Save the current mode by wrapping mode() calls in expr-mappings
+let s:detectedmode = {'mode':'n'}
+function! WinStateDetectMode(mode)
+    call EchomLog('window-state', 'debug', 'WinStateDetectMode ', a:mode)
+    let fixedmode = a:mode
+    if a:mode ==# 'v'
+        let fixedmode = visualmode()
+    elseif a:mode ==# 's'
+        let fixedmode = get({'v':'s','V':'S',"\<c-v>":"\<c-s>"}, visualmode(), 's')
+    endif
+    let s:detectedmode = {'mode':fixedmode}
+    if index(['v', 'V', "\<c-v>", 's', 'S', "\<c-s>"], fixedmode) >=# 0
+        let s:detectedmode.curline = line('.')
+        let s:detectedmode.curcol = col('.')
+        " line('v') and col('v') don't work here because by the time this
+        " function is running, we are in normal mode
+        let s:detectedmode.otherline = line("'<")
+        let s:detectedmode.othercol = col("'<")
+        if s:detectedmode.curline ==# s:detectedmode.otherline && s:detectedmode.curcol ==# s:detectedmode.othercol
+            let s:detectedmode.otherline = line("'>")
+            let s:detectedmode.othercol = col("'>")
         endif
-        let winid = Win_getid(winnr)
-        if cachedwinid ==# winid
-            continue
+    endif
+endfunction
+noremap <silent> <expr> <plug>WinDetectMode '<c-w>:<c-u>call WinStateDetectMode("' . mode() . '")<cr>'
+" Restore the mode after it's been preserved by WinStateDetectMode
+function! WinStateRestoreMode()
+    call EchomLog('window-state', 'debug', 'WinStateRestoreMode ', s:detectedmode)
+    if s:detectedmode.mode ==# 'n'
+        if mode() ==# 't'
+            execute "normal! \<c-\>\<c-n>"
         endif
-        call EchomLog('window-state', 'debug', 'Winid changed from ', cachedwinid, ' to ', winid)
-        call add(changedwinids, [cachedwinid, winid])
-    endfor
-    return changedwinids
+        return
+    elseif index(['v', 'V', "\<c-v>", 's', 'S', "\<c-s>"], s:detectedmode.mode) >=# 0
+        if mode() ==# 't'
+            execute "normal! \<c-\>\<c-n>"
+        endif
+        let normcmd = get({'v':'v','V':'V',"\<c-v>":"\<c-v>",'s':"gh",'S':"gH","\<c-s>":"g\<c-h>"},s:detectedmode.mode,'')
+        call cursor(s:detectedmode.otherline, s:detectedmode.othercol)
+        execute "normal! " . normcmd
+        call cursor(s:detectedmode.curline, s:detectedmode.curcol)
+    elseif s:detectedmode ==# 't' && mode() !=# 't'
+        normal! a
+    endif
+    return
+endfunction
+function! WinStateRetrievePreservedMode()
+    call EchomLog('window-state', 'debug', 'WinStateRetrievePreservedMode ', s:detectedmode)
+    return s:detectedmode
+endfunction
+function! WinStateForcePreserveMode(mode)
+    call EchomLog('window-state', 'info', 'WinStateForcePreserveMode ', a:mode)
+    let s:detectedmode = a:mode
 endfunction
 
 " Just for fun - lots of extra redrawing
@@ -301,14 +335,26 @@ function! WinStateUnshieldWindow(winid, preshield)
 endfunction
 
 " Generic Ctrl-W commands
-function! WinStateWincmd(count, cmd)
-    call EchomLog('window-state', 'info', 'WinStateWincmd ', a:count, ' ', a:cmd)
+function! WinStateWincmd(count, cmd, updatedetectedmode)
+    call EchomLog('window-state', 'info', 'WinStateWincmd ', a:count, ' ', a:cmd, ' ', a:updatedetectedmode)
+    if a:updatedetectedmode
+        noautocmd call WinStateRestoreMode()
+    endif
     execute a:count . 'wincmd ' . a:cmd
+    if a:updatedetectedmode
+        noautocmd execute "normal \<plug>WinDetectMode"
+    endif
     call s:MaybeRedraw()
 endfunction
-function! WinStateSilentWincmd(count, cmd)
-    call EchomLog('window-state', 'info', 'WinStateSilentWincmd ', a:count, ' ', a:cmd)
+function! WinStateSilentWincmd(count, cmd, updatedetectedmode)
+    call EchomLog('window-state', 'info', 'WinStateSilentWincmd ', a:count, ' ', a:cmd, ' ', a:updatedetectedmode)
+    if a:updatedetectedmode
+        noautocmd call WinStateRestoreMode()
+    endif
     noautocmd execute a:count . 'wincmd ' . a:cmd
+    if a:updatedetectedmode
+        noautocmd "normal \<plug>WinDetectMode"
+    endif
     call s:MaybeRedraw()
 endfunction
 
@@ -323,6 +369,15 @@ function! WinStateMoveCursorToWinidSilently(winid)
     call EchomLog('window-state', 'debug', 'WinStateMoveCursorToWinidSilently ', a:winid)
     call WinStateAssertWinExists(a:winid)
     noautocmd silent call Win_gotoid(a:winid)
+endfunction
+
+function! WinStateMoveCursorToWinidAndUpdateMode(winid)
+    let winnr = Win_id2win(a:winid)
+    if winnr <=# 0 || winnr ># winnr('$')
+        return
+    endif
+    call WinStateWincmd(winnr, 'w', 1)
+    execute winnr . 'wincmd w'
 endfunction
 
 " Open windows using the toOpen function from a group type and return the
@@ -871,11 +926,11 @@ function! WinStateResizeHorizontal(winid, width, preferleftdivider)
     let wasfixed = &winfixwidth
     let &winfixwidth = 0
     if !a:preferleftdivider
-        call WinStateSilentWincmd(a:width, '|')
+        call WinStateSilentWincmd(a:width, '|', 0)
         let &winfixwidth = wasfixed
         return
     endif
-    call WinStateSilentWincmd('','h')
+    call WinStateSilentWincmd('','h', 0)
     if Win_getid_cur() ==# a:winid
         call WinStateResizeHorizontal(a:winid, a:width, 0)
         let &winfixwidth = wasfixed
@@ -888,7 +943,7 @@ function! WinStateResizeHorizontal(winid, width, preferleftdivider)
     let otherwidth = winwidth(0)
     let oldwidth = winwidth(Win_id2win(a:winid))
     let newwidth = otherwidth + oldwidth - a:width
-    call WinStateSilentWincmd(newwidth, '|')
+    call WinStateSilentWincmd(newwidth, '|', 0)
 endfunction
 
 function! WinStateResizeVertical(winid, height, prefertopdivider)
@@ -897,11 +952,11 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
     let wasfixed = &winfixheight
     let &winfixheight = 0
     if !a:prefertopdivider
-        call WinStateSilentWincmd(a:height, '_')
+        call WinStateSilentWincmd(a:height, '_', 0)
         let &winfixheight = wasfixed
         return
     endif
-    call WinStateSilentWincmd('','k')
+    call WinStateSilentWincmd('','k', 0)
     if Win_getid_cur() ==# a:winid
         call WinStateResizeVertical(a:winid, a:height, 0)
         let &winfixheight = wasfixed
@@ -914,7 +969,7 @@ function! WinStateResizeVertical(winid, height, prefertopdivider)
     let otherheight = winheight(0)
     let oldheight = winheight(Win_id2win(a:winid))
     let newheight = otherheight + oldheight - a:height
-    call WinStateSilentWincmd(newheight, '_')
+    call WinStateSilentWincmd(newheight, '_', 0)
 endfunction
 
 function! WinStateFixednessByWinid(winid)

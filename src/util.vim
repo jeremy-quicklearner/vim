@@ -7,6 +7,16 @@ let maplocalleader = "-"
 " A simple logging system
 " TODO: Move this to a plugin so that it's accessible to the window engine
 " when it becomes a plugin too
+" Critical: With its current configuration, Vim will never function correctly
+"           ever again unless something is fixed
+" Error:    Something is wrong and it's probably going to cause trouble until
+"           Vim is restarted
+" Warning:  Something is wrong but it probably won't cause any trouble
+" Config:   Information about plugin configurations
+" Info:     An alert about some change in Vim's state
+" Debug:    Low-level information that isn't of interest to users
+" Verbose:  Very low-level information that isn't of interest to anyone except
+"           determined developers
 let g:j_loglevels = [
 \   'critical',
 \   'error',
