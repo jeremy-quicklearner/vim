@@ -152,7 +152,7 @@ call WinAddUberwinGroupType('option', ['option'],
                            \function('ToIdentifyOption'))
 
 " Mappings
-nnoremap <silent> <leader>oc :call WinRemoveUberwinGroup('option')<cr>
-nnoremap <silent> <leader>oo :call WinAddOrGotoUberwin('option','option')<cr>
-nnoremap <silent> <leader>os :call WinAddOrShowUberwinGroup('option')<cr>
-nnoremap <silent> <leader>oh :call WinRemoveUberwinGroup('option')<cr>
+call WinMappingMapUserOp('<leader>os', 'call WinAddOrShowUberwinGroup("option")')
+call WinMappingMapUserOp('<leader>oo', 'call WinAddOrGotoUberwin("option","option")')
+call WinMappingMapUserOp('<leader>oh', 'call WinRemoveUberwinGroup("option")')
+call WinMappingMapUserOp('<leader>oc', 'call WinRemoveUberwinGroup("option")')

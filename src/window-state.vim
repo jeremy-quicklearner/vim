@@ -162,6 +162,10 @@ function! WinStateGetTabCount()
     call EchomLog('window-state', 'debug', 'WinStateGetTabCount')
     return tabpagenr('$')
 endfunction
+function! WinStateGetTabnr()
+    call EchomLog('window-state', 'debug', 'WinStateGetTabnr')
+    return tabpagenr()
+endfunction
 
 function! WinStateGetWinidsByCurrentTab()
     call EchomLog('window-state', 'debug', 'WinStateGetWinidsByCurrentTab')
@@ -278,6 +282,13 @@ function! WinStateGetWinRelativeDimensionsList(winids, offset)
     return dim
 endfunction
 
+" Tab movement
+function! WinStateGotoTab(tabnr)
+    call EchomLog('window-state', 'info', 'WinStateGotoTab ', a:tabnr)
+    execute a:tabnr . 'tabnext'
+    call s:MaybeRedraw()
+endfunction
+
 " Cursor position preserve/restore
 function! WinStateGetCursorWinId()
     call EchomLog('window-state', 'debug', 'WinStateGetCursorWinId')
@@ -316,7 +327,8 @@ function! WinStateShieldWindow(winid, onlyscroll)
     let preshield = {
    \    'w': getwinvar(Win_id2win(a:winid), '&winfixwidth'),
    \    'h': getwinvar(Win_id2win(a:winid), '&winfixheight'),
-   \    'sb': getwinvar(Win_id2win(a:winid), '&scrollbind')
+   \    'sb': getwinvar(Win_id2win(a:winid), '&scrollbind'),
+   \    'cb': getwinvar(Win_id2win(a:winid), '&cursorbind')
    \}
     call EchomLog('window-state', 'verbose', 'Pre-shield fixedness for window ', a:winid, ': ', preshield)
     if !a:onlyscroll
@@ -324,6 +336,7 @@ function! WinStateShieldWindow(winid, onlyscroll)
         "call setwinvar(Win_id2win(a:winid), '&winfixheight', 1)
     endif
     call setwinvar(Win_id2win(a:winid), '&scrollbind', 1)
+    call setwinvar(Win_id2win(a:winid), '&cursorbind', 0)
     return preshield
 endfunction
 
@@ -332,6 +345,7 @@ function! WinStateUnshieldWindow(winid, preshield)
     "call setwinvar(Win_id2win(a:winid), '&winfixwidth', a:preshield.w)
     "call setwinvar(Win_id2win(a:winid), '&winfixheight', a:preshield.h)
     call setwinvar(Win_id2win(a:winid), '&scrollbind', a:preshield.sb)
+    call setwinvar(Win_id2win(a:winid), '&cursorbind', a:preshield.cb)
 endfunction
 
 " Generic Ctrl-W commands

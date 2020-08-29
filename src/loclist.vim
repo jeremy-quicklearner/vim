@@ -12,11 +12,10 @@ endif
 " Callback that opens the location window for the current window
 function! ToOpenLoclist()
     call EchomLog('loclist-subwin', 'info', 'ToOpenLoclist')
-    let supwinnr = winnr()
-    let supwinid = Win_getid_cur()
+    let supwinid = win_getid()
 
     " Fail if the location window is already open
-    let locwinid = get(getloclist(supwinnr, {'winid':0}), 'winid', -1)
+    let locwinid = get(getloclist(supwinid, {'winid':0}), 'winid', -1)
     if locwinid
         throw 'Window ' . supwinid . ' already has location window ' . locwinid
     endif
@@ -34,10 +33,10 @@ function! ToOpenLoclist()
 
     " lopen also moves the cursor to the location window, so return the
     " current window ID
-    let locwinid = Win_getid_cur()
+    let locwinid = win_getid()
 
     " Go back to the supwin
-    noautocmd call Win_gotoid(supwinid)
+    noautocmd call win_gotoid(supwinid)
 
     return [locwinid]
 endfunction
@@ -45,11 +44,10 @@ endfunction
 " Callback that closes the location list for the current window
 function! ToCloseLoclist()
     call EchomLog('loclist-subwin', 'info', 'ToCloseLoclist')
-    let supwinnr = winnr()
-    let supwinid = Win_getid_cur()
+    let supwinid = win_getid()
 
     " Fail if the location window is already closed
-    let locwinid = get(getloclist(supwinnr, {'winid':0}), 'winid', -1)
+    let locwinid = get(getloclist(supwinid, {'winid':0}), 'winid', -1)
     if !locwinid
         throw 'Location window for window ' . supwinid . ' does not exist'
     endif
@@ -81,9 +79,9 @@ function! ToIdentifyLoclist(winid)
     call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ', a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
-            if winnr != Win_id2win(a:winid) &&
+            if winnr != win_id2win(a:winid) &&
            \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
-                return {'typename':'loclist','supwin':Win_getid(winnr)}
+                return {'typename':'loclist','supwin':win_getid(winnr)}
             endif
         endfor
         return {'typename':'loclist','supwin':-1}
@@ -93,7 +91,7 @@ endfunction
 
 function! LoclistFieldForStatusline(fieldname)
     call EchomLog('loclist-subwin', 'debug', 'LoclistFieldForStatusline')
-    return SanitizeForStatusLine('', getloclist(winnr(),{a:fieldname:0})[a:fieldname])
+    return SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
 endfunction
 
 " Returns the statusline of the location window
@@ -138,7 +136,7 @@ function! UpdateLoclistSubwins()
     call EchomLog('loclist-subwin', 'debug', 'UpdateLoclistSubwins')
     for supwinid in WinModelSupwinIds()
         let locwinexists = WinModelSubwinGroupExists(supwinid, 'loclist')
-        let loclistexists = len(getloclist(Win_id2win(supwinid)))
+        let loclistexists = len(getloclist(supwinid))
 
         if locwinexists && !loclistexists
             call EchomLog('loclist-subwin', 'info', 'Remove loclist subwin from supwin ', supwinid, ' because it has no location list')
@@ -165,7 +163,7 @@ endif
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateLoclistSubwins.
-nnoremap <silent> <leader>lc :lexpr []<cr>
-nnoremap <silent> <leader>ls :call WinShowSubwinGroup(Win_getid_cur(), 'loclist')<cr>
-nnoremap <silent> <leader>lh :call WinHideSubwinGroup(Win_getid_cur(), 'loclist')<cr>
-nnoremap <silent> <leader>ll :call WinGotoSubwin(Win_getid_cur(), 'loclist', 'loclist')<cr>
+call WinMappingMapUserOp('<leader>ls', 'call WinShowSubwinGroup(win_getid(), "loclist")')
+call WinMappingMapUserOp('<leader>lh', 'call WinHideSubwinGroup(win_getid(), "loclist")')
+call WinMappingMapUserOp('<leader>ll', 'call WinGotoSubwin(win_getid(), "loclist", "loclist")')
+call WinMappingMapUserOp('<leader>lc', 'lexpr [] \| call UpdateLoclistSubwins()')

@@ -442,10 +442,12 @@ function! WinModelPreviousWinInfo()
 endfunction
 
 function! WinModelSetPreviousWinInfo(info)
-    call EchomLog('window-model', 'info', 'WinModelSetPreviousWinInfo ', a:info)
     if !WinModelIdByInfo(a:info)
-        throw "Attempted to set previous window to one that doesn't exist in model: " . string(a:info)
+        call EchomLog('window-model', 'info', "Attempted to set previous window to one that doesn't exist in model: " . string(a:info), '. Default to current window')
+        let t:prevwin = t:curwin
+        return
     endif
+    call EchomLog('window-model', 'info', 'WinModelSetPreviousWinInfo ', a:info)
     let t:prevwin = a:info
 endfunction
 
@@ -650,6 +652,7 @@ endfunction
 function! WinModelInfoById(winid)
     call EchomLog('window-model', 'debug', 'WinModelInfoById ', a:winid)
     call EchomLog('window-model', 'verbose', 'Check for ID', a:winid, ' in supwin list')
+    call s:EnsureWinModelExists()
     if has_key(t:supwin, a:winid)
         call EchomLog('window-model', 'debug', 'ID ', a:winid, ' found in supwin list with dimensions [', t:supwin[a:winid].nr, ',', t:supwin[a:winid].w, ',', t:supwin[a:winid].h, ']')
         return {
@@ -1617,19 +1620,40 @@ function! WinModelAddSupwin(winid, nr, w, h)
     let t:supwin[a:winid] = {'subwin':{},'nr':a:nr,'w':a:w,'h':a:h}
 endfunction
 
+" This function returns a data structure containing all of the information
+" that was removed from the model, so that it can later be added back by
+" WinModelRestoreSupwin
 function! WinModelRemoveSupwin(winid)
     call EchomLog('window-model', 'info', 'WinModelRemoveSupwin ', a:winid)
     call WinModelAssertSupwinExists(a:winid)
 
+    let subwindata = {}
     for grouptypename in keys(t:supwin[a:winid].subwin)
         call WinModelAssertSubwinGroupExists(a:winid, grouptypename)
         for typename in keys(t:supwin[a:winid].subwin[grouptypename].subwin)
-            call EchomLog('window-model', 'debug', 'Removing subwin ', a:winid, ':', grouptypename, ':', typename, ' with ID ', t:supwin[a:winid].subwin[grouptypename].subwin[typename].id, ' from subwin list')
-            call remove(t:subwin, t:supwin[a:winid].subwin[grouptypename].subwin[typename].id)
+            let subwinid = t:supwin[a:winid].subwin[grouptypename].subwin[typename].id
+            call EchomLog('window-model', 'debug', 'Removing subwin ', a:winid, ':', grouptypename, ':', typename, ' with ID ', subwinid, ' from subwin list')
+            let subwindata[subwinid] = t:subwin[subwinid]
+            call remove(t:subwin, subwinid)
         endfor
     endfor
 
+    let supwindata = t:supwin[a:winid]
     call remove(t:supwin, a:winid)
+
+    return {'id':a:winid,'supwin':supwindata,'subwin':subwindata}
+endfunction
+
+" Use the return value of WinModelRemoveSupwin to re-add a supwin to the model
+function! WinModelRestoreSupwin(data)
+    call EchomLog('window-model', 'info', 'WinModelRestoreSupwin ', a:data)
+    call s:EnsureWinModelExists()
+    call WinModelAssertSupwinDoesntExist(a:data.id)
+
+    let t:supwin[a:data.id] = a:data.supwin
+    for subwinid in keys(a:data.subwin)
+        let t:subwin[subwinid] = a:data.subwin[subwinid]
+    endfor
 endfunction
 
 function! WinModelAddSubwins(supwinid, grouptypename, subwinids, dimensions)
@@ -1901,6 +1925,7 @@ function! WinModelReplaceWinid(oldwinid, newwinid)
     endif
     if t:prevwin.id ==# a:oldwinid
         let t:prevwin.id = a:newwinid
+    endif
 endfunction
 
 " TODO? Some individual types may need an option for a non-default toClose

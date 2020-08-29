@@ -238,6 +238,7 @@ let s:cmdsWithoutSubwins = [
 \   'WinIncreaseWidth',
 \   'WinMoveToBottomEdge',
 \   'WinMoveToLeftEdge',
+\   'WinMoveToNewTab',
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
 \   'WinReverseGoNext',

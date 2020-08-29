@@ -134,7 +134,7 @@ call WinAddUberwinGroupType('preview', ['preview'],
                            \function('ToIdentifyPreview'))
 
 " Mappings
-nnoremap <silent> <leader>pc :call WinHideUberwinGroup('preview')<cr>
-nnoremap <silent> <leader>ps :call WinShowUberwinGroup('preview')<cr>
-nnoremap <silent> <leader>ph :call WinHideUberwinGroup('preview')<cr>
-nnoremap <silent> <leader>pp :call WinGotoUberwin('preview', 'preview')<cr>
+call WinMappingMapUserOp('<leader>ps', 'call WinShowUberwinGroup("preview")')
+call WinMappingMapUserOp('<leader>ph', 'call WinHideUberwinGroup("preview")')
+call WinMappingMapUserOp('<leader>pc', 'call WinHideUberwinGroup("preview")')
+call WinMappingMapUserOp('<leader>pp', 'call WinGotoUberwin("preview", "preview")')

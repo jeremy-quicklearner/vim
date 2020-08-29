@@ -113,6 +113,7 @@ function! WinUberwinFlagsStr()
         call EchomLog('window-user', 'debug', 'Retrieving Uberwin flags string')
         return WinModelUberwinFlagsStr()
     catch /.*/
+        call EchomLog('window-user', 'debug', 'Failed to retrieve Uberwin flags: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return ''
@@ -123,6 +124,7 @@ function! WinAddUberwinGroup(grouptypename, hidden)
     try
         call WinModelAssertUberwinGroupDoesntExist(a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinAddUberwinGroup cannot add uberwin group ', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -209,6 +211,7 @@ function! WinHideUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsNotHidden(a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinHideUberwinGroup cannot hide uberwin group ', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -243,6 +246,7 @@ function! WinShowUberwinGroup(grouptypename)
     try
         call WinModelAssertUberwinGroupIsHidden(a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinShowUberwinGroup cannot show uberwin group ', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -301,6 +305,7 @@ function! WinSubwinFlags()
             let flagsstr .= WinCommonSubwinFlagStrByGroup(grouptypename)
         endfor
     catch /.*/
+        call EchomLog('window-user', 'debug', 'Failed to retrieve Subwin flags: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return ''
@@ -314,6 +319,7 @@ function! WinAddSubwinGroup(supwinid, grouptypename, hidden)
     try
         call WinModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinAddSubwinGroup cannot add subwin group ', a:supwinid, ':', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -372,6 +378,7 @@ function! WinRemoveSubwinGroup(supwinid, grouptypename)
     try
         call WinModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinRemoveSubwinGroup cannot remove subwin group ', a:supwinid, ':', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -415,6 +422,7 @@ function! WinHideSubwinGroup(winid, grouptypename)
         let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:winid)
         call WinModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinHideSubwinGroup cannot hide subwin group ', a:supwinid, ':', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -449,6 +457,7 @@ function! WinShowSubwinGroup(srcid, grouptypename)
         let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:srcid)
         call WinModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinShowSubwinGroup cannot show subwin group ', a:supwinid, ':', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -460,7 +469,6 @@ function! WinShowSubwinGroup(srcid, grouptypename)
     let info = WinCommonGetCursorPosition()
     call EchomLog('window-user', 'verbose', 'Preserved cursor position ', info)
     try
-
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinCommonCloseSubwinsWithHigherPriority(supwinid, grouptype.priority)
@@ -557,9 +565,8 @@ function! WinDoCmdWithFlags(cmd,
             call EchomLog('window-user', 'debug', 'Running command')
             call WinStateWincmd(a:count, a:cmd, 1)
         endif
-    " TODO: Figure out some way of aborting the whole mess if the command
-    "       moves us to a different tab
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinDoCmdWithFlags failed: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -591,6 +598,7 @@ function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename)
     try
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'GoUberwinToUberwin failed: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -625,6 +633,7 @@ function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename)
     try
         call WinModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'GoSupwinToUberwin failed: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -667,6 +676,7 @@ function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename)
     try
         call WinModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
+        call EchomLog('window-user', 'debug', 'GoSupwinToSubwin failed: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
@@ -853,6 +863,24 @@ function! WinGotoSubwin(dstwinid, dstgrouptypename, dsttypename)
     call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename)
     call WinModelSetCurrentWinInfo(WinCommonGetCursorPosition().win)
     call s:RunPostUserOpCallbacks()
+endfunction
+
+function! WinAddOrShowUberwinGroup(grouptypename)
+    call EchomLog('window-user', 'info', 'WinAddOrShowUberwin ', a:grouptypename)
+    if !WinModelUberwinGroupExists(a:grouptypename)
+        call WinAddUberwinGroup(a:grouptypename, 0)
+    else
+        call WinShowUberwinGroup(a:grouptypename)
+    endif
+endfunction
+
+function! WinAddOrShowSubwinGroup(supwinid, grouptypename)
+    call EchomLog('window-user', 'info', 'WinAddOrShowSubwin ', a:supwinid, ':', a:grouptypename)
+    if !WinModelSubwinGroupExists(a:supwinid, a:grouptypename)
+        call WinAddSubwinGroup(a:supwinid, a:grouptypename, 0)
+    else
+        call WinShowSubwinGroup(a:supwinid, a:grouptypename)
+    endif
 endfunction
 
 function! WinAddOrGotoUberwin(grouptypename, typename)
@@ -1052,6 +1080,7 @@ function! WinExchange(count)
             call WinGotoSubwin(WinStateGetCursorWinId(), info.win.grouptype, info.win.typename)
         endif
     catch /.*/
+        call EchomLog('window-user', 'debug', 'WinExchange failed: ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return

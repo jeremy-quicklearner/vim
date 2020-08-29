@@ -18,6 +18,7 @@ function! ToOpenHelp()
         " noautocmd is intentionally left out here so that syntax highlighting
         " is applied
         silent vertical botright help
+        0goto
     else
         noautocmd vertical botright split
     endif
@@ -116,6 +117,6 @@ augroup HelpUberwin
 augroup END
 
 " Mappings
-nnoremap <silent> <leader>hc :call WinHideUberwinGroup('help')<cr>
-nnoremap <silent> <leader>hs :call WinShowUberwinGroup('help')<cr>
-nnoremap <silent> <leader>hh :call WinAddOrGotoUberwin('help','help')<cr>
+call WinMappingMapUserOp('<leader>hs', 'call WinAddOrShowUberwinGroup("help")')
+call WinMappingMapUserOp('<leader>hc', 'call WinHideUberwinGroup("help")')
+call WinMappingMapUserOp('<leader>hh', 'call WinAddOrGotoUberwin("help","help")')

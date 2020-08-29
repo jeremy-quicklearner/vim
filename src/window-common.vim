@@ -184,9 +184,10 @@ function! WinCommonReselectCursorWindow(oldpos)
         let pos = WinCommonFirstUberwinInfo()
     endif
 
-    " If we still have no window ID, then there are no windows
+    " If we still have no window ID, then there are no windows in the model
+    " and an informed decision can't be made.
     if pos.category ==# 'none'
-        throw "No windows exist. Cannot select a window for the cursor."
+        return a:oldpos
     endif
 
     " At this point, a window has been chosen based only on the model. But if
@@ -272,6 +273,10 @@ function! WinCommonRestoreCursorPosition(info)
     call EchomLog('window-common', 'debug', 'WinCommonRestoreCursorPosition ', a:info)
     let newpos = WinCommonReselectCursorWindow(a:info.win)
     call EchomLog('window-common', 'debug', 'Reselected cursor position: ', newpos)
+    " If we failed to reselect, we fail to restore
+    if newpos.category ==# 'none'
+        return
+    endif
     let winid = WinModelIdByInfo(newpos)
     call WinStateMoveCursorToWinid(winid)
     if WinModelIdByInfo(a:info.win) ==# WinModelIdByInfo(newpos)
@@ -590,6 +595,9 @@ endfunction
 " model
 function! WinCommonOpenSubwins(supwinid, grouptypename)
     call EchomLog('window-common', 'debug', 'WinCommonOpenSubwins ', a:supwinid, ':', a:grouptypename)
+    if WinStateWinIsTerminal(a:supwinid)
+        throw 'Supwin ' . a:supwinid . ' is a terminal window'
+    endif
     let preunfix = WinStateUnfixDimensions(a:supwinid)
     try
         let grouptype = g:subwingrouptype[a:grouptypename]
@@ -951,6 +959,8 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
         endfor
     endif
 
+    let pretabnr = WinStateGetTabnr()
+    let posttabnr = pretabnr
     try
         let closeduberwingroups = []
         if a:nouberwins
@@ -970,8 +980,14 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
             call EchomLog('window-common', 'verbose', 'Callback gave return value ', retval)
             let info = WinCommonGetCursorPosition()
             call EchomLog('window-common', 'debug', 'New cursor position after callback is ', info)
+            let posttabnr = WinStateGetTabnr()
+            call EchomLog('window-common', 'debug', 'New tab after callback is ', posttabnr)
 
         finally
+            if pretabnr !=# posttabnr
+                call EchomLog('window-common', 'debug', 'Callback changed tab from ', pretabnr, ' to ', posttabnr, '. Returning before reopening.')
+                call WinStateGotoTab(pretabnr)
+            endif
             call EchomLog('window-common', 'debug', 'Reopening all uberwins')
             call WinCommonReopenUberwins(closeduberwingroups)
         endtry
@@ -979,15 +995,51 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
     finally
         call EchomLog('window-common', 'debug', 'Reopening all subwins')
         for supwinid in supwinids
-            call EchomLog('window-common', 'verbose', 'Reopening all subwins of supwin ', supwinid)
-            call WinCommonReopenSubwins(supwinid, closedsubwingroupsbysupwin[supwinid])
-            let dims = WinStateGetWinDimensions(supwinid)
+            let newsupwinid = supwinid
+            let gotopretabnr = 0
+            if !WinStateWinExists(supwinid)
+                if pretabnr !=# posttabnr
+                    " There is only one command that removes a window and ends
+                    " in a different tab: WinMoveToNewTab. So if the control
+                    " reaches here, the command is WinMoveToNewTab. We need to
+                    " move the model's record of the supwin to the new tab's
+                    " model, and also restore the state subwins in the new
+                    " tab.
+                    let supwindata = WinModelRemoveSupwin(supwinid)
+                    call WinStateGotoTab(posttabnr)
+                    call WinModelRestoreSupwin(supwindata)
+                    " This command changes the winid of the window being
+                    " moved (even with legacy winids, because it wipes out
+                    " window-local variables). So after moving the supwin
+                    " record to the new tab's model, change its winid
+                    " Immediately after wincmd T, the only window in the tab
+                    " is the one that was moved
+                    let newsupwinid = WinStateGetCursorWinId()
+                    call WinModelReplaceWinid(supwinid, newsupwinid)
+                    let gotopretabnr = 1
+                    call EchomLog('window-common', 'debug', 'Supwin ', supwinid, ' has moved to tab ', posttabnr, ' and changed winid to ', newsupwinid, '. Restoring subwins there.')
+                else
+                    call EchomLog('window-common', 'debug', 'Supwin ', supwinid, ' has vanished from state. Not restoring its subwins.')
+                    continue
+                endif
+            endif
+            call EchomLog('window-common', 'verbose', 'Reopening all subwins of supwin ', newsupwinid)
+            call WinCommonReopenSubwins(newsupwinid, closedsubwingroupsbysupwin[supwinid])
+            let dims = WinStateGetWinDimensions(newsupwinid)
             call EchomLog('window-common', 'verbose', 'Supwin dimensions after reopening its subwins: ', dims)
             " Afterimage everything after finishing with each supwin to avoid collisions
-            call EchomLog('window-common', 'verbose', 'Afterimaging all reopened subwins of supwin ', supwinid, ' to avoid collisions with the next supwin')
-            call WinCommonAfterimageSubwinsBySupwin(supwinid)
-            call WinModelChangeSupwinDimensions(supwinid, dims.nr, dims.w, dims.h)
+            call EchomLog('window-common', 'verbose', 'Afterimaging all reopened subwins of supwin ', newsupwinid, ' to avoid collisions with the next supwin')
+            call WinCommonAfterimageSubwinsBySupwin(newsupwinid)
+            call WinModelChangeSupwinDimensions(newsupwinid, dims.nr, dims.w, dims.h)
+            if gotopretabnr
+                call EchomLog('window-common', 'debug', 'Finished restoring subwins of supwin ', newsupwinid, ' in tab ', posttabnr, '. Returning to tab ', pretabnr)
+                call WinStateGotoTab(pretabnr)
+            endif
         endfor
+        if pretabnr !=# posttabnr
+            call EchomLog('window-common', 'debug', 'Finished reopening. All afterimaging subwins afterimaged. Moving back to post-callback tab ', posttabnr)
+            call WinStateGotoTab(posttabnr)
+        endif
         if a:reselect
             call WinCommonRestoreCursorPosition(info)
             call WinCommonUpdateAfterimagingByCursorWindow(info.win)

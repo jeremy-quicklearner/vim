@@ -7,6 +7,16 @@
 "       invoked from visual mode
 " TODO: Thoroughly test every mapping
 
+" This function is a helper for group definitions which want to define
+" mappings for adding, removing, showing, hiding, and jumping to their groups
+function! WinMappingMapUserOp(lhs, rhs)
+    call EchomLog('window-mappings', 'config', 'Map ', a:lhs, ' to ', a:rhs)
+    execute 'nnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinStateDetectMode("n")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>'
+    execute 'xnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinStateDetectMode("v")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>'
+    execute 'snoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinStateDetectMode("s")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>'
+    execute 'tnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinStateDetectMode("t")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>'
+endfunction
+
 " Process v:count and v:count1 into a single count
 function! WinMappingProcessCounts(allow0)
     call EchomLog('window-mappings', 'debug', 'WinMappingProcessCounts ' , a:allow0)
@@ -29,13 +39,13 @@ endfunction
 function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinselectmode, mapinterminalmode)
     call EchomLog('window-mappings', 'debug', 'DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinselectmode, ',', a:mapinterminalmode, ']')
     if a:mapinnormalmode
-        execute 'nnoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"n\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
+        execute 'nnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinStateDetectMode(\"n\")<cr><c-w>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
     if a:mapinvisualmode
-        execute 'xnoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"v\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
+        execute 'xnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinStateDetectMode(\"v\")<cr><c-w>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
     if a:mapinselectmode
-        execute 'snoremap <expr> <silent> ' . a:cmd . ' ":<c-u>call WinStateDetectMode(\"s\")<cr>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
+        execute 'snoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinStateDetectMode(\"s\")<cr><c-w>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
     endif
     if a:mapinterminalmode
         execute 'tnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinStateDetectMode(\"t\")<cr><c-w>:<c-u>execute " . WinMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinStateRestoreMode()<cr>"'
@@ -60,14 +70,14 @@ endfunction
 " {nr}. 0 Is ommitted because Vim's default behaviour on <c-w>0 and z0 is
 " already a nop
 for idx in range(1,9)
-    execute 'nnoremap <silent> <c-w>' . idx . ' :<c-u>call WinStateDetectMode("n")<cr>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
-    execute 'xnoremap <silent> <c-w>' . idx . ' :<c-u>call WinStateDetectMode("v")<cr>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
+    execute 'nnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call WinStateDetectMode("n")<cr><c-w>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
+    execute 'xnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call WinStateDetectMode("v")<cr><c-w>:<c-u>call WinMappingScanW(' . idx . ')<cr>'
     " There is no snoremap for <c-w> because no <c-w> commands can be run from
     " select mode
 
-    execute 'nnoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("n")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
-    execute 'xnoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("v")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
-    execute 'snoremap <silent> z' . idx . ' :<c-u>call WinStateDetectMode("s")<cr>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'nnoremap <silent> z' . idx . ' <c-w>:<c-u>call WinStateDetectMode("n")<cr><c-w>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'xnoremap <silent> z' . idx . ' <c-w>:<c-u>call WinStateDetectMode("v")<cr><c-w>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
+    execute 'snoremap <silent> z' . idx . ' <c-w>:<c-u>call WinStateDetectMode("s")<cr><c-w>:<c-u>call WinMappingScanZ(' . idx . ')<cr>'
 endfor
 
 " Tracks the characters typed so far

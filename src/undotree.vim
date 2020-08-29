@@ -210,6 +210,15 @@ function! UpdateUndotreeSubwins()
     if !WinModelExists()
         return
     endif
+
+    " Make sure scrollbind and cursorbind are off. For reasons I don't
+    " understand, moving from window to window when there are
+    " scrollbound/cursorbound windows can change those windows' cursor
+    " positions
+    let opts = {'s':&l:scrollbind,'c':&l:cursorbind}
+    let &l:scrollbind = 0
+    let &l:cursorbind = 0
+
     let info = WinCommonGetCursorPosition()
     try
         for supwinid in WinModelSupwinIds()
@@ -239,6 +248,8 @@ function! UpdateUndotreeSubwins()
         endfor
     finally
         call WinCommonRestoreCursorPosition(info)
+        let &l:scrollbind = opts.s
+        let &l:cursorbind = opts.c
     endtry
 endfunction
 
@@ -277,7 +288,7 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateUndotreeSubwins.
-nnoremap <silent> <leader>us :call WinShowSubwinGroup(Win_getid_cur(), 'undotree')<cr>
-nnoremap <silent> <leader>uh :call WinHideSubwinGroup(Win_getid_cur(), 'undotree')<cr>
-nnoremap <silent> <leader>uu :call WinGotoSubwin(Win_getid_cur(), 'undotree', 'tree')<cr>
-nnoremap <silent> <leader>ud :call WinGotoSubwin(Win_getid_cur(), 'undotree', 'diff')<cr>
+call WinMappingMapUserOp('<leader>us', 'call WinShowSubwinGroup(Win_getid_cur(), "undotree")')
+call WinMappingMapUserOp('<leader>uh', 'call WinHideSubwinGroup(Win_getid_cur(), "undotree")')
+call WinMappingMapUserOp('<leader>uu', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "tree")')
+call WinMappingMapUserOp('<leader>ud', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "diff")')

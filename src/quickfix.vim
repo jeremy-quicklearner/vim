@@ -158,10 +158,10 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateQuickfixUberwin.
-nnoremap <silent> <leader>qc :cexpr []<cr>
-nnoremap <silent> <leader>qs :call WinShowUberwinGroup('quickfix')<cr>
-nnoremap <silent> <leader>qh :call WinHideUberwinGroup('quickfix')<cr>
-nnoremap <silent> <leader>qq :call WinGotoUberwin('quickfix', 'quickfix')<cr>
+call WinMappingMapUserOp('<leader>qs', 'call WinShowUberwinGroup("quickfix")')
+call WinMappingMapUserOp('<leader>qh', 'call WinHideUberwinGroup("quickfix")')
+call WinMappingMapUserOp('<leader>qq', 'call WinGotoUberwin("quickfix", "quickfix")')
+call WinMappingMapUserOp('<leader>qc', 'call WinRemoveUberwinGroup("quickfix") \| cexpr []')
 
 " Peek at entries in quickfix and location lists
 nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<space>"

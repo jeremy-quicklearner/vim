@@ -432,8 +432,8 @@ function! s:WinResolveStateToModel()
     " STEP 1.5: Supwins that have become terminal windows need to have their
     "      subwins hidden, but this must be done after STEP 1.4 which would add the
     "      subwins back
-    "      If any supwin is a terminal window with shown subwins, mark them as
-    "      hidden in the model
+    " If any supwin is a terminal window with shown subwins, mark them as
+    " hidden in the model
     call EchomLog('window-resolve', 'verbose', 'Step 1.5')
     for supwinid in WinModelSupwinIds()
         call EchomLog('window-resolve', 'verbose', 'Checking if supwin ', supwinid, ' is a terminal window in the state')

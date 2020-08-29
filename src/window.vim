@@ -122,15 +122,6 @@
 "   there's only one window)
 "   TODO? See if there's some way to avoid this
 "
-" - If the resolver has to change the state, you are kicked into normal mode
-"   This is hard to run into by accident, because you need to enter visual
-"   mode after making the state and model inconsistent but before the resolver
-"   starts.
-"   TODO: Preserve mode in mappings from reference definitions
-"   TODO: It may be possible to fix this, but I'm willing to bet that it won't
-"   bother anyone... at least no more than the resolver changing the state
-"   bothers them.
-"
 " - Compatibility with session reloading is dubious. In theory, the resolver is
 " defensive enough to handle any and all possible changes to the state - but
 " consistency between the state and model may not reasonably be enough for a
@@ -174,6 +165,7 @@
 "       - The internal error is caught now, but it seems to add ranges to
 "         a bunch of commands that run after it gets caught
 "       - All the statuslines and tabline get cleared
+" TODO: Audit all the core code for references to specific group types
 " TODO: Audit all the user operations and common code for direct accesses to
 "       the state and model
 " TODO: Audit the common code for functions that are not common to the
