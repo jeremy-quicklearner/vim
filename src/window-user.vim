@@ -457,7 +457,7 @@ function! WinShowSubwinGroup(srcid, grouptypename)
         let supwinid = WinModelSupwinIdBySupwinOrSubwinId(a:srcid)
         call WinModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
-        call EchomLog('window-user', 'debug', 'WinShowSubwinGroup cannot show subwin group ', a:supwinid, ':', a:grouptypename, ': ')
+        call EchomLog('window-user', 'debug', 'WinShowSubwinGroup cannot show subwin group ', a:srcid, ':', a:grouptypename, ': ')
         call EchomLog('window-user', 'debug', v:throwpoint)
         call EchomLog('window-user', 'warning', v:exception)
         return
