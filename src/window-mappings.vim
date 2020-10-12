@@ -2,6 +2,7 @@
 " See window.vim
 " This file remaps every Vim Ctrl-W command that doesn't play well with the
 " window engine to one of the custom commands from window-commands.vim
+" TODO: Add mappings for CTRL-W commands documented in tagsrch.txt
 
 " TODO: Ensure all mappings behave similarly to their native counterparts when
 "       invoked from visual mode
@@ -165,39 +166,47 @@ endfunction
 
 " Command mappings
 let s:allCmds = {
-\   'WinOnly':                      ['<c-w>o','<c-w><c-o>'                ],
-\   'WinDecreaseHeight':            ['<c-w>-'                             ],
-\   'WinDecreaseWidth':             ['<c-w><'                             ],
-\   'WinEqualize':                  ['<c-w>='                             ],
-\   'WinExchange':                  ['<c-w>x','<c-w><c-x>'                ],
-\   'WinGoDown':                    ['<c-w>j','<c-w><down>','<c-j>'       ],
-\   'WinGoFirst':                   ['<c-w>t','<c-w><c-t>'                ],
-\   'WinGoLast':                    ['<c-w>b','<c-w><c-b>'                ],
-\   'WinGoLeft':                    ['<c-w>h','<c-w><left>','<c-h>','<bs>'],
-\   'WinGoNext':                    ['<c-w>w','<c-w><c-w>'                ],
-\   'WinGoRight':                   ['<c-w>l','<c-w><right>','<c-l>'      ],
-\   'WinGoUp':                      ['<c-w>k','<c-w><up>','<c-k>'         ],
-\   'WinGotoPrevious':              ['<c-w>p','<c-w><c-p>'                ],
-\   'WinIncreaseHeight':            ['<c-w>+'                             ],
-\   'WinIncreaseWidth':             ['<c-w>>'                             ],
-\   'WinMoveToBottomEdge':          ['<c-w>J'                             ],
-\   'WinMoveToLeftEdge':            ['<c-w>H'                             ],
-\   'WinMoveToNewTab':              ['<c-w>T'                             ],
-\   'WinMoveToRightEdge':           ['<c-w>L'                             ],
-\   'WinMoveToTopEdge':             ['<c-w>K'                             ],
-\   'WinResizeHorizontal':          ['<c-w>_','<c-w><c-_>'                ],
-\   'WinResizeHorizontalDefaultNop':['z<cr>'                              ],
-\   'WinResizeVertical':            ['<c-w>\|'                            ],
-\   'WinReverseGoNext':             ['<c-w>W'                             ],
-\   'WinReverseRotate':             ['<c-w>R'                             ],
-\   'WinRotate':                    ['<c-w>r','<c-w><c-r>'                ],
-\   'WinSplitHorizontal':           ['<c-w>s','<c-w>S','<c-s>'            ],
-\   'WinSplitVertical':             ['<c-w>v','<c-w><c-v>'                ],
-\   'WinSplitNew':                  ['<c-w>n','<c-w><c-n>'                ],
-\   'WinSplitAlternate':            ['<c-w>^','<c-w><c-^>'                ],
-\   'WinQuit':                      ['<c-w>q','<c-w><c-q>'                ],
-\   'WinClose':                     ['<c-w>c'                             ],
-\   'WinGotoPreview':               ['<c-w>P'                             ]
+\   'WinOnly':                      ['<c-w>o','<c-w><c-o>'    ],
+\   'WinDecreaseHeight':            ['<c-w>-'                 ],
+\   'WinDecreaseWidth':             ['<c-w><'                 ],
+\   'WinEqualize':                  ['<c-w>='                 ],
+\   'WinExchange':                  ['<c-w>x','<c-w><c-x>'    ],
+\   'WinGoDown':                    ['<c-w>j','<c-w><down>'   ],
+\   'WinGoFirst':                   ['<c-w>t','<c-w><c-t>'    ],
+\   'WinGoLast':                    ['<c-w>b','<c-w><c-b>'    ],
+\   'WinGoLeft':                    ['<c-w>h','<c-w><left>'   ],
+\   'WinGoNext':                    ['<c-w>w','<c-w><c-w>'    ],
+\   'WinGoRight':                   ['<c-w>l','<c-w><right>'  ],
+\   'WinGoUp':                      ['<c-w>k','<c-w><up>'     ],
+\   'WinGotoPrevious':              ['<c-w>p','<c-w><c-p>'    ],
+\   'WinIncreaseHeight':            ['<c-w>+'                 ],
+\   'WinIncreaseWidth':             ['<c-w>>'                 ],
+\   'WinMoveToBottomEdge':          ['<c-w>J'                 ],
+\   'WinMoveToLeftEdge':            ['<c-w>H'                 ],
+\   'WinMoveToNewTab':              ['<c-w>T'                 ],
+\   'WinMoveToRightEdge':           ['<c-w>L'                 ],
+\   'WinMoveToTopEdge':             ['<c-w>K'                 ],
+\   'WinResizeHorizontal':          ['<c-w>_','<c-w><c-_>'    ],
+\   'WinResizeHorizontalDefaultNop':['z<cr>'                  ],
+\   'WinResizeVertical':            ['<c-w>\|'                ],
+\   'WinReverseGoNext':             ['<c-w>W'                 ],
+\   'WinReverseRotate':             ['<c-w>R'                 ],
+\   'WinRotate':                    ['<c-w>r','<c-w><c-r>'    ],
+\   'WinSplitHorizontal':           ['<c-w>s','<c-w>S','<c-s>'],
+\   'WinSplitVertical':             ['<c-w>v','<c-w><c-v>'    ],
+\   'WinSplitNew':                  ['<c-w>n','<c-w><c-n>'    ],
+\   'WinSplitAlternate':            ['<c-w>^','<c-w><c-^>'    ],
+\   'WinQuit':                      ['<c-w>q','<c-w><c-q>'    ],
+\   'WinClose':                     ['<c-w>c'                 ],
+\   'WinGotoPreview':               ['<c-w>P'                 ],
+\   'WinSplitTag':                  ['<c-w>]','<c-w><c-]>'    ],
+\   'WinSplitTagSelect':            ['<c-w>g]',               ],
+\   'WinSplitTagJump':              ['<c-w>g<c-]>',           ],
+\   'WinSplitFilename':             ['<c-w>f','<c-w><c-f>'    ],
+\   'WinSplitFilenameLine':         ['<c-w>F',                ],
+\   'WinPreviewClose':              ['<c-w>z','<c-w><c-z>'    ],
+\   'WinPreviewTag':                ['<c-w>}'                 ],
+\   'WinPreviewTagJump':            ['<c-w>g}'                ]
 \}
 
 let s:cmdsWithAllow0 = [
@@ -225,3 +234,7 @@ for cmdname in keys(s:allCmds)
    \    index(s:cmdsWithTerminalModeMapping, cmdname) >=# 0
    \)
 endfor
+
+" Special case: WinGoLeft needs to be mapped to <bs>, but not in terminal mode
+call WinMappingMapCmd(['<bs>'], 'WinGoLeft', 0, 1, 1, 1, 0)
+

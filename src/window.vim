@@ -153,7 +153,10 @@
 "         uses
 "       - Buffer numbers need to be 'freed' every time an afterimaged subwin is
 "         closed, but the user (or some plugin) may do it directly without
-"         freeing
+"         freeing. So the Resolver needs to check if any have disappeared by
+"         maintaining a list. That list needs to be tab-local because
+"         afterimage buffers may be in use in other tabs.
+" TODO: Figure out why splitting a help window fails
 " TODO: Actually make the mappings optional
 " TODO: Actually make the reference definitions disable-able
 " TODO: Allow for customization of a bunch of parameters to the reference

@@ -1,5 +1,5 @@
 " Quickfix list and quickfix window manipulation
-call SetLogLevel('quickfix-uberwin', 'info', 'warning')
+call SetLogLevel('quickfix-uberwin', 'warning', 'warning')
 
 " ToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
 " are required.. I see no other way to implement ToIdentifyQuickfix.
@@ -114,7 +114,7 @@ function! UpdateQuickfixUberwin(hide)
 
     if !qfwinexists && qflistexists
         call EchomLog('quickfix-uberwin', 'info', 'Add quickfix uberwin because there is a quickfix list')
-        call WinAddUberwinGroup('quickfix', a:hide)
+        call WinAddUberwinGroup('quickfix', a:hide, 0)
         return
     endif
 endfunction
@@ -158,9 +158,9 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateQuickfixUberwin.
-call WinMappingMapUserOp('<leader>qs', 'call WinShowUberwinGroup("quickfix")')
+call WinMappingMapUserOp('<leader>qs', 'call WinShowUberwinGroup("quickfix", 1)')
 call WinMappingMapUserOp('<leader>qh', 'call WinHideUberwinGroup("quickfix")')
-call WinMappingMapUserOp('<leader>qq', 'call WinGotoUberwin("quickfix", "quickfix")')
+call WinMappingMapUserOp('<leader>qq', 'call WinGotoUberwin("quickfix", "quickfix", 1)')
 call WinMappingMapUserOp('<leader>qc', 'call WinRemoveUberwinGroup("quickfix") \| cexpr []')
 
 " Peek at entries in quickfix and location lists

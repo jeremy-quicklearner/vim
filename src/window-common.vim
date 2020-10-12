@@ -445,8 +445,8 @@ endfunction
 
 " Wrapper for WinStateOpenUberwinsByGroupType that freezes scroll positions
 " and corrects dimensions for existing windows
-function! WinCommonOpenUberwins(grouptypename)
-    call EchomLog('window-common', 'debug', 'WinCommonOpenUberwins ', a:grouptypename)
+function! WinCommonOpenUberwins(grouptypename, correctdims)
+    call EchomLog('window-common', 'debug', 'WinCommonOpenUberwins ', a:grouptypename, ' ', a:correctdims)
     " Shielding only protects windows from scrolling when they are not
     " the current window, so explicitly save and restore the current
     " window's scroll position. Shielding is preferred for other
@@ -458,13 +458,17 @@ function! WinCommonOpenUberwins(grouptypename)
 
     let preshield = WinCommonShieldAllWindows([])
     try
-        let windims = WinCommonPreserveDimensions()
+        if a:correctdims
+            let windims = WinCommonPreserveDimensions()
+        endif
         try
             let grouptype = g:uberwingrouptype[a:grouptypename]
             let winids = WinStateOpenUberwinsByGroupType(grouptype)
 
         finally
-            call WinCommonRestoreDimensions(windims)
+            if a:correctdims
+                call WinCommonRestoreDimensions(windims)
+            endif
         endtry
 
     finally
@@ -510,8 +514,8 @@ endfunction
 
 " Reopens uberwins that were closed by WinCommonCloseUberwinsWithHigherPriority
 " and updates the model with the new winids
-function! WinCommonReopenUberwins(preserved)
-    call EchomLog('window-common', 'debug', 'WinCommonReopenUberwins')
+function! WinCommonReopenUberwins(preserved, correctdims)
+    call EchomLog('window-common', 'debug', 'WinCommonReopenUberwins ', a:correctdims)
     " Open all uberwins first, then apply PostCloseAndReopenUberwins to them
     " all. This is done because sometimes opening an uberwin will cause other
     " lower-priority uberwins' dimensions to change, and we don't want that to
@@ -520,7 +524,7 @@ function! WinCommonReopenUberwins(preserved)
     for grouptype in a:preserved
         call EchomLog('window-common', 'debug', 'Reopening preserved uberwin group ', grouptype.grouptypename)
         try
-            let winids[grouptype.grouptypename] = WinCommonOpenUberwins(grouptype.grouptypename)
+            let winids[grouptype.grouptypename] = WinCommonOpenUberwins(grouptype.grouptypename, a:correctdims)
             call EchomLog('window-common', 'verbose', 'Reopened uberwin group ', grouptype.grouptypename, ' with winids ', winids)
         catch /.*/
              call EchomLog('window-common', 'WinCommonReopenUberwins failed to open ', grouptype.grouptypename, ' uberwin group:')
@@ -875,9 +879,9 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     " window that does exist
     let finalpos = WinCommonReselectCursorWindow(a:curwin)
 
-    " If the cursor's position is in an uberwin, afterimage
-    " all shown afterimaging subwins of all supwins
-    if finalpos.category ==# 'uberwin'
+    " If the cursor's position is in an uberwin (or still in a window that
+    " doesn't exist), afterimage all shown afterimaging subwins of all supwins
+    if finalpos.category ==# 'uberwin' || finalpos.category ==# 'none'
         call EchomLog('window-common', 'debug', 'Cursor position is uberwin. Afterimaging all subwins of all supwins.')
         for supwinid in WinModelSupwinIds()
             call WinCommonAfterimageSubwinsBySupwin(supwinid)
@@ -924,8 +928,8 @@ function! WinCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
-function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
-    call EchomLog('window-common', 'debug', 'DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ']')
+function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect, preservesupdims)
+    call EchomLog('window-common', 'debug', 'DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ',', a:preservesupdims, ']')
     let supwinids = WinModelSupwinIds()
     let closedsubwingroupsbysupwin = {}
     for supwinid in supwinids
@@ -965,6 +969,9 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
         let closeduberwingroups = []
         if a:nouberwins
             call EchomLog('window-common', 'debug', 'Closing all uberwins')
+            if a:preservesupdims
+                let supdims = WinCommonPreserveDimensions()
+            endif
             let closeduberwingroups = WinCommonCloseUberwinsWithHigherPriority(-1)
         endif
         try
@@ -989,7 +996,10 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
                 call WinStateGotoTab(pretabnr)
             endif
             call EchomLog('window-common', 'debug', 'Reopening all uberwins')
-            call WinCommonReopenUberwins(closeduberwingroups)
+            call WinCommonReopenUberwins(closeduberwingroups, !a:preservesupdims)
+            if a:preservesupdims
+                call WinCommonRestoreDimensions(supdims)
+            endif
         endtry
 
     finally
@@ -1051,17 +1061,17 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
 endfunction
 function! WinCommonDoWithoutUberwins(curwin, callback, args, reselect)
     call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0, a:reselect)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0, a:reselect, 0)
 endfunction
 
 function! WinCommonDoWithoutSubwins(curwin, callback, args, reselect)
     call EchomLog('window-common', 'debug', 'WinCommonDoWithoutSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
-    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1, a:reselect)
+    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1, a:reselect, 0)
 endfunction
 
-function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args, reselect)
-    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1, a:reselect)
+function! WinCommonDoWithoutUberwinsOrSubwins(curwin, callback, args, reselect, preservesupdims)
+    call EchomLog('window-common', 'debug', 'WinCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect, ', ', a:preservesupdims)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1, a:reselect, a:preservesupdims)
 endfunction
 
 function! s:Nop()

@@ -113,6 +113,7 @@ function! WinStateDetectMode(mode)
     endif
 endfunction
 noremap <silent> <expr> <plug>WinDetectMode '<c-w>:<c-u>call WinStateDetectMode("' . mode() . '")<cr>'
+tnoremap <silent> <expr> <plug>WinDetectMode '<c-w>:<c-u>call WinStateDetectMode("' . mode() . '")<cr>'
 " Restore the mode after it's been preserved by WinStateDetectMode
 function! WinStateRestoreMode()
     call EchomLog('window-state', 'debug', 'WinStateRestoreMode ', s:detectedmode)
@@ -129,7 +130,7 @@ function! WinStateRestoreMode()
         call cursor(s:detectedmode.otherline, s:detectedmode.othercol)
         execute "normal! " . normcmd
         call cursor(s:detectedmode.curline, s:detectedmode.curcol)
-    elseif s:detectedmode ==# 't' && mode() !=# 't'
+    elseif s:detectedmode.mode ==# 't' && mode() !=# 't'
         normal! a
     endif
     return
@@ -433,8 +434,14 @@ function! WinStateOpenUberwinsByGroupType(grouptype)
 
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
-        " loclists
-        call setloclist(Win_id2win(winids[idx]), [])
+        " loclists... Unless the window is itself a location window, in which
+        " case of course it should keep its location list. Unfortunately this
+        " constitutes special support for the lochelp subwin group.
+        " TODO: Make this configurable in the model with some kind of
+        " 'types that can have location lists' list
+        if a:grouptype.name !=# 'lochelp'
+            call setloclist(Win_id2win(winids[idx]), [])
+        endif
     endfor
 
     call s:MaybeRedraw()
@@ -510,6 +517,8 @@ function! WinStateOpenSubwinsByGroupType(supwinid, grouptype)
         " loclists... Unless the window is itself a location window, in which
         " case of course it should keep its location list. Unfortunately this
         " constitutes special support for the loclist subwin group.
+        " TODO: Make this configurable in the model with some kind of
+        " 'types that can have location lists' list
         if a:grouptype.name !=# 'loclist'
             call setloclist(Win_id2win(winids[idx]), [])
         endif
@@ -742,8 +751,6 @@ function! s:RestoreFolds(method, data)
     endif
 endfunction
 
-" TODO: Go through every buffer-local option and decide whether to preserve it
-" across afterimaging
 function! WinStateAfterimageWindow(winid)
     call EchomLog('window-state', 'debug', 'WinStateAfterimageWindow ', a:winid)
     " Silent movement (noautocmd) is used here because we want to preserve the
@@ -754,19 +761,20 @@ function! WinStateAfterimageWindow(winid)
     " Preserve cursor and scroll position
     let view = winsaveview()
 
-    " Preserve some window options
-    let bufft = &ft
-    let bufwrap = &wrap
-    let list = &list
-    let statusline = &statusline
-
-    " Preserve colorcolumn
-    let colorcol = &colorcolumn
+    " Preserve some buffer-local options
+    let bufsyn = &l:syntax
+    let bufsynmc = &l:synmaxcol
+    let bufspll = &l:spelllang
+    let bufsplc = &l:spellcapcheck
+    let bufts = &l:tabstop
+    " These options are documented as window-local, but behave in buffer-local
+    " ways
+    let bufw = &l:wrap
+    let bufl = &l:list
+    let bufsl = &l:statusline
+    let bufcc = &l:colorcolumn
     
-    " Foldcolumn is not preserved because it is window-local (not
-    " buffer-local) and will survive the afterimaging process
-
-    call EchomLog('window-state', 'verbose', 'ft: ', bufft, ' wrap: ', bufwrap, ' statusline: ', statusline, ' colorcolumn: ', colorcol)
+    call EchomLog('window-state', 'verbose', ' syntax: ', bufsyn, ', synmaxcol: ', bufsynmc, ', spelllang: ', bufspll, ', spellcapcheck: ', bufsplc, ', tabstop: ', bufts, ', wrap: ', bufw, ', list: ', bufl, ', statusline: ', bufsl, ', colorcolumn: ', bufcc)
 
     " Preserve folds
     try
@@ -823,15 +831,16 @@ function! WinStateAfterimageWindow(winid)
     endtry
     call s:MaybeRedraw()
 
-    " Restore colorcolumn
-    let &colorcolumn = colorcol
-    call s:MaybeRedraw()
-
-    " Restore buffer options
-    let &ft = bufft
-    let &wrap = bufwrap
-    let &l:statusline = statusline
-    let &list = list
+    " Restore options
+    let &l:syntax = bufsyn   
+    let &l:synmaxcol = bufsynmc 
+    let &l:spelllang = bufspll  
+    let &l:spellcapcheck = bufsplc  
+    let &l:tabstop = bufts    
+    let &l:wrap = bufw     
+    let &l:list = bufl     
+    let &l:statusline = bufsl    
+    let &l:colorcolumn = bufcc    
     call s:MaybeRedraw()
 
     " Restore cursor and scroll position
@@ -860,23 +869,61 @@ function! WinStateCloseWindow(winid)
     call s:MaybeRedraw()
 endfunction
 
+let s:preservedwinopts = [
+\    'scroll',
+\    'linebreak',
+\    'breakindent',
+\    'breakindentopt',
+\    'list',
+\    'number',
+\    'relativenumber',
+\    'numberwidth',
+\    'conceallevel',
+\    'concealcursor',
+\    'cursorcolumn',
+\    'cursorline',
+\    'colorcolumn',
+\    'spell',
+\    'scrollbind',
+\    'cursorbind',
+\    'termwinsize',
+\    'termwinkey',
+\    'termwinscroll',
+\    'foldenable',
+\    'foldlevel',
+\    'foldcolumn',
+\    'foldtext',
+\    'foldminlines',
+\    'foldexpr',
+\    'foldignore',
+\    'foldmarker',
+\    'foldnestmax',
+\    'diff',
+\    'rightleft',
+\    'rightleftcmd',
+\    'arabic',
+\    'iminsert',
+\    'imsearch',
+\    'signcolumn'
+\]
+
 " Preserve/Restore for individual windows
-" TODO: Go through every window-local option and decide whether to preserve it
-" across close-and-reopen
 function! WinStatePreCloseAndReopen(winid)
     call EchomLog('window-state', 'info', 'WinStatePreCloseAndReopen ', a:winid)
     call WinStateMoveCursorToWinidSilently(a:winid)
+    let retdict = {}
 
     " Preserve cursor position
-    let view = winsaveview()
+    let retdict.view = winsaveview()
+    call EchomLog('window-state', 'verbose', ' view: ', retdict.view)
 
-    " Preserve some options
-    let colorcol = &colorcolumn
-    let foldcol = &foldcolumn
-    let scrollb = &scrollbind
-    let list = &list
-
-    call EchomLog('window-state', 'verbose', 'colorcolumn: ', colorcol, ' foldcolumn: ', foldcol, ' view: ', view)
+    " Preserve options
+    let retdict.opts = {}
+    for optname in s:preservedwinopts
+        let optval = eval('&l:' . optname)
+        call EchomLog('window-state', 'verbose', 'Preserve ', optname, ': ', optval)
+        let retdict.opts[optname] = optval
+    endfor
 
     " Preserve folds
     try
@@ -887,26 +934,19 @@ function! WinStatePreCloseAndReopen(winid)
         call EchomLog('window-state', 'warning', v:exception)
         let fold = {'method':'manual','data':{}}
     endtry
+    let retdict.fold = fold
     call s:MaybeRedraw()
 
     " Preserve signs
-    let sign = s:PreserveSigns(a:winid)
+    let retdict.sign = s:PreserveSigns(a:winid)
     call s:MaybeRedraw()
 
-    return {
-   \    'view': view,
-   \    'sign': sign,
-   \    'fold': fold,
-   \    'foldcol': foldcol,
-   \    'colorcol': colorcol,
-   \    'scrollb': scrollb,
-   \    'list': list
-   \}
+    return retdict
 endfunction
 
 function! WinStatePostCloseAndReopen(winid, preserved)
     call EchomLog('window-state', 'info', 'WinStatePostCloseAndReopen ', a:winid, '...')
-    call EchomLog('window-state', 'verbose', ' colorcolumn: ', a:preserved.colorcol, ' foldcolumn: ', a:preserved.foldcol, ' view: ', a:preserved.view)
+    call EchomLog('window-state', 'verbose', a:preserved)
     call WinStateMoveCursorToWinidSilently(a:winid)
 
     " Restore signs
@@ -923,11 +963,11 @@ function! WinStatePostCloseAndReopen(winid, preserved)
     endtry
     call s:MaybeRedraw()
 
-    " Restore some options
-    let &foldcolumn = a:preserved.foldcol
-    let &colorcolumn = a:preserved.colorcol
-    let &scrollbind = a:preserved.scrollb
-    let &list = a:preserved.list
+    " Restore options
+    for optname in keys(a:preserved.opts)
+        let optval = a:preserved.opts[optname]
+        execute 'let &l:' . optname . ' = ' . string(optval)
+    endfor
   
     " Restore cursor and scroll position
     call winrestview(a:preserved.view)

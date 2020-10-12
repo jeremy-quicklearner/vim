@@ -32,8 +32,9 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
                      \ ifsubwingotosupwin,
                      \ dowithoutuberwins,
                      \ dowithoutsubwins,
+                     \ preservesupdims,
                      \ relyonresolver)
-    call EchomLog('window-commands', 'info', 'WinCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:relyonresolver . ']')
+    call EchomLog('window-commands', 'info', 'WinCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
@@ -47,6 +48,7 @@ function! WinCmdRunCmd(cmdname, wincmd, range, count,
                          \ a:ifsubwingotosupwin,
                          \ a:dowithoutuberwins,
                          \ a:dowithoutsubwins,
+                         \ a:preservesupdims,
                          \ a:relyonresolver)
 endfunction
 
@@ -68,7 +70,7 @@ function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
                         \ preservecursor,
                         \ ifuberwindonothing, ifsubwingotosupwin,
                         \ dowithoutuberwins, dowithoutsubwins,
-                        \ relyonresolver)
+                        \ preservesupdims, relyonresolver)
     call EchomLog('window-commands', 'config', 'Command: ', a:cmdname)
     execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
    \        ' call WinCmdRunCmd(' .
@@ -81,6 +83,7 @@ function! WinCmdDefineCmd(cmdname, wincmd, defaultcount,
    \        a:ifsubwingotosupwin . ',' .
    \        a:dowithoutuberwins . ',' .
    \        a:dowithoutsubwins . ',' .
+   \        a:preservesupdims . ',' .
    \        a:relyonresolver . ')'
 endfunction
 
@@ -137,31 +140,39 @@ call WinCmdDefineSpecialCmd('WinGoUp',    'WinGoUp'   )
 call WinCmdDefineSpecialCmd('WinGoRight', 'WinGoRight')
 
 let s:allNonSpecialCmds = {
-\   'WinDecreaseHeight':  '-',
-\   'WinDecreaseWidth':   '<',
-\   'WinEqualize':        '=',
-\   'WinGoFirst':         't',
-\   'WinGoLast':          'b',
-\   'WinGoNext':          'w',
-\   'WinIncreaseHeight':  '+',
-\   'WinIncreaseWidth':   '>',
-\   'WinMoveToBottomEdge':'J',
-\   'WinMoveToLeftEdge':  'H',
-\   'WinMoveToNewTab':    'T',
-\   'WinMoveToRightEdge': 'L',
-\   'WinMoveToTopEdge':   'K',
-\   'WinReverseGoNext':   'W',
-\   'WinReverseRotate':   'R',
-\   'WinRotate':          'r',
-\   'WinSplitHorizontal': 's',
-\   'WinSplitVertical':   'v',
-\   'WinSplitNew':        'n',
-\   'WinSplitAlternate':  '^',
-\   'WinQuit':            'q',
-\   'WinClose':           'c',
-\   'WinGotoPreview':     'P'
+\   'WinDecreaseHeight':   '-',
+\   'WinDecreaseWidth':    '<',
+\   'WinEqualize':         '=',
+\   'WinGoFirst':          't',
+\   'WinGoLast':           'b',
+\   'WinGoNext':           'w',
+\   'WinIncreaseHeight':   '+',
+\   'WinIncreaseWidth':    '>',
+\   'WinMoveToBottomEdge': 'J',
+\   'WinMoveToLeftEdge':   'H',
+\   'WinMoveToNewTab':     'T',
+\   'WinMoveToRightEdge':  'L',
+\   'WinMoveToTopEdge':    'K',
+\   'WinReverseGoNext':    'W',
+\   'WinReverseRotate':    'R',
+\   'WinRotate':           'r',
+\   'WinSplitHorizontal':  's',
+\   'WinSplitVertical':    'v',
+\   'WinSplitNew':         'n',
+\   'WinSplitAlternate':   '^',
+\   'WinQuit':             'q',
+\   'WinClose':            'c',
+\   'WinGotoPreview':      'P',
+\   'WinSplitTag':         ']',
+\   'WinSplitTagSelect':   'g]',
+\   'WinSplitTagJump':     'g<c-]>',
+\   'WinSplitFilename':    'f',
+\   'WinSplitFilenameLine':'F',
+\   'WinPreviewClose':     'z',
+\   'WinPreviewTag':       '}',
+\   'WinPreviewTagJump':   'g}'
 \} 
-let s:cmdsWithPreserveCursorPos = [
+let s:cmdsThatPreserveCursorPos = [
 \   'WinDecreaseHeight',
 \   'WinDecreaseWidth',
 \   'WinEqualize',
@@ -172,7 +183,8 @@ let s:cmdsWithPreserveCursorPos = [
 \   'WinMoveToRightEdge',
 \   'WinMoveToTopEdge',
 \   'WinReverseRotate',
-\   'WinRotate'
+\   'WinRotate',
+\   'WinPreviewClose'
 \]
 let s:cmdsWithUberwinNop = [
 \   'WinDecreaseHeight',
@@ -193,6 +205,11 @@ let s:cmdsWithUberwinNop = [
 \   'WinSplitVertical',
 \   'WinSplitNew',
 \   'WinSplitAlternate',
+\   'WinSplitTag',
+\   'WinSplitTagSelect',
+\   'WinSplitTagJump',
+\   'WinSplitFilename',
+\   'WinSplitFilenameLine'
 \]
 let s:cmdsWithSubwinToSupwin = [
 \   'WinDecreaseHeight',
@@ -214,6 +231,11 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinSplitVertical',
 \   'WinSplitNew',
 \   'WinSplitAlternate',
+\   'WinSplitTag',
+\   'WinSplitTagSelect',
+\   'WinSplitTagJump',
+\   'WinSplitFilename',
+\   'WinSplitFilenameLine'
 \]
 let s:cmdsWithoutUberwins = [
 \   'WinGoFirst',
@@ -248,6 +270,16 @@ let s:cmdsWithoutSubwins = [
 \   'WinSplitVertical',
 \   'WinSplitNew',
 \   'WinSplitAlternate',
+\   'WinSplitTag',
+\   'WinSplitTagSelect',
+\   'WinSplitTagJump',
+\   'WinSplitFilename',
+\   'WinSplitFilenameLine'
+\]
+
+let s:cmdsThatPreserveSupwinDims = [
+\   'WinRotate',
+\   'WinReverseRotate'
 \]
 
 " Commands in this list are the ones that WinDoCmdWithFlags isn't
@@ -260,17 +292,26 @@ let s:cmdsThatRelyOnResolver = [
 \   'WinSplitAlternate',
 \   'WinQuit',
 \   'WinClose',
-\   'WinGotoPreview'
+\   'WinGotoPreview',
+\   'WinSplitTag',
+\   'WinSplitTagSelect',
+\   'WinSplitTagJump',
+\   'WinSplitFilename',
+\   'WinSplitFilenameLine',
+\   'WinPreviewClose',
+\   'WinPreviewTag',
+\   'WinPreviewTagJump'
 \]
 
 for cmdname in keys(s:allNonSpecialCmds)
     call WinCmdDefineCmd(
    \    cmdname, s:allNonSpecialCmds[cmdname], '',
-   \    index(s:cmdsWithPreserveCursorPos,  cmdname) >= 0,
+   \    index(s:cmdsThatPreserveCursorPos,  cmdname) >= 0,
    \    index(s:cmdsWithUberwinNop,         cmdname) >= 0,
    \    index(s:cmdsWithSubwinToSupwin,     cmdname) >= 0,
    \    index(s:cmdsWithoutUberwins,        cmdname) >= 0,
    \    index(s:cmdsWithoutSubwins,         cmdname) >= 0,
+   \    index(s:cmdsThatPreserveSupwinDims, cmdname) >= 0,
    \    index(s:cmdsThatRelyOnResolver,     cmdname) >= 0
    \)
 endfor

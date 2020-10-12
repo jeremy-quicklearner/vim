@@ -1,5 +1,5 @@
 " Undotree plugin manipulation
-call SetLogLevel('undotree-subwin', 'info', 'warning')
+call SetLogLevel('undotree-subwin', 'warning', 'warning')
 
 if !exists('g:undotree_subwin_statusline')
     let g:undotree_subwin_statusline = '%!UndotreeStatusLine()'
@@ -71,8 +71,15 @@ function! ToOpenUndotree()
 
     let treeid = -1
     let diffid = -1
+
+    " The Undotree plugin has a troublesome feature - you can switch the
+    " diffpanel window on and off. I deal with this by defining the Undotree subwin
+    " group as having either one subwin or two subwins, so ToOpenUndotree may
+    " return either one winid or two winids
+    let diffon = (exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0)
+
     for winnr in range(1,winnr('$'))
-        if treeid >=# 0 && diffid >=# 0
+        if treeid >=# 0 && (diffon || diffid >=# 0)
             break
         endif
 
@@ -88,12 +95,18 @@ function! ToOpenUndotree()
     endfor
 
     call setwinvar(Win_id2win(treeid), '&number', 1)
-    call setwinvar(Win_id2win(diffid), '&number', 1)
-
     call setwinvar(Win_id2win(treeid), 'j_undotree_target', jtarget)
-    call setwinvar(Win_id2win(diffid), 'j_undotree_target', jtarget)
 
-    return [treeid, diffid]
+    if !diffon
+        call setwinvar(Win_id2win(diffid), '&number', 1)
+        call setwinvar(Win_id2win(diffid), 'j_undotree_target', jtarget)
+    endif
+
+    if !diffon
+        return [treeid, diffid]
+    else
+        return [treeid]
+    endif
 endfunction
 
 " Callback that closes the undotree windows for the current window
@@ -190,18 +203,30 @@ function! UndodiffStatusLine()
     return statusline
 endfunction
 
-" The undotree and diffpanel are a subwin group
-call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
-                          \[
-                          \    g:undotree_subwin_statusline,
-                          \    g:undodiff_subwin_statusline
-                          \],
-                          \'U', 'u', 5,
-                          \40, [1, 1],
-                          \[25, 25], [-1, 10],
-                          \function('ToOpenUndotree'),
-                          \function('ToCloseUndotree'),
-                          \function('ToIdentifyUndotree'))
+" The undotree and diffpanel are a subwin group. If g:undotree_DiffAutoOpen is
+" falsey, don't expect the diffpanel
+if exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0
+    call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
+                              \[
+                              \    g:undotree_subwin_statusline,
+                              \    g:undodiff_subwin_statusline
+                              \],
+                              \'U', 'u', 5,
+                              \40, [1, 1],
+                              \[25, 25], [-1, 10],
+                              \function('ToOpenUndotree'),
+                              \function('ToCloseUndotree'),
+                              \function('ToIdentifyUndotree'))
+else
+    call WinAddSubwinGroupType('undotree', ['tree'],
+                              \[g:undotree_subwin_statusline],
+                              \'U', 'u', 5,
+                              \40, [1],
+                              \[25], [-1],
+                              \function('ToOpenUndotree'),
+                              \function('ToCloseUndotree'),
+                              \function('ToIdentifyUndotree'))
+endif
 
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
@@ -242,7 +267,7 @@ function! UpdateUndotreeSubwins()
 
             if !undotreewinsexist && undotreeexists
                 call EchomLog('undotree-subwin', 'info', 'Adding undotree subwin group to supwin ', supwinid, ' because its buffer has an undotree')
-                call WinAddSubwinGroup(supwinid, 'undotree', 1)
+                call WinAddSubwinGroup(supwinid, 'undotree', 1, 0)
                 continue
             endif
         endfor
@@ -288,7 +313,9 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateUndotreeSubwins.
-call WinMappingMapUserOp('<leader>us', 'call WinShowSubwinGroup(Win_getid_cur(), "undotree")')
+call WinMappingMapUserOp('<leader>us', 'call WinShowSubwinGroup(Win_getid_cur(), "undotree", 1)')
 call WinMappingMapUserOp('<leader>uh', 'call WinHideSubwinGroup(Win_getid_cur(), "undotree")')
-call WinMappingMapUserOp('<leader>uu', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "tree")')
-call WinMappingMapUserOp('<leader>ud', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "diff")')
+call WinMappingMapUserOp('<leader>uu', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "tree", 1)')
+if exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0
+    call WinMappingMapUserOp('<leader>ud', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "diff"), 1')
+endif

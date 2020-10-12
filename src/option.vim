@@ -4,7 +4,7 @@
 "       - Probably not worth doing
 " TODO: Check if this uberwin group plays well with session reloading
 
-call SetLogLevel('option-uberwin', 'info', 'warning')
+call SetLogLevel('option-uberwin', 'warning', 'warning')
 
 " Helper that silently jumps to t:prevwin and back
 function! OptGoPrev()

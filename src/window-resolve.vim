@@ -37,7 +37,7 @@ endfunction
 " them succeeds. Return the model info obtained.
 function! WinResolveIdentifyWindow(winid)
     call EchomLog('window-resolve', 'debug', 'WinResolveIdentifyWindow ', a:winid)
-    for uberwingrouptypename in keys(s:toIdentifyUberwins)
+    for uberwingrouptypename in WinModelAllUberwinGroupTypeNamesByPriority()
         call EchomLog('window-resolve', 'verbose', 'Invoking toIdentify from ', uberwingrouptypename, ' uberwin group type')
         let uberwintypename = s:toIdentifyUberwins[uberwingrouptypename](a:winid)
         if !empty(uberwintypename)
@@ -52,7 +52,7 @@ function! WinResolveIdentifyWindow(winid)
     endfor
     let uberwinids = WinModelUberwinIds()
     let subwinids = WinModelSubwinIds()
-    for subwingrouptypename in keys(s:toIdentifySubwins)
+    for subwingrouptypename in WinModelAllSubwinGroupTypeNamesByPriority()
         call EchomLog('window-resolve', 'verbose', 'Invoking toIdentify from ', subwingrouptypename, ' subwin group type')
         let subwindict = s:toIdentifySubwins[subwingrouptypename](a:winid)
         if !empty(subwindict)
@@ -626,7 +626,7 @@ function! s:WinResolveModelToState()
         if !WinCommonUberwinGroupExistsInState(grouptypename)
             try
                 call EchomLog('window-resolve', 'info', 'Step 2.3 adding uberwin group ', grouptypename, ' to state')
-                let winids = WinCommonOpenUberwins(grouptypename)
+                let winids = WinCommonOpenUberwins(grouptypename, 1)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
                 call WinModelChangeUberwinIds(grouptypename, winids)

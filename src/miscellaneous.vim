@@ -7,8 +7,11 @@ set bs=indent,eol,start
 set wildmode=longest,list,full
 set wildmenu
 
-" Keep 50 lines of ex command history
+" Keep 100 lines of ex command history
 set history=50
+
+" Allow closing follds that are just one line long
+set foldminlines=0
 
 " The default updatetime of 4000 is too slow for me. CursorHold callbacks need
 " to happen quickly

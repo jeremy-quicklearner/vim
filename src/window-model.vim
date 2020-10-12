@@ -821,6 +821,17 @@ function! WinModelUberwinGroupTypeNamesByMinPriority(minpriority)
     call EchomLog('window-model', 'debug', 'Uberwin groups: ', grouptypenames)
     return grouptypenames
 endfunction
+" Return a list of names of all uberwin group types sorted in ascending order
+" of priority
+function! WinModelAllUberwinGroupTypeNamesByPriority()
+    call EchomLog('window-model', 'debug', 'WinModelAllUberwinGroupTypeNamesByPriority')
+    let grouptypenames = keys(g:uberwingrouptype)
+
+    call EchomLog('window-model', 'verbose', 'Sorting uberwin group types')
+    call sort(grouptypenames, function('s:CompareUberwinGroupTypeNamesByPriority'))
+    call EchomLog('window-model', 'debug', 'Uberwin groups: ', grouptypenames)
+    return grouptypenames
+endfunction
 
 " Return a list of names of group types of all non-hidden subwin groups with
 " priority higher than a given, for a given supwin, sorted in ascending order
@@ -847,6 +858,17 @@ function! WinModelSubwinGroupTypeNamesByMinPriority(supwinid, minpriority)
     endfor
 
     call EchomLog('window-model', 'verbose', 'Sorting subwin groups')
+    call sort(grouptypenames, function('s:CompareSubwinGroupTypeNamesByPriority'))
+    call EchomLog('window-model', 'debug', 'Subwin groups: ', grouptypenames)
+    return grouptypenames
+endfunction
+" Return a list of names of all subwin group types sorted in ascending order
+" of priority
+function! WinModelAllSubwinGroupTypeNamesByPriority()
+    call EchomLog('window-model', 'debug', 'WinModelAllSubwinGroupTypeNamesByPriority')
+    let grouptypenames = keys(g:subwingrouptype)
+
+    call EchomLog('window-model', 'verbose', 'Sorting subwin group types')
     call sort(grouptypenames, function('s:CompareSubwinGroupTypeNamesByPriority'))
     call EchomLog('window-model', 'debug', 'Subwin groups: ', grouptypenames)
     return grouptypenames

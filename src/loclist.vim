@@ -1,8 +1,8 @@
 " Location list and location window manipulation
-call SetLogLevel('loclist-subwin', 'info', 'warning')
+call SetLogLevel('loclist-subwin', 'warning', 'warning')
 
 " ToIdentifyLoclist relies on getwininfo, and also on getloclist with the
-" winid key. So Vim-native winids are required.. I see no other way to implement
+" winid key. So Vim-native winids are required. I see no other way to implement
 " ToIdentifyLoclist.
 if g:legacywinid
     call EchomLog('loclist-subwin', 'error', 'The loclist subwin group is not supported for Vim versions older than 8.0')
@@ -74,13 +74,15 @@ function! ToCloseLoclist()
 endfunction
 
 " Callback that returns {'typename':'loclist','supwin':<id>} if the supplied
-" winid is for a location window
+" winid is for a location window that is not the location window of a help
+" window
 function! ToIdentifyLoclist(winid)
     call EchomLog('loclist-subwin', 'debug', 'ToIdentifyLoclist ', a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != win_id2win(a:winid) &&
-           \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
+           \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid &&
+           \   getwinvar(winnr, '&ft', '') !=? 'help'
                 return {'typename':'loclist','supwin':win_getid(winnr)}
             endif
         endfor
@@ -146,7 +148,7 @@ function! UpdateLoclistSubwins()
 
         if !locwinexists && loclistexists
             call EchomLog('loclist-subwin', 'info', 'Add loclist subwin to supwin ', supwinid, ' because it has a location list')
-            call WinAddSubwinGroup(supwinid, 'loclist', 0)
+            call WinAddSubwinGroup(supwinid, 'loclist', 0, 0)
             continue
         endif
     endfor
@@ -163,7 +165,7 @@ endif
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateLoclistSubwins.
-call WinMappingMapUserOp('<leader>ls', 'call WinShowSubwinGroup(win_getid(), "loclist")')
+call WinMappingMapUserOp('<leader>ls', 'call WinShowSubwinGroup(win_getid(), "loclist", 1)')
 call WinMappingMapUserOp('<leader>lh', 'call WinHideSubwinGroup(win_getid(), "loclist")')
-call WinMappingMapUserOp('<leader>ll', 'call WinGotoSubwin(win_getid(), "loclist", "loclist")')
+call WinMappingMapUserOp('<leader>ll', 'call WinGotoSubwin(win_getid(), "loclist", "loclist", 1)')
 call WinMappingMapUserOp('<leader>lc', 'lexpr [] \| call UpdateLoclistSubwins()')

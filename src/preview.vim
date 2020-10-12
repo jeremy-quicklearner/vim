@@ -5,7 +5,7 @@
 " with it only via the resolver and ToOpenPreview only ever gets called when the
 " resolver closes and reopens the window. So the implementation of
 " ToOpenPreview assumes that ToClosePreview has recently been called.
-call SetLogLevel('preview-uberwin', 'info', 'warning')
+call SetLogLevel('preview-uberwin', 'warning', 'warning')
 
 augroup PreviewUberwin
     autocmd!
@@ -134,7 +134,7 @@ call WinAddUberwinGroupType('preview', ['preview'],
                            \function('ToIdentifyPreview'))
 
 " Mappings
-call WinMappingMapUserOp('<leader>ps', 'call WinShowUberwinGroup("preview")')
+call WinMappingMapUserOp('<leader>ps', 'call WinShowUberwinGroup("preview", 1)')
 call WinMappingMapUserOp('<leader>ph', 'call WinHideUberwinGroup("preview")')
 call WinMappingMapUserOp('<leader>pc', 'call WinHideUberwinGroup("preview")')
-call WinMappingMapUserOp('<leader>pp', 'call WinGotoUberwin("preview", "preview")')
+call WinMappingMapUserOp('<leader>pp', 'call WinGotoUberwin("preview", "preview", 1)')

@@ -55,14 +55,14 @@ WinResizeHorizontal
 WinDecreaseWidth
 WinIncreaseWidth
 WinResizeVertical
----- Applies to visual selections
-   -
----- Applies to visual selections
----- Applies to visual selections
----- Need to check if it applies to visual selections.
-   -
----- Need to check if it applies to visual selections.
----- Easy breezy. Rely on resolver with no weirdness
-   -
----- Need to check if it applies to visual selections
----- Need more information
+WinSplitTag
+WinSplitTag
+WinSplitTagSelect
+WinSplitTagJump
+WinSplitFilename
+WinSplitFilename
+WinSplitFilenameLine
+WinPreviewClose
+WinPreviewClose
+WinPreviewTag
+WinPreviewTagJump

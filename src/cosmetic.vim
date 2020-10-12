@@ -1,43 +1,90 @@
 " Cosmetic adjustments
 
-" The active window is the only one with relative numbers and a CursorLine
-function! IndicateActiveWindow(cmdwin)
-    let winids = WinStateGetWinidsByCurrentTab()
-    for winid in winids
-        call setwinvar(Win_id2win(winid), '&relativenumber', 0)
-        if a:cmdwin
-            call setwinvar(Win_id2win(winid), '&cursorline', 1)
-            continue
-        endif
+" This mess controls indication of the active window and cursor line by only setting 
+" relativenumber in the active window, and highlighting the cursor line in all
+" windows. This is simple to do in Vim 8.2 and later, but more complicated
+" in earlier versions because the cursorline option always highlights the text
+" line. This messes up the highlighting for quickfix and loclist windows'
+" selected items. This first version of the function, which runs in Vim <8.2,
+" will enable cursorline everywhere except for loclist and quickfix windows
+" where the cursor is on top of the list item that was last selected.
+" Unfortunately this causes the line number not to be highlighted for such
+" windows. Such is life in pre-8.2.
+" Another unfortunate shortcoming in pre-8.2 is that highlighting the cursor
+" line in inactive windows causes signs' highlighting to be blocked for those
+" lines. I don't know any solution for this
+if !exists('&cursorlineopt')
+    function! IndicateActiveWindow(cmdwin)
+        let winids = WinStateGetWinidsByCurrentTab()
+        for winid in winids
+            " Every window gets relativenumber off. This will be undone later
+            " for the active window
+            call setwinvar(Win_id2win(winid), '&relativenumber', 0)
 
-        let idxline = -1
-        if !g:legacywinid
-            if !empty(ToIdentifyLoclist(winid))
-                let idxline = get(getloclist(Win_id2win(winid),{'idx':0}),'idx',-1)
-            elseif !empty(ToIdentifyQuickfix(winid))
-                let idxline = get(getqflist({'idx':0}),'idx',-1)
+            " If there is a command window, then it must be the current one.
+            " Treat it as such and don't try to check if it's a location or
+            " quickfix window - those checks would break. And also return
+            " false since this is a command window.
+            if a:cmdwin
+                call setwinvar(Win_id2win(winid), '&cursorline', 1)
+                continue
             endif
-        endif
-
-        if idxline >= -1
-            let curwinid = Win_getid_cur()
-            call WinStateMoveCursorToWinidSilently(winid)
-            let locline = line('.')
-            call WinStateMoveCursorToWinidSilently(curwinid)
-            if idxline ==# locline
-                call setwinvar(Win_id2win(winid), '&cursorline', 0)
+    
+            " If this is a location or quickfix window, find out which line is
+            " selected
+            let idxline = -1
+            if !g:legacywinid
+                if !empty(ToIdentifyLoclist(winid))
+                    let idxline = get(getloclist(Win_id2win(winid),{'idx':0}),'idx',-1)
+                elseif !empty(ToIdentifyQuickfix(winid))
+                    let idxline = get(getqflist({'idx':0}),'idx',-1)
+                endif
+            endif
+    
+            if idxline > -1
+                let curwinid = Win_getid_cur()
+                call WinStateMoveCursorToWinidSilently(winid)
+                let locline = line('.')
+                call WinStateMoveCursorToWinidSilently(curwinid)
+                " If this is a location or quickfix window and the cursor is
+                " on top of the selected line, do not highlight
+                if idxline ==# locline
+                    call setwinvar(Win_id2win(winid), '&cursorline', 0)
+                " Highlight if the cursor is not on top of the selected line
+                else
+                    call setwinvar(Win_id2win(winid), '&cursorline', 1)
+                endif
+            " Highlight if this is not a location or quickfix window
             else
                 call setwinvar(Win_id2win(winid), '&cursorline', 1)
             endif
-        else
+        endfor
+    
+        " The current window gets relativenumber on and cursorline off. In Vim
+        " <8.2, relativenumber causes the line number to get highlighted
+        let winid = WinStateGetCursorWinId()
+        call setwinvar(Win_id2win(winid), '&relativenumber', 1)
+        call setwinvar(Win_id2win(winid), '&cursorline', 0)
+    endfunction
+else
+    " This is the code for Vim >=8.2
+    function! IndicateActiveWindow(cmdwin)
+        let winids = WinStateGetWinidsByCurrentTab()
+        " Every window gets relativenumber off and cursorline on
+        for winid in winids
+            call setwinvar(Win_id2win(winid), '&relativenumber', 0)
             call setwinvar(Win_id2win(winid), '&cursorline', 1)
-        endif
-    endfor
+        endfor
+    
+        " Except the current window, which gets relativenumber on
+        let winid = WinStateGetCursorWinId()
+        call setwinvar(Win_id2win(winid), '&relativenumber', 1)
+    endfunction
 
-    let winid = WinStateGetCursorWinId()
-    call setwinvar(Win_id2win(winid), '&relativenumber', 1)
-    call setwinvar(Win_id2win(winid), '&cursorline', 0)
-endfunction
+    " cursorline only highlights the line number. This way, it won't conflict
+    " with selected quickfix/location items or even signs.
+    set cursorlineopt=number
+endif
 function! IndicateActiveWindowNoCmdWin()
     call IndicateActiveWindow(0)
 endfunction
@@ -46,6 +93,9 @@ if !exists('g:j_activewin_chc')
     call RegisterCursorHoldCallback(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
     call WinAddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
 endif
+" Do one call here on startup so that we don't have to wait until the first
+" CursorHold event
+call IndicateActiveWindow(0)
 
 " For code, colour columns
 augroup ColumnLimit

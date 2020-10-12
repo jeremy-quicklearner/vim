@@ -287,11 +287,17 @@ function! RunCursorHoldCallbacks()
             continue
         endif
         call EchomLog('cursorhold-callback', 'info', 'Running CursorHold Callback ', string(callback.callback))
-        if callback.cascade
-            call call(callback.callback, callback.data)
-        else
-            noautocmd call call(callback.callback, callback.data)
-        endif
+        try
+            if callback.cascade
+                call call(callback.callback, callback.data)
+            else
+                noautocmd call call(callback.callback, callback.data)
+            endif
+        catch /.*/
+            call EchomLog('cursorhold-callback', 'warning', 'Callback ', callback.callback, ' failed:')
+            call EchomLog('cursorhold-callback', 'debug', v:throwpoint)
+            call EchomLog('cursorhold-callback', 'warning', v:exception)
+        endtry
     endfor
 
     let newCallbacks = []
