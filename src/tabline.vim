@@ -74,7 +74,7 @@ function! GetTabString(tabnum, tabcols)
     let winnr = tabpagewinnr(a:tabnum)
 
     " Name of file in active window of the tab
-    let wininfo = getwininfo(Win_getid_tab(winnr, a:tabnum))
+    let wininfo = getwininfo(Wince_getid_tab(winnr, a:tabnum))
 
     " Quickfix and location lists are special cases
     if len(wininfo) && wininfo[0]['loclist']
@@ -281,7 +281,7 @@ function! GetTabLine()
     let vimVersionString = GetVimVersionString()
     let argcString = GetArgcString()
     let regListString = GetRegListString()
-    let uberwinFlagsString = WinUberwinFlagsStr()
+    let uberwinFlagsString = WinceUberwinFlagsStr()
 
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()

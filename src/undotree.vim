@@ -1,19 +1,43 @@
 " Undotree plugin manipulation
-call SetLogLevel('undotree-subwin', 'warning', 'warning')
+call SetLogLevel('wince-undotree-subwin', 'warning', 'warning')
 
-if !exists('g:undotree_subwin_statusline')
-    let g:undotree_subwin_statusline = '%!UndotreeStatusLine()'
+if !exists('g:wince_undotree_width')
+    let g:wince_undotree_width = 25
 endif
 
-if !exists('g:undodiff_subwin_statusline')
-    let g:undodiff_subwin_statusline = '%!UndodiffStatusLine()'
+if !exists('g:wince_undotree_right')
+    let g:wince_undotree_right = 0
+endif
+
+if !exists('g:wince_undodiff_top')
+    let g:wince_undodiff_top = 0
+endif
+
+if !exists('g:wince_undodiff_height')
+    let g:wince_undodiff_height = 10
+endif
+
+if !exists('g:wince_undotree_subwin_statusline')
+    let g:wince_undotree_subwin_statusline = '%!WinceUndotreeStatusLine()'
+endif
+
+if !exists('g:wince_undodiff_subwin_statusline')
+    let g:wince_undodiff_subwin_statusline = '%!WinceUndodiffStatusLine()'
 endif
 
 
 " Cause UndotreeShow to open the undotree windows relative to the current
 " window, instead of relative to the whole tab
-let g:undotree_CustomUndotreeCmd = 'vertical 25 new'
-let g:undotree_CustomDiffpanelCmd = 'belowright 10 new'
+if g:wince_undotree_right
+    let g:undotree_CustomUndotreeCmd = 'belowright vertical ' . g:wince_undotree_width . ' new'
+else
+    let g:undotree_CustomUndotreeCmd = 'aboveleft vertical ' . g:wince_undotree_width . ' new'
+endif
+if g:wince_undodiff_top
+    let g:undotree_CustomDiffpanelCmd = 'aboveleft ' . g:wince_undodiff_height . ' new'
+else
+    let g:undotree_CustomDiffpanelCmd = 'belowright ' . g:wince_undodiff_height . ' new'
+endif
 
 " Use short timestamp format
 let g:undotree_ShortIndicators = 1
@@ -32,41 +56,33 @@ let g:undotree_HighlightChangedText = 0
 let g:undotree_HighlightChangedWithSign = 0
 
 " Callback that opens the undotree windows for the current window
-function! ToOpenUndotree()
-    call EchomLog('undotree-subwin', 'info', 'ToOpenUndotree')
+function! WinceToOpenUndotree()
+    call EchomLog('wince-undotree-subwin', 'info', 'WinceToOpenUndotree')
     if (exists('t:undotree') && t:undotree.IsVisible())
         throw 'Undotree window is already open'
     endif
 
     " Before opening the tree window, make sure there's enough room.
-    " We need at least 27 columns - 25 for the tree content, one for the
-    " vertical divider, and one for the supwin.
+    " We need at least <undotree_width + 2> columns - <undotree_width> for the tree
+    " content, one for the vertical divider, and one for the supwin.
     " We also need enough room to then open the diff window. We need
-    " at least 12 rows - one for the diff content, one for the tree
-    " statusline, and at least one for the tree
-    if winwidth(0) <# 27 || winheight(0) <# 12
+    " at least <undodiff_height + 2> rows - <undodiff_height> for the diff content,
+    " one for the tree statusline, and at least one for the tree content
+    if winwidth(0) <# g:wince_undotree_width + 2 || winheight(0) <# g:wince_undodiff_height + 2
         throw 'Not enough room'
     endif
 
-    let jtarget = Win_getid_cur()
-
-    
-    " Open the undotree window on the left side
-    let oldsr = &splitright
-    let &splitright = 0
+    let jtarget = Wince_getid_cur()
 
     UndotreeShow
 
-    " Restore splitright
-    let &splitright = oldsr
-    
     " UndotreeShow does not directly cause the undotree to be drawn. Instead,
     " it registers an autocmd that draws the tree when one of a set of events
     " fires. The direct call to undotree#UndotreeUpdate() here makes sure that
-    " the undotree is drawn before ToOpenUndotree returns, which is required
+    " the undotree is drawn before WinceToOpenUndotree returns, which is required
     " for signs and folds to be properly restored when the undotree window is
     " closed and reopened.
-    noautocmd call Win_gotoid(jtarget)
+    noautocmd call Wince_gotoid(jtarget)
     call undotree#UndotreeUpdate()
 
     let treeid = -1
@@ -74,7 +90,7 @@ function! ToOpenUndotree()
 
     " The Undotree plugin has a troublesome feature - you can switch the
     " diffpanel window on and off. I deal with this by defining the Undotree subwin
-    " group as having either one subwin or two subwins, so ToOpenUndotree may
+    " group as having either one subwin or two subwins, so WinceToOpenUndotree may
     " return either one winid or two winids
     let diffon = (exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0)
 
@@ -84,22 +100,22 @@ function! ToOpenUndotree()
         endif
 
         if t:undotree.bufname ==# bufname(winbufnr(winnr))
-            let treeid = Win_getid(winnr)
+            let treeid = Wince_getid(winnr)
             continue
         endif
         
         if t:diffpanel.bufname ==# bufname(winbufnr(winnr))
-            let diffid = Win_getid(winnr)
+            let diffid = Wince_getid(winnr)
             continue
         endif
     endfor
 
-    call setwinvar(Win_id2win(treeid), '&number', 1)
-    call setwinvar(Win_id2win(treeid), 'j_undotree_target', jtarget)
+    call setwinvar(Wince_id2win(treeid), '&number', 1)
+    call setwinvar(Wince_id2win(treeid), 'j_undotree_target', jtarget)
 
     if !diffon
-        call setwinvar(Win_id2win(diffid), '&number', 1)
-        call setwinvar(Win_id2win(diffid), 'j_undotree_target', jtarget)
+        call setwinvar(Wince_id2win(diffid), '&number', 1)
+        call setwinvar(Wince_id2win(diffid), 'j_undotree_target', jtarget)
     endif
 
     if !diffon
@@ -110,19 +126,24 @@ function! ToOpenUndotree()
 endfunction
 
 " Callback that closes the undotree windows for the current window
-function! ToCloseUndotree()
-    call EchomLog('undotree-subwin', 'info', 'ToCloseUndotree')
+function! WinceToCloseUndotree()
+    call EchomLog('wince-undotree-subwin', 'info', 'WinceToCloseUndotree')
     if (!exists('t:undotree') || !t:undotree.IsVisible())
         throw 'Undotree window is not open'
     endif
 
-    " When closing the undotree, we want the supwin to its right to fill the
-    " space left. If there is also a supwin to the left, Vim may choose to fill
-    " the space with that one instead of the one to the right. Setting splitright 
-    " to 0 causes Vim to always pick the supwin to the right via some undocumented
-    " behaviour.
+    " When closing the undotree, we want its supwin to fill the
+    " space left. If there is also a supwin on the other side of the undotree
+    " window, Vim may choose to fill the space with that one instead. Setting
+    " splitright causes Vim to always pick the supwin to the left via some undocumented
+    " behaviour. Conversely, resetting splitbelow causes Vim to always pick
+    " the supwin to the right.
     let oldsr = &splitright
-    let &splitright = 0
+    if g:wince_undotree_right
+        let &splitright = 1
+    else
+        let &splitright = 0
+    endif
 
     UndotreeHide
 
@@ -133,8 +154,8 @@ endfunction
 " Callback that returns {'typename':'tree','supwin':<id>} or
 " {'typename':'diff','supwin':<id>} if the supplied winid is for an undotree
 " window
-function! ToIdentifyUndotree(winid)
-    call EchomLog('undotree-subwin', 'debug', 'ToIdentifyUndotree ', a:winid)
+function! WinceToIdentifyUndotree(winid)
+    call EchomLog('wince-undotree-subwin', 'debug', 'WinceToIdentifyUndotree ', a:winid)
     if (!exists('t:undotree') || !t:undotree.IsVisible())
         return {}
     endif
@@ -147,15 +168,15 @@ function! ToIdentifyUndotree(winid)
         return {}
     endif
 
-    let jtarget = getwinvar(Win_id2win(a:winid), 'j_undotree_target', 0)
+    let jtarget = getwinvar(Wince_id2win(a:winid), 'j_undotree_target', 0)
     if jtarget
         let supwinid = jtarget
     else
         let supwinid = -1
         for winnr in range(1, winnr('$'))
             if getwinvar(winnr, 'undotree_id') == t:undotree.targetid
-                let supwinid = Win_getid(winnr)
-                call setwinvar(Win_id2win(a:winid), 'j_undotree_target', supwinid)
+                let supwinid = Wince_getid(winnr)
+                call setwinvar(Wince_id2win(a:winid), 'j_undotree_target', supwinid)
                 break
             endif
         endfor
@@ -164,8 +185,8 @@ function! ToIdentifyUndotree(winid)
 endfunction
 
 " Returns the statusline of the undotree window
-function! UndotreeStatusLine()
-    call EchomLog('undotree-subwin', 'debug', 'UndotreeStatusLine')
+function! WinceUndotreeStatusLine()
+    call EchomLog('wince-undotree-subwin', 'debug', 'UndotreeStatusLine')
     let statusline = ''
 
     " 'Undotree' string
@@ -184,8 +205,8 @@ function! UndotreeStatusLine()
 endfunction
 
 " Returns the statusline of the undodiff window
-function! UndodiffStatusLine()
-    call EchomLog('undotree-subwin', 'debug', 'UndodiffStatusLine')
+function! WinceUndodiffStatusLine()
+    call EchomLog('wince-undotree-subwin', 'debug', 'UndodiffStatusLine')
     let statusline = ''
 
     " 'Undodiff' string
@@ -205,34 +226,34 @@ endfunction
 
 " The undotree and diffpanel are a subwin group. If g:undotree_DiffAutoOpen is
 " falsey, don't expect the diffpanel
-if exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0
-    call WinAddSubwinGroupType('undotree', ['tree', 'diff'],
+if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
+    call WinceAddSubwinGroupType('undotree', ['tree', 'diff'],
                               \[
-                              \    g:undotree_subwin_statusline,
-                              \    g:undodiff_subwin_statusline
+                              \    g:wince_undotree_subwin_statusline,
+                              \    g:wince_undodiff_subwin_statusline
                               \],
                               \'U', 'u', 5,
-                              \40, [1, 1],
-                              \[25, 25], [-1, 10],
-                              \function('ToOpenUndotree'),
-                              \function('ToCloseUndotree'),
-                              \function('ToIdentifyUndotree'))
+                              \40, [1, 1], [0, 0], g:wince_undotree_right,
+                              \[g:wince_undotree_width, g:wince_undotree_width], [-1, g:wince_undodiff_height],
+                              \function('WinceToOpenUndotree'),
+                              \function('WinceToCloseUndotree'),
+                              \function('WinceToIdentifyUndotree'))
 else
-    call WinAddSubwinGroupType('undotree', ['tree'],
-                              \[g:undotree_subwin_statusline],
+    call WinceAddSubwinGroupType('undotree', ['tree'],
+                              \[g:wince_undotree_subwin_statusline],
                               \'U', 'u', 5,
-                              \40, [1],
-                              \[25], [-1],
-                              \function('ToOpenUndotree'),
-                              \function('ToCloseUndotree'),
-                              \function('ToIdentifyUndotree'))
+                              \40, [1], [0], g:wince_undotree_right,
+                              \[g:wince_undotree_width], [-1],
+                              \function('WinceToOpenUndotree'),
+                              \function('WinceToCloseUndotree'),
+                              \function('WinceToIdentifyUndotree'))
 endif
 
 " For each supwin, make sure the undotree subwin group exists if and only if
 " that supwin has undo history
 function! UpdateUndotreeSubwins()
-    call EchomLog('undotree-subwin', 'debug', 'UpdateUndotreeSubwins')
-    if !WinModelExists()
+    call EchomLog('wince-undotree-subwin', 'debug', 'UpdateUndotreeSubwins')
+    if !WinceModelExists()
         return
     endif
 
@@ -244,35 +265,35 @@ function! UpdateUndotreeSubwins()
     let &l:scrollbind = 0
     let &l:cursorbind = 0
 
-    let info = WinCommonGetCursorPosition()
+    let info = WinceCommonGetCursorPosition()
     try
-        for supwinid in WinModelSupwinIds()
-            let undotreewinsexist = WinModelSubwinGroupExists(supwinid, 'undotree')
+        for supwinid in WinceModelSupwinIds()
+            let undotreewinsexist = WinceModelSubwinGroupExists(supwinid, 'undotree')
 
             " Special case: Terminal windows never have undotrees
-            if undotreewinsexist && WinStateWinIsTerminal(supwinid)
-                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from terminal supwin ', supwinid)
-                call WinRemoveSubwinGroup(supwinid, 'undotree')
+            if undotreewinsexist && WinceStateWinIsTerminal(supwinid)
+                call EchomLog('wince-undotree-subwin', 'info', 'Removing undotree subwin group from terminal supwin ', supwinid)
+                call WinceRemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
-            noautocmd silent call WinStateMoveCursorToWinid(supwinid)
+            noautocmd silent call WinceStateMoveCursorToWinid(supwinid)
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
-                call EchomLog('undotree-subwin', 'info', 'Removing undotree subwin group from supwin ', supwinid, ' because its buffer has no undotree')
-                call WinRemoveSubwinGroup(supwinid, 'undotree')
+                call EchomLog('wince-undotree-subwin', 'info', 'Removing undotree subwin group from supwin ', supwinid, ' because its buffer has no undotree')
+                call WinceRemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
             if !undotreewinsexist && undotreeexists
-                call EchomLog('undotree-subwin', 'info', 'Adding undotree subwin group to supwin ', supwinid, ' because its buffer has an undotree')
-                call WinAddSubwinGroup(supwinid, 'undotree', 1, 0)
+                call EchomLog('wince-undotree-subwin', 'info', 'Adding undotree subwin group to supwin ', supwinid, ' because its buffer has an undotree')
+                call WinceAddSubwinGroup(supwinid, 'undotree', 1, 0)
                 continue
             endif
         endfor
     finally
-        call WinCommonRestoreCursorPosition(info)
+        call WinceCommonRestoreCursorPosition(info)
         let &l:scrollbind = opts.s
         let &l:cursorbind = opts.c
     endtry
@@ -280,18 +301,18 @@ endfunction
 
 " Update the undotree subwins after each resolver run, when the state and
 " model are certain to be consistent
-if !exists('g:j_undotree_chc')
-    let g:j_undotree_chc = 1
+if !exists('g:wince_undotree_chc')
+    let g:wince_undotree_chc = 1
     call RegisterCursorHoldCallback(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 0, 1)
-    call WinAddPostUserOperationCallback(function('UpdateUndotreeSubwins'))
+    call WinceAddPostUserOperationCallback(function('UpdateUndotreeSubwins'))
 endif
 
 function! CloseDanglingUndotreeWindows()
-    for winid in WinStateGetWinidsByCurrentTab()
-        let statusline = getwinvar(Win_id2win(winid), '&statusline', '')
-        if statusline ==# g:undotree_subwin_statusline || statusline ==# g:undodiff_subwin_statusline
-            call EchomLog('undotree-subwin', 'info', 'Closing dangling window ', winid)
-            call WinStateCloseWindow(winid)
+    for winid in WinceStateGetWinidsByCurrentTab()
+        let statusline = getwinvar(Wince_id2win(winid), '&statusline', '')
+        if statusline ==# g:wince_undotree_subwin_statusline || statusline ==# g:wince_undodiff_subwin_statusline
+            call EchomLog('wince-undotree-subwin', 'info', 'Closing dangling window ', winid)
+            call WinceStateCloseWindow(winid, g:wince_undotree_right)
         endif
     endfor
 endfunction
@@ -313,9 +334,9 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateUndotreeSubwins.
-call WinMappingMapUserOp('<leader>us', 'call WinShowSubwinGroup(Win_getid_cur(), "undotree", 1)')
-call WinMappingMapUserOp('<leader>uh', 'call WinHideSubwinGroup(Win_getid_cur(), "undotree")')
-call WinMappingMapUserOp('<leader>uu', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "tree", 1)')
-if exists('g:undotree_DiffAutoOpen') && g:undotree_DiffAutoOpen == 0
-    call WinMappingMapUserOp('<leader>ud', 'call WinGotoSubwin(Win_getid_cur(), "undotree", "diff"), 1')
+call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(Wince_getid_cur(), "undotree", 1)')
+call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(Wince_getid_cur(), "undotree")')
+call WinceMappingMapUserOp('<leader>uu', 'call WinceGotoSubwin(Wince_getid_cur(), "undotree", "tree", 1)')
+if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
+    call WinceMappingMapUserOp('<leader>ud', 'call WinceGotoSubwin(Wince_getid_cur(), "undotree", "diff", 1)')
 endif

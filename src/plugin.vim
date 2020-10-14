@@ -67,3 +67,16 @@ vnoremap <silent> <leader>sw :PlaceUtilSigns White<cr>
 nnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 " Remove signs from highlighted lines
 vnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
+
+" Wince stuff
+let g:wince_enable_help = 1
+let g:wince_enable_preview = 1
+let g:wince_enable_quickfix = 1
+let g:wince_enable_option = 1
+let g:wince_enable_loclist = 1
+let g:wince_disable_mappings = 0
+source <sfile>:p:h/wince.vim
+
+" Wince-undotree stuff
+source <sfile>:p:h/undotree.vim
+

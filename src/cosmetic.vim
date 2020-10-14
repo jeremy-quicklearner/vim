@@ -15,70 +15,70 @@
 " lines. I don't know any solution for this
 if !exists('&cursorlineopt')
     function! IndicateActiveWindow(cmdwin)
-        let winids = WinStateGetWinidsByCurrentTab()
+        let winids = WinceStateGetWinidsByCurrentTab()
         for winid in winids
             " Every window gets relativenumber off. This will be undone later
             " for the active window
-            call setwinvar(Win_id2win(winid), '&relativenumber', 0)
+            call setwinvar(Wince_id2win(winid), '&relativenumber', 0)
 
             " If there is a command window, then it must be the current one.
             " Treat it as such and don't try to check if it's a location or
             " quickfix window - those checks would break. And also return
             " false since this is a command window.
             if a:cmdwin
-                call setwinvar(Win_id2win(winid), '&cursorline', 1)
+                call setwinvar(Wince_id2win(winid), '&cursorline', 1)
                 continue
             endif
     
             " If this is a location or quickfix window, find out which line is
             " selected
             let idxline = -1
-            if !g:legacywinid
-                if !empty(ToIdentifyLoclist(winid))
-                    let idxline = get(getloclist(Win_id2win(winid),{'idx':0}),'idx',-1)
-                elseif !empty(ToIdentifyQuickfix(winid))
+            if !g:wince_legacywinid
+                if !empty(WinceToIdentifyLoclist(winid))
+                    let idxline = get(getloclist(Wince_id2win(winid),{'idx':0}),'idx',-1)
+                elseif !empty(WinceToIdentifyQuickfix(winid))
                     let idxline = get(getqflist({'idx':0}),'idx',-1)
                 endif
             endif
     
             if idxline > -1
-                let curwinid = Win_getid_cur()
-                call WinStateMoveCursorToWinidSilently(winid)
+                let curwinid = Wince_getid_cur()
+                call WinceStateMoveCursorToWinidSilently(winid)
                 let locline = line('.')
-                call WinStateMoveCursorToWinidSilently(curwinid)
+                call WinceStateMoveCursorToWinidSilently(curwinid)
                 " If this is a location or quickfix window and the cursor is
                 " on top of the selected line, do not highlight
                 if idxline ==# locline
-                    call setwinvar(Win_id2win(winid), '&cursorline', 0)
+                    call setwinvar(Wince_id2win(winid), '&cursorline', 0)
                 " Highlight if the cursor is not on top of the selected line
                 else
-                    call setwinvar(Win_id2win(winid), '&cursorline', 1)
+                    call setwinvar(Wince_id2win(winid), '&cursorline', 1)
                 endif
             " Highlight if this is not a location or quickfix window
             else
-                call setwinvar(Win_id2win(winid), '&cursorline', 1)
+                call setwinvar(Wince_id2win(winid), '&cursorline', 1)
             endif
         endfor
     
         " The current window gets relativenumber on and cursorline off. In Vim
         " <8.2, relativenumber causes the line number to get highlighted
-        let winid = WinStateGetCursorWinId()
-        call setwinvar(Win_id2win(winid), '&relativenumber', 1)
-        call setwinvar(Win_id2win(winid), '&cursorline', 0)
+        let winid = WinceStateGetCursorWinId()
+        call setwinvar(Wince_id2win(winid), '&relativenumber', 1)
+        call setwinvar(Wince_id2win(winid), '&cursorline', 0)
     endfunction
 else
     " This is the code for Vim >=8.2
     function! IndicateActiveWindow(cmdwin)
-        let winids = WinStateGetWinidsByCurrentTab()
+        let winids = WinceStateGetWinidsByCurrentTab()
         " Every window gets relativenumber off and cursorline on
         for winid in winids
-            call setwinvar(Win_id2win(winid), '&relativenumber', 0)
-            call setwinvar(Win_id2win(winid), '&cursorline', 1)
+            call setwinvar(Wince_id2win(winid), '&relativenumber', 0)
+            call setwinvar(Wince_id2win(winid), '&cursorline', 1)
         endfor
     
         " Except the current window, which gets relativenumber on
-        let winid = WinStateGetCursorWinId()
-        call setwinvar(Win_id2win(winid), '&relativenumber', 1)
+        let winid = WinceStateGetCursorWinId()
+        call setwinvar(Wince_id2win(winid), '&relativenumber', 1)
     endfunction
 
     " cursorline only highlights the line number. This way, it won't conflict
@@ -88,10 +88,10 @@ endif
 function! IndicateActiveWindowNoCmdWin()
     call IndicateActiveWindow(0)
 endfunction
-if !exists('g:j_activewin_chc')
-    let g:j_activewin_chc = 1
+if !exists('g:jeremyactivewin_chc')
+    let g:jeremyactivewin_chc = 1
     call RegisterCursorHoldCallback(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
-    call WinAddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
+    call WinceAddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
 endif
 " Do one call here on startup so that we don't have to wait until the first
 " CursorHold event

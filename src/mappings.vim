@@ -15,22 +15,25 @@ noremap <c-w><up> <nop>
 noremap <c-w><right> <nop>
 
 " Use Ctrl-h|j|k|l for window movement from normal mode
-nnoremap <silent> <c-h> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoLeft'<cr>
-nnoremap <silent> <c-j> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoDown'<cr>
-nnoremap <silent> <c-k> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoUp'<cr>
-nnoremap <silent> <c-l> :<c-u>execute WinMappingProcessCounts(1) . 'WinGoRight'<cr>
+nnoremap <silent> <c-h> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoLeft'<cr>
+nnoremap <silent> <c-j> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoDown'<cr>
+nnoremap <silent> <c-k> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoUp'<cr>
+nnoremap <silent> <c-l> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoRight'<cr>
 
 " Use Ctrl-W z to set dimensions both vertically and horizontally
 function! WinZoom(count)
-    call WinResizeCurrentSupwin(a:count, a:count)
+    call WinceResizeCurrentSupwin(a:count, a:count)
 endfunction
-nmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
-vmap <silent> <c-w>z :<c-u>call WinZoom(WinMappingProcessCounts(1))<cr>
+nmap <silent> <c-w>z :<c-u>call WinZoom(WinceMappingProcessCounts(1))<cr>
+vmap <silent> <c-w>z :<c-u>call WinZoom(WinceMappingProcessCounts(1))<cr>
 
 " The window engine matches Vim's default behaviour by treating z<cr> differently
 " from <c-w>_, but I'd rather z<cr> act the same way as <c-w>_
-nnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
-vnoremap <silent> z<cr> :<c-u>execute WinMappingProcessCounts(1) . 'WinResizeHorizontal'<cr>
+nnoremap <silent> z<cr> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+vnoremap <silent> z<cr> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+
+" Peek at entries in quickfix and location lists
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<space>"
 
 " Faster scrolling
 nnoremap <c-e> 2<c-e>
@@ -80,7 +83,4 @@ nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
 nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>
-
-" Switch line numbers on and off
-nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
 

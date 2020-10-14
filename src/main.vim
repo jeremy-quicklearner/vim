@@ -9,21 +9,8 @@ source <sfile>:p:h/paths.vim
 " nothing besides changing settings)
 source <sfile>:p:h/util.vim
 
-" Subwindow/Uberwindow infrastructure should be available to plugins
-source <sfile>:p:h/window.vim
-
 " Anything I do should take precedence over anything a plugin does
 source <sfile>:p:h/plugin.vim
-
-" Specific categories of functionality get their own files
-" Files that define Uberwindow group types are together
-source <sfile>:p:h/help.vim
-source <sfile>:p:h/preview.vim
-source <sfile>:p:h/quickfix.vim
-source <sfile>:p:h/option.vim
-" Files that define Subwindow group types are together
-source <sfile>:p:h/loclist.vim
-source <sfile>:p:h/undotree.vim
 
 " Statusline and Tabline come after the Uberwindow/Subwindow groups because
 " all groups need to be registered before the default statusline (with subwin

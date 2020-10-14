@@ -1,16 +1,32 @@
-" Quickfix list and quickfix window manipulation
-call SetLogLevel('quickfix-uberwin', 'warning', 'warning')
-
-" ToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
-" are required.. I see no other way to implement ToIdentifyQuickfix.
-if g:legacywinid
-    call EchomLog('quickfix-uberwin', 'error', 'The quickfix uberwin group is not supported for Vim versions older than 8.0')
+" Wince Reference Definiton for Quickfix uberwin
+if !exists('g:wince_enable_quickfix') || !g:wince_enable_quickfix
+    call EchomLog('wince-quickfix-uberwin', 'config', 'Quickfix uberwin disabled')
     finish
 endif
 
+
+" WinceToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
+" are required.. I see no other way to implement WinceToIdentifyQuickfix.
+if g:wince_legacywinid
+    call EchomLog('wince-quickfix-uberwin', 'error', 'The quickfix uberwin group is not supported for Vim versions older than 8.0')
+    finish
+endif
+
+if !exists('g:wince_quickfix_top')
+    let g:wince_quickfix_top = 0
+endif
+
+if !exists('g:wince_quickfix_height')
+    let g:wince_quickfix_height = 10
+endif
+
+if !exists('g:wince_quickfix_statusline')
+    let g:wince_quickfix_statusline = '%!WinceQuickfixStatusLine()'
+endif
+
 " Callback that opens the quickfix window
-function! ToOpenQuickfix()
-    call EchomLog('quickfix-uberwin', 'info', 'ToOpenQuickfix')
+function! WinceToOpenQuickfix()
+    call EchomLog('wince-quickfix-uberwin', 'info', 'WinceToOpenQuickfix')
     " Fail if the quickfix window is already open
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if qfwinid
@@ -18,17 +34,21 @@ function! ToOpenQuickfix()
     endif
 
     " Open the quickfix window
-    noautocmd botright copen
+    if g:wince_quickfix_top
+        execute 'noautocmd topleft copen ' . g:wince_quickfix_height
+    else
+        execute 'noautocmd botright copen ' . g:wince_quickfix_height
+    endif
     let &syntax = 'qf'
 
     " copen also moves the cursor to the quickfix window, so return the
     " current window ID
-    return [Win_getid_cur()]
+    return [Wince_getid_cur()]
 endfunction
 
 " Callback that closes the quickfix window
-function! ToCloseQuickfix()
-    call EchomLog('quickfix-uberwin', 'info', 'ToCloseQuickfix')
+function! WinceToCloseQuickfix()
+    call EchomLog('wince-quickfix-uberwin', 'info', 'WinceToCloseQuickfix')
     " Fail if the quickfix window is already closed
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if !qfwinid
@@ -47,8 +67,8 @@ endfunction
 
 " Callback that returns 'quickfix' if the supplied winid is for the quickfix
 " window
-function! ToIdentifyQuickfix(winid)
-    call EchomLog('quickfix-uberwin', 'debug', 'ToIdentifyQuickfix ', a:winid)
+function! WinceToIdentifyQuickfix(winid)
+    call EchomLog('wince-quickfix-uberwin', 'debug', 'WinceToIdentifyQuickfix ', a:winid)
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if a:winid ==# qfwinid
         return 'quickfix'
@@ -57,8 +77,8 @@ function! ToIdentifyQuickfix(winid)
 endfunction
 
 " Returns the statusline of the quickfix window
-function! QuickfixStatusLine()
-    call EchomLog('quickfix-uberwin', 'debug', 'QuickfixStatusLine')
+function! WinceQuickfixStatusLine()
+    call EchomLog('wince-quickfix-uberwin', 'debug', 'QuickfixStatusLine')
     let qfdict = getqflist({
    \    'title': 1,
    \    'nr': 0
@@ -90,31 +110,31 @@ function! QuickfixStatusLine()
 endfunction
 
 " The quickfix window is an uberwin
-call WinAddUberwinGroupType('quickfix', ['quickfix'],
-                           \['%!QuickfixStatusLine()'],
+call WinceAddUberwinGroupType('quickfix', ['quickfix'],
+                           \[g:wince_quickfix_statusline],
                            \'Q', 'q', 2,
-                           \50,
-                           \[-1], [10],
-                           \function('ToOpenQuickfix'),
-                           \function('ToCloseQuickfix'),
-                           \function('ToIdentifyQuickfix'))
+                           \50, [0],
+                           \[-1], [g:wince_quickfix_height],
+                           \function('WinceToOpenQuickfix'),
+                           \function('WinceToCloseQuickfix'),
+                           \function('WinceToIdentifyQuickfix'))
 
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list
 function! UpdateQuickfixUberwin(hide)
-    call EchomLog('quickfix-uberwin', 'debug', 'UpdateQuickfixUberwin ', a:hide)
-    let qfwinexists = WinModelUberwinGroupExists('quickfix')
+    call EchomLog('wince-quickfix-uberwin', 'debug', 'UpdateQuickfixUberwin ', a:hide)
+    let qfwinexists = WinceModelUberwinGroupExists('quickfix')
     let qflistexists = len(getqflist())
     
     if qfwinexists && !qflistexists
-        call EchomLog('quickfix-uberwin', 'info', 'Remove quickfix uberwin because there is no quickfix list')
-        call WinRemoveUberwinGroup('quickfix')
+        call EchomLog('wince-quickfix-uberwin', 'info', 'Remove quickfix uberwin because there is no quickfix list')
+        call WinceRemoveUberwinGroup('quickfix')
         return
     endif
 
     if !qfwinexists && qflistexists
-        call EchomLog('quickfix-uberwin', 'info', 'Add quickfix uberwin because there is a quickfix list')
-        call WinAddUberwinGroup('quickfix', a:hide, 0)
+        call EchomLog('wince-quickfix-uberwin', 'info', 'Add quickfix uberwin because there is a quickfix list')
+        call WinceAddUberwinGroup('quickfix', a:hide, 0)
         return
     endif
 endfunction
@@ -127,18 +147,18 @@ endfunction
 
 " Update the quickfix uberwin after entering a tab
 " If the uberwin needs to be added, make it hidden
-call WinAddTabEnterPreResolveCallback(function('UpdateQuickfixUberwinHide'))
+call WinceAddTabEnterPreResolveCallback(function('UpdateQuickfixUberwinHide'))
 
 function! CloseDanglingQuickfixWindows()
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     while qfwinid
-        call EchomLog('quickfix-uberwin', 'info', 'Closing dangling window ', qfwinid)
+        call EchomLog('wince-quickfix-uberwin', 'info', 'Closing dangling window ', qfwinid)
         cclose
         let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     endwhile
 endfunction
 
-augroup QuickfixUberwin
+augroup WinceQuickfix
     autocmd!
 
     " Update the quickfix uberwin whenever the quickfix list is changed
@@ -158,10 +178,7 @@ augroup END
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateQuickfixUberwin.
-call WinMappingMapUserOp('<leader>qs', 'call WinShowUberwinGroup("quickfix", 1)')
-call WinMappingMapUserOp('<leader>qh', 'call WinHideUberwinGroup("quickfix")')
-call WinMappingMapUserOp('<leader>qq', 'call WinGotoUberwin("quickfix", "quickfix", 1)')
-call WinMappingMapUserOp('<leader>qc', 'call WinRemoveUberwinGroup("quickfix") \| cexpr []')
-
-" Peek at entries in quickfix and location lists
-nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<space>"
+call WinceMappingMapUserOp('<leader>qs', 'call WinceShowUberwinGroup("quickfix", 1)')
+call WinceMappingMapUserOp('<leader>qh', 'call WinceHideUberwinGroup("quickfix")')
+call WinceMappingMapUserOp('<leader>qq', 'call WinceGotoUberwin("quickfix", "quickfix", 1)')
+call WinceMappingMapUserOp('<leader>qc', 'call WinceRemoveUberwinGroup("quickfix") \| cexpr []')

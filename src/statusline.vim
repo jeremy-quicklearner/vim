@@ -61,7 +61,7 @@ function! SetDefaultStatusLine()
     set statusline+=%=%<
 
     " Subwin flags
-    execute 'set statusline+=' . WinSubwinFlags()
+    execute 'set statusline+=' . WinceSubwinFlags()
 
     " Diff flag
     set statusline+=%6*%{DiffFlag()}
@@ -99,7 +99,7 @@ endfunction
 " It defers to the default by returning an empty string that won't supersede
 " the global default statusline
 function! SetSpecificStatusLine()
-    execute 'setlocal statusline=' . WinNonDefaultStatusLine()
+    execute 'setlocal statusline=' . WinceNonDefaultStatusLine()
 endfunction
 
 function! CorrectAllStatusLines()
