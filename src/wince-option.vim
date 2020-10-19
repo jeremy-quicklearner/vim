@@ -1,6 +1,8 @@
 " Wince Reference Definition for Option uberwin
+let s:Log = jer_log#LogFunctions('wince-option-uberwin')
+
 if !exists('g:wince_enable_option') || !g:wince_enable_option
-    call EchomLog('wince-option-uberwin', 'config', 'Option uberwin disabled')
+    call s:Log.CFG('Option uberwin disabled')
     finish
 endif
 
@@ -31,23 +33,23 @@ endfunction
 
 " Callback that opens the option window
 function! WinceToOpenOption()
-    call EchomLog('wince-option-uberwin', 'info', 'WinceToOpenOption')
+    call s:Log.INF('WinceToOpenOption')
     for winid in WinceStateGetWinidsByCurrentTab()
         if bufwinnr('option-window') >=# 0
             throw 'Option window already open'
         endif
     endfor
 
-    let prevwinid = Wince_getid_cur()
+    let prevwinid = jer_win#getid()
 
     " The option window always splits using the 'new' command with no
     " modifiers, so 'vertical options' won't work. Instead, create an
     " ephemeral window and open the option window from there. Use the buflog
     " buffer for the ephemeral window to avoid creating a new buffer
     if g:wince_option_right
-        noautocmd silent vertical botright sbuffer j_buflog
+        noautocmd silent vertical botright sbuffer jersuite_buflog
     else
-        noautocmd silent vertical topleft sbuffer j_buflog
+        noautocmd silent vertical topleft sbuffer jersuite_buflog
     endif
     let &l:scrollbind = 0
     let &l:cursorbind = 0
@@ -85,16 +87,16 @@ function! WinceToOpenOption()
     execute 'inoremap <silent> <buffer> <CR> <Esc>:call OptGoPrev()<CR>:call <SNR>' . sid . '_CR()<CR>'
     execute 'noremap <silent> <buffer> <Space> :call OptGoPrev()<CR>:call <SNR>' . sid . '_Space()<CR>'
 
-    let winid = Wince_getid_cur()
+    let winid = jer_win#getid()
 
-    noautocmd call Wince_gotoid(prevwinid)
+    noautocmd call jer_win#gotoid(prevwinid)
 
     return [winid]
 endfunction
 
 " Callback that closes the option window
 function! WinceToCloseOption()
-    call EchomLog('wince-option-uberwin', 'info', 'WinceToCloseOption')
+    call s:Log.INF('WinceToCloseOption')
     let optionwinid = 0
     for winid in WinceStateGetWinidsByCurrentTab()
         if WinceStateGetBufnrByWinid(winid) ==# bufnr('option-window')
@@ -113,7 +115,7 @@ endfunction
 " Callback that returns 'option' if the supplied winid is for the option
 " window
 function! WinceToIdentifyOption(winid)
-    call EchomLog('wince-option-uberwin', 'debug', 'WinceToIdentifyOption ', a:winid)
+    call s:Log.DBG('WinceToIdentifyOption ', a:winid)
     if WinceStateGetBufnrByWinid(a:winid) ==# bufnr('option-window')
         return 'option'
     endif
@@ -121,7 +123,7 @@ function! WinceToIdentifyOption(winid)
 endfunction
 
 function! WinceOptionStatusLine()
-    call EchomLog('wince-option-uberwin', 'debug', 'OptionStatusLine')
+    call s:Log.DBG('OptionStatusLine')
     let statusline = ''
 
     " 'Option' string
@@ -172,6 +174,6 @@ call WinceAddUberwinGroupType('option', ['option'],
 
 " Mappings
 call WinceMappingMapUserOp('<leader>os', 'call WinceAddOrShowUberwinGroup("option")')
-call WinceMappingMapUserOp('<leader>oo', 'call WinceAddOrGotoUberwin("option","option")')
+call WinceMappingMapUserOp('<leader>oo', 'let g:wince_map_mode = WinceAddOrGotoUberwin("option","option",g:wince_map_mode)')
 call WinceMappingMapUserOp('<leader>oh', 'call WinceRemoveUberwinGroup("option")')
 call WinceMappingMapUserOp('<leader>oc', 'call WinceRemoveUberwinGroup("option")')

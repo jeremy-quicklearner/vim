@@ -103,12 +103,14 @@ function! SetSpecificStatusLine()
 endfunction
 
 function! CorrectAllStatusLines()
-    Windofast call SetSpecificStatusLine()
+    let currwin=winnr()
+    windo call SetSpecificStatusLine()
+    execute currwin . 'wincmd w'
 endfunction
 
 " Register the above function to be called on the next CursorHold event
 function! RegisterCorrectStatusLines()
-    call RegisterCursorHoldCallback(function('CorrectAllStatusLines'), [], 0, 1, 0, 0, 0)
+    call jer_chc#Register(function('CorrectAllStatusLines'), [], 0, 1, 0, 0, 0)
 endfunction
 
 augroup StatusLine

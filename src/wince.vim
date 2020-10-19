@@ -177,6 +177,7 @@
 "    TODO: Investigate whether the undotree can be persisted outside the
 "          session and restored after this happens
 "
+" TODO: Make mappings from the reference definitions disable-able
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
@@ -223,20 +224,20 @@
 "       doesn't depend on mbbill/undotree
 
 " Logging facilities - all in one place so they can be changed easily
-call SetLogLevel('wince-model',    'warning', 'warning')
-call SetLogLevel('wince-state',    'warning', 'warning')
-call SetLogLevel('wince-common',   'info',    'warning')
-call SetLogLevel('wince-resolve',  'info',    'warning')
-call SetLogLevel('wince-user',     'info',    'warning')
+call jer_log#SetLevel('wince-model',   'CFG', 'WRN')
+call jer_log#SetLevel('wince-state',   'CFG', 'WRN')
+call jer_log#SetLevel('wince-common',  'INF', 'WRN')
+call jer_log#SetLevel('wince-resolve', 'INF', 'WRN')
+call jer_log#SetLevel('wince-user',    'INF', 'WRN')
 
-call SetLogLevel('wince-commands', 'info',    'warning')
-call SetLogLevel('wince-mappings', 'info',    'warning')
+call jer_log#SetLevel('wince-commands', 'INF', 'WRN')
+call jer_log#SetLevel('wince-mappings', 'INF', 'WRN')
 
-call SetLogLevel('wince-help-uberwin',     'warning', 'warning')
-call SetLogLevel('wince-preview-uberwin',  'warning', 'warning')
-call SetLogLevel('wince-quickfix-uberwin', 'warning', 'warning')
-call SetLogLevel('wince-option-uberwin',   'warning', 'warning')
-call SetLogLevel('wince-loclist-subwin',   'warning', 'warning')
+call jer_log#SetLevel('wince-help-uberwin',     'CFG', 'WRN')
+call jer_log#SetLevel('wince-preview-uberwin',  'CFG', 'WRN')
+call jer_log#SetLevel('wince-quickfix-uberwin', 'CFG', 'WRN')
+call jer_log#SetLevel('wince-option-uberwin',   'CFG', 'WRN')
+call jer_log#SetLevel('wince-loclist-subwin',   'CFG', 'WRN')
 
 " Wince Core
 source <sfile>:p:h/wince-model.vim
@@ -259,7 +260,7 @@ source <sfile>:p:h/wince-loclist.vim
 " The resolver should run after any changes to the state
 if !exists('g:wince_resolve_chc')
     let g:wince_resolve_chc = 1
-    call RegisterCursorHoldCallback(function('WinceResolve'), [], 1, 0, 1, 0, 1)
+    call jer_chc#Register(function('WinceResolve'), [], 1, 0, 1, 0, 1)
 endif
 
 " When the resolver runs in a new tab, it should run as if the tab was entered

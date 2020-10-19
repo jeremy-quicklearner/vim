@@ -1,6 +1,8 @@
 " Wince Reference Definition for Loclist subwin
+let s:Log = jer_log#LogFunctions('wince-loclist-subwin')
+
 if !exists('g:wince_enable_loclist') || !g:wince_enable_loclist
-    call EchomLog('wince-loclist-subwin', 'config', 'Loclist subwin disabled')
+    call s:Log.CFG('Loclist subwin disabled')
     finish
 endif
 
@@ -8,15 +10,15 @@ endif
 " This helper is used in the help uberwin
 " TODO: Make sure this always gets loaded
 function! LoclistFieldForStatusline(fieldname)
-    call EchomLog('wince-loclist-subwin', 'debug', 'LoclistFieldForStatusline')
-    return SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
+    call s:Log.DBG('LoclistFieldForStatusline')
+    return jer_util#SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
 endfunction
 
 " WinceToIdentifyLoclist relies on getwininfo, and also on getloclist with the
 " winid key. So Vim-native winids are required. I see no other way to implement
 " WinceToIdentifyLoclist.
-if g:wince_legacywinid
-    call EchomLog('wince-loclist-subwin', 'error', 'The loclist subwin group is not supported for Vim versions older than 8.0')
+if jer_win#Legacy()
+    call s:Log.ERR('The loclist subwin group is not supported with legacy winids')
     finish
 endif
 
@@ -34,7 +36,7 @@ endif
 
 " Callback that opens the location window for the current window
 function! WinceToOpenLoclist()
-    call EchomLog('wince-loclist-subwin', 'info', 'WinceToOpenLoclist')
+    call s:Log.INF('WinceToOpenLoclist')
     let supwinid = win_getid()
 
     " Fail if the location window is already open
@@ -71,7 +73,7 @@ endfunction
 
 " Callback that closes the location list for the current window
 function! WinceToCloseLoclist()
-    call EchomLog('wince-loclist-subwin', 'info', 'WinceToCloseLoclist')
+    call s:Log.INF('WinceToCloseLoclist')
     let supwinid = win_getid()
 
     " Fail if the location window is already closed
@@ -111,7 +113,7 @@ endfunction
 " winid is for a location window that is not the location window of a help
 " window
 function! WinceToIdentifyLoclist(winid)
-    call EchomLog('wince-loclist-subwin', 'debug', 'WinceToIdentifyLoclist ', a:winid)
+    call s:Log.DBG('WinceToIdentifyLoclist ', a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != win_id2win(a:winid) &&
@@ -127,7 +129,7 @@ endfunction
 
 " Returns the statusline of the location window
 function! WinceLoclistStatusLine()
-    call EchomLog('wince-loclist-subwin', 'debug', 'LoclistStatusLine')
+    call s:Log.DBG('LoclistStatusLine')
     let statusline = ''
 
     " 'Loclist' string
@@ -164,19 +166,19 @@ call WinceAddSubwinGroupType('loclist', ['loclist'],
 " For each supwin, make sure the loclist subwin exists if and only if that
 " supwin has a location list
 function! UpdateLoclistSubwins()
-    call EchomLog('wince-loclist-subwin', 'debug', 'UpdateLoclistSubwins')
+    call s:Log.DBG('UpdateLoclistSubwins')
     for supwinid in WinceModelSupwinIds()
         let locwinexists = WinceModelSubwinGroupExists(supwinid, 'loclist')
         let loclistexists = len(getloclist(supwinid))
 
         if locwinexists && !loclistexists
-            call EchomLog('wince-loclist-subwin', 'info', 'Remove loclist subwin from supwin ', supwinid, ' because it has no location list')
+            call s:Log.INF('Remove loclist subwin from supwin ', supwinid, ' because it has no location list')
             call WinceRemoveSubwinGroup(supwinid, 'loclist')
             continue
         endif
 
         if !locwinexists && loclistexists
-            call EchomLog('wince-loclist-subwin', 'info', 'Add loclist subwin to supwin ', supwinid, ' because it has a location list')
+            call s:Log.INF('Add loclist subwin to supwin ', supwinid, ' because it has a location list')
             call WinceAddSubwinGroup(supwinid, 'loclist', 0, 0)
             continue
         endif
@@ -187,7 +189,7 @@ endfunction
 " model are certain to be consistent
 if !exists('g:wince_loclist_chc')
     let g:wince_loclist_chc = 1
-    call RegisterCursorHoldCallback(function('UpdateLoclistSubwins'), [], 1, 20, 1, 0, 1)
+    call jer_chc#Register(function('UpdateLoclistSubwins'), [], 1, 20, 1, 0, 1)
     call WinceAddPostUserOperationCallback(function('UpdateLoclistSubwins'))
 endif
 
@@ -196,5 +198,5 @@ endif
 " UpdateLoclistSubwins.
 call WinceMappingMapUserOp('<leader>ls', 'call WinceShowSubwinGroup(win_getid(), "loclist", 1)')
 call WinceMappingMapUserOp('<leader>lh', 'call WinceHideSubwinGroup(win_getid(), "loclist")')
-call WinceMappingMapUserOp('<leader>ll', 'call WinceGotoSubwin(win_getid(), "loclist", "loclist", 1)')
+call WinceMappingMapUserOp('<leader>ll', 'let g:wince_map_mode = WinceGotoSubwin(win_getid(), "loclist", "loclist", g:wince_map_mode, 1)')
 call WinceMappingMapUserOp('<leader>lc', 'lexpr [] \| call UpdateLoclistSubwins()')

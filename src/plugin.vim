@@ -24,7 +24,8 @@ call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami', {'on': 'AutoOrigamiFoldColumn'}
 Plug 'mbbill/undotree', {'on': 'UndotreeShow'}
-Plug 'jeremy-quicklearner/vim-sign-utils', {'on': ['PlaceUtilSigns', 'UnplaceUtilSigns']}
+Plug 'jeremy-quicklearner/vim-jersuite-core'
+Plug 'jeremy-quicklearner/vim-sign-utils'
 call plug#end()
 
 " Netrw stuff
@@ -77,6 +78,6 @@ let g:wince_enable_loclist = 1
 let g:wince_disable_mappings = 0
 source <sfile>:p:h/wince.vim
 
-" Wince-undotree stuff
+" Wince-undotree
 source <sfile>:p:h/undotree.vim
 

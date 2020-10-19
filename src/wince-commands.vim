@@ -3,16 +3,18 @@
 " TODO: Ensure all commands behave similarly to their native counterparts when
 "       invoked from visual mode
 " TODO: Thoroughly test every command
+let s:Log = jer_log#LogFunctions('wince-commands')
+
 
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
-    call EchomLog('wince-commands', 'debug', 'SanitizeRange ', a:cmdname, ', [', a:range, ',', a:count, ',', a:defaultcount, ']')
+    call s:Log.DBG('SanitizeRange ', a:cmdname, ', [', a:range, ',', a:count, ',', a:defaultcount, ']')
     if a:range ==# 0
-        call EchomLog('wince-commands', 'verbose', 'Using default count ', a:defaultcount)
+        call s:Log.VRB('Using default count ', a:defaultcount)
         return a:defaultcount
     endif
 
     if a:range ==# 1
-        call EchomLog('wince-commands', 'verbose', 'Using given count ', a:count)
+        call s:Log.VRB('Using given count ', a:count)
         return a:count
     endif
      
@@ -23,58 +25,60 @@ function! s:SanitizeRange(cmdname, range, count, defaultcount)
     throw 'Invalid <range> ' . a:range
 endfunction
 
-function! WinceCmdRunCmd(cmdname, wincmd, range, count,
-                     \ defaultcount,
-                     \ preservecursor,
-                     \ ifuberwindonothing,
-                     \ ifsubwingotosupwin,
-                     \ dowithoutuberwins,
-                     \ dowithoutsubwins,
-                     \ preservesupdims,
-                     \ relyonresolver)
-    call EchomLog('wince-commands', 'info', 'WinceCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
+function! WinceCmdRunCmd(cmdname, wincmd, range, count, startmode,
+                       \ defaultcount,
+                       \ preservecursor,
+                       \ ifuberwindonothing,
+                       \ ifsubwingotosupwin,
+                       \ dowithoutuberwins,
+                       \ dowithoutsubwins,
+                       \ preservesupdims,
+                       \ relyonresolver)
+    call s:Log.INF('WinceCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . string(a:startmode) . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
-        call EchomLog('wince-commands', 'error', v:exception)
-        return
+        call s:Log.ERR(v:exception)
+        return a:startmode
     endtry
 
-    call WinceDoCmdWithFlags(a:wincmd, opcount, 
-                         \ a:preservecursor,
-                         \ a:ifuberwindonothing,
-                         \ a:ifsubwingotosupwin,
-                         \ a:dowithoutuberwins,
-                         \ a:dowithoutsubwins,
-                         \ a:preservesupdims,
-                         \ a:relyonresolver)
+    return WinceDoCmdWithFlags(a:wincmd, opcount, a:startmode,
+                           \ a:preservecursor,
+                           \ a:ifuberwindonothing,
+                           \ a:ifsubwingotosupwin,
+                           \ a:dowithoutuberwins,
+                           \ a:dowithoutsubwins,
+                           \ a:preservesupdims,
+                           \ a:relyonresolver)
 endfunction
 
-function! WinceCmdRunSpecialCmd(cmdname, range, count, handler)
-    call EchomLog('wince-commands', 'info', 'WinceCmdRunSpecialCmd ', a:cmdname, ', [', a:range, ',', a:count, '], ', a:handler)
+function! WinceCmdRunSpecialCmd(cmdname, range, count, startmode, handler)
+    call s:Log.INF('WinceCmdRunSpecialCmd ', a:cmdname, ', [', a:range, ',', a:count, ',', a:startmode, '], ', a:handler)
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, '')
         let Handler = function(a:handler)
 
-        call Handler(opcount)
+        return Handler(opcount, a:startmode)
     catch /.*/
-        call EchomLog('wince-commands', 'debug', v:throwpoint)
-        call EchomLog('wince-commands', 'warning', v:exception)
-        return
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+        return a:startmode
     endtry
 endfunction
 
 function! WinceCmdDefineCmd(cmdname, wincmd, defaultcount,
-                        \ preservecursor,
-                        \ ifuberwindonothing, ifsubwingotosupwin,
-                        \ dowithoutuberwins, dowithoutsubwins,
-                        \ preservesupdims, relyonresolver)
-    call EchomLog('wince-commands', 'config', 'Command: ', a:cmdname)
-    execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
-   \        ' call WinceCmdRunCmd(' .
+                          \ preservecursor,
+                          \ ifuberwindonothing, ifsubwingotosupwin,
+                          \ dowithoutuberwins, dowithoutsubwins,
+                          \ preservesupdims, relyonresolver)
+    call s:Log.DBG('Command: ', a:cmdname)
+    execute 'command! -nargs=? -range=0 -complete=command ' . a:cmdname .
+   \        ' call jer_mode#Detect("<args>") | '
+   \        'call jer_mode#ForcePreserve(WinceCmdRunCmd(' .
    \        '"' . a:cmdname . '",' .
    \        '"' . a:wincmd . '",' .
    \        '<range>,<count>,' .
+   \        'jer_mode#Retrieve(),' .
    \        '"' . a:defaultcount . '",' .
    \        a:preservecursor . ',' .
    \        a:ifuberwindonothing . ',' .
@@ -82,16 +86,20 @@ function! WinceCmdDefineCmd(cmdname, wincmd, defaultcount,
    \        a:dowithoutuberwins . ',' .
    \        a:dowithoutsubwins . ',' .
    \        a:preservesupdims . ',' .
-   \        a:relyonresolver . ')'
+   \        a:relyonresolver . ')) | ' .
+   \        'call jer_mode#Restore()'
 endfunction
 
 function! WinceCmdDefineSpecialCmd(cmdname, handler)
-    call EchomLog('wince-commands', 'config', 'Special command: ', a:cmdname)
-    execute 'command! -nargs=0 -range=0 -complete=command ' . a:cmdname .
-   \        ' call WinceCmdRunSpecialCmd(' .
+    call s:Log.DBG('Special command: ', a:cmdname)
+    execute 'command! -nargs=? -range=0 -complete=command ' . a:cmdname .
+   \        ' call jer_mode#Detect("<args>") | ' .
+   \        'call jer_mode#ForcePreserve(WinceCmdRunSpecialCmd(' .
    \        '"' . a:cmdname . '",' .
    \        '<range>,<count>,' .
-   \        '"' . a:handler . '")'
+   \        'jer_mode#Retrieve(),' .
+   \        '"' . a:handler . '")) | ' .
+   \        'call jer_mode#Restore()'
 endfunction
 
 " Exchanging supwins is special because if the operation is invoked from a

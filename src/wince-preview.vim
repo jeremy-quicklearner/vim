@@ -1,6 +1,8 @@
 " Wince Reference Definition for Preview uberwin
+let s:Log = jer_log#LogFunctions('wince-preview-uberwin')
+
 if !exists('g:wince_enable_preview') || !g:wince_enable_preview
-    call EchomLog('wince-preview-uberwin', 'config', 'Preview uberwin disabled')
+    call s:Log.CFG('Preview uberwin disabled')
     finish
 endif
 
@@ -24,18 +26,18 @@ endif
 
 " Callback that opens the preview window
 function! WinceToOpenPreview()
-    call EchomLog('wince-preview-uberwin', 'info', 'WinceToOpenPreview')
+    call s:Log.INF('WinceToOpenPreview')
     if empty(t:j_preview)
         throw 'Preview window has not been closed yet'
     endif
 
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(Wince_id2win(winid), '&previewwindow', 0)
+        if getwinvar(jer_win#id2win(winid), '&previewwindow', 0)
             throw 'Preview window already open'
         endif
     endfor
 
-    let previouswinid = Wince_getid_cur()
+    let previouswinid = jer_win#getid()
 
     if g:wince_preview_bottom
         noautocmd botright split
@@ -51,10 +53,10 @@ function! WinceToOpenPreview()
     try
         noautocmd silent execute 'buffer ' . t:j_preview.bufnr
     catch /.*/
-        call EchomLog('wince-preview-uberwin', 'warning', v:exception)
+        call s:Log.WRN(v:exception)
     endtry
 
-    let winid = Wince_getid_cur()
+    let winid = jer_win#getid()
     call WinceStatePostCloseAndReopen(winid, t:j_preview)
     let &previewwindow = 1
     let &winfixheight = 1
@@ -63,17 +65,17 @@ function! WinceToOpenPreview()
     " the syntax option is set
     let &syntax = &syntax
 
-    noautocmd call Wince_gotoid(previouswinid)
+    noautocmd call jer_win#gotoid(previouswinid)
 
     return [winid]
 endfunction
 
 " Callback that closes the preview window
 function! WinceToClosePreview()
-    call EchomLog('wince-preview-uberwin', 'info', 'WinceToClosePreview')
+    call s:Log.INF('WinceToClosePreview')
     let previewwinid = 0
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(Wince_id2win(winid), '&previewwindow', 0)
+        if getwinvar(jer_win#id2win(winid), '&previewwindow', 0)
             let previewwinid = winid
         endif
     endfor
@@ -90,7 +92,7 @@ function! WinceToClosePreview()
     endif
 
     let t:j_preview = WinceStatePreCloseAndReopen(previewwinid)
-    let t:j_preview.bufnr = winbufnr(Wince_id2win(previewwinid))
+    let t:j_preview.bufnr = winbufnr(jer_win#id2win(previewwinid))
 
     pclose
 endfunction
@@ -98,8 +100,8 @@ endfunction
 " Callback that returns 'preview' if the supplied winid is for the preview
 " window
 function! WinceToIdentifyPreview(winid)
-    call EchomLog('wince-preview-uberwin', 'debug', 'WinceToIdentifyPreview ', a:winid)
-    if getwinvar(Wince_id2win(a:winid), '&previewwindow', 0)
+    call s:Log.DBG('WinceToIdentifyPreview ', a:winid)
+    if getwinvar(jer_win#id2win(a:winid), '&previewwindow', 0)
         return 'preview'
     endif
     return ''
@@ -107,7 +109,7 @@ endfunction
 
 " Returns the statusline of the preview window
 function! WincePreviewStatusLine()
-    call EchomLog('wince-preview-uberwin', 'debug', 'PreviewStatusLine')
+    call s:Log.DBG('PreviewStatusLine')
     let statusline = ''
 
     " 'Preview' string
@@ -151,4 +153,4 @@ call WinceAddUberwinGroupType('preview', ['preview'],
 call WinceMappingMapUserOp('<leader>ps', 'call WinceShowUberwinGroup("preview", 1)')
 call WinceMappingMapUserOp('<leader>ph', 'call WinceHideUberwinGroup("preview")')
 call WinceMappingMapUserOp('<leader>pc', 'call WinceHideUberwinGroup("preview")')
-call WinceMappingMapUserOp('<leader>pp', 'call WinceGotoUberwin("preview", "preview", 1)')
+call WinceMappingMapUserOp('<leader>pp', 'let g:wince_map_mode = WinceGotoUberwin("preview", "preview", g:wince_map_mode, 1)')

@@ -1,5 +1,7 @@
 " Wince User Operations
 " See wince.vim
+let s:Log = jer_log#LogFunctions('wince-user')
+
 
 " Resolver callback registration
 
@@ -7,27 +9,27 @@
 " resolver runs for the first time after entering a tab
 function! WinceAddTabEnterPreResolveCallback(callback)
     call WinceModelAddTabEnterPreResolveCallback(a:callback)
-    call EchomLog('wince-user', 'config', 'TabEnter pre-resolve callback: ', a:callback)
+    call s:Log.CFG('TabEnter pre-resolve callback: ', a:callback)
 endfunction
 
 " Register a callback to run partway through the resolver if new supwins have
 " been added to the model
 function! WinceAddSupwinsAddedResolveCallback(callback)
     call WinceModelAddSupwinsAddedResolveCallback(a:callback)
-    call EchomLog('wince-user', 'config', 'Supwins-added pre-resolve callback: ', a:callback)
+    call s:Log.CFG('Supwins-added pre-resolve callback: ', a:callback)
 endfunction
 
 " Register a callback to run after any successful user operation that changes
 " the state or model and leaves them consistent
 function! WinceAddPostUserOperationCallback(callback)
     call WinceModelAddPostUserOperationCallback(a:callback)
-    call EchomLog('wince-user', 'config', 'Post-user operation callback: ', a:callback)
+    call s:Log.CFG('Post-user operation callback: ', a:callback)
 endfunction
 
 function! s:RunPostUserOpCallbacks()
-    call EchomLog('wince-user', 'debug', 'Running post-user-operation callbacks')
+    call s:Log.DBG('Running post-user-operation callbacks')
     for PostUserOpCallback in WinceModelPostUserOperationCallbacks()
-        call EchomLog('wince-user', 'verbose', 'Running post-user-operation callback ', PostUserOpCallback)
+        call s:Log.VRB('Running post-user-operation callback ', PostUserOpCallback)
         call PostUserOpCallback()
     endfor
 endfunction
@@ -66,7 +68,7 @@ function! WinceAddUberwinGroupType(name, typenames, statuslines,
                                     \a:priority, a:canHaveLoclist,
                                     \a:widths, a:heights,
                                     \a:toOpen, a:toClose, a:toIdentify)
-    call EchomLog('wince-user', 'config', 'Uberwin group type: ', a:name)
+    call s:Log.CFG('Uberwin group type: ', a:name)
 endfunction
 
 " Add a subwin group type. One subwin group type represents the types of one or more
@@ -113,7 +115,7 @@ function! WinceAddSubwinGroupType(name, typenames, statuslines,
                                    \a:priority, a:afterimaging, a:canHaveLoclist, a:stompWithBelowRight,
                                    \a:widths, a:heights,
                                    \a:toOpen, a:toClose, a:toIdentify)
-    call EchomLog('wince-user', 'config', 'Subwin group type: ', a:name)
+    call s:Log.CFG('Subwin group type: ', a:name)
 endfunction
 
 " Uberwins
@@ -123,12 +125,12 @@ function! WinceUberwinFlagsStr()
     " Due to a bug in Vim, this function sometimes throws E315 in terminal
     " windows
     try
-        call EchomLog('wince-user', 'debug', 'Retrieving Uberwin flags string')
+        call s:Log.DBG('Retrieving Uberwin flags string')
         return WinceModelUberwinFlagsStr()
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'Failed to retrieve Uberwin flags: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('Failed to retrieve Uberwin flags: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return ''
     endtry
 endfunction
@@ -140,43 +142,43 @@ function! WinceAddUberwinGroup(grouptypename, hidden, suppresserror)
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'WinceAddUberwinGroup cannot add uberwin group ', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceAddUberwinGroup cannot add uberwin group ', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
     " If we're adding the uberwin group as hidden, add it only to the model
     if a:hidden
-        call EchomLog('wince-user', 'info', 'WinceAddUberwinGroup hidden ', a:grouptypename)
+        call s:Log.INF('WinceAddUberwinGroup hidden ', a:grouptypename)
         call WinceModelAddUberwins(a:grouptypename, [], [])
         call s:RunPostUserOpCallbacks()
         return
     endif
     
-    call EchomLog('wince-user', 'info', 'WinceAddUberwinGroup shown ', a:grouptypename)
+    call s:Log.INF('WinceAddUberwinGroup shown ', a:grouptypename)
 
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         " Each uberwin must be, at the time it is opened, the one with the
         " highest priority. So close all uberwins with higher priority.
         let grouptype = g:wince_uberwingrouptype[a:grouptypename]
         let highertypes = WinceCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-        call EchomLog('wince-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
+        call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
         try
             try
                 let winids = WinceCommonDoWithoutSubwins(info.win, function('WinceCommonOpenUberwins'), [a:grouptypename, 1], 1)
                 let dims = WinceStateGetWinDimensionsList(winids)
-                call EchomLog('wince-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
+                call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
                 call WinceModelAddUberwins(a:grouptypename, winids, dims)
-                call EchomLog('wince-user', 'verbose', 'Added uberwin group ', a:grouptypename, ' to model')
+                call s:Log.VRB('Added uberwin group ', a:grouptypename, ' to model')
 
             catch /.*/
                 if !a:suppresserror
-                    call EchomLog('wince-user', 'warning', 'WinceAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                    call EchomLog('wince-user', 'debug', v:throwpoint)
-                    call EchomLog('wince-user', 'warning', v:exception)
+                    call s:Log.WRN('WinceAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+                    call s:Log.DBG(v:throwpoint)
+                    call s:Log.WRN(v:exception)
                 endif
                 call WinceAddUberwinGroup(a:grouptypename, 1, a:suppresserror)
                 return
@@ -185,41 +187,41 @@ function! WinceAddUberwinGroup(grouptypename, hidden, suppresserror)
         " Reopen the uberwins we closed
         finally
             call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonReopenUberwins'), [highertypes, 1], 1)
-            call EchomLog('wince-user', 'verbose', 'Reopened higher-priority uberwins groups')
+            call s:Log.VRB('Reopened higher-priority uberwins groups')
         endtry
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinceRemoveUberwinGroup(grouptypename)
-    call EchomLog('wince-user', 'info', 'WinceRemoveUberwinGroup ', a:grouptypename)
+    call s:Log.INF('WinceRemoveUberwinGroup ', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         let removed = 0
         if !WinceModelUberwinGroupIsHidden(a:grouptypename)
             call WinceCommonCloseUberwinsByGroupTypeName(a:grouptypename)
-            call EchomLog('wince-user', 'verbose', 'Closed uberwin group ', a:grouptypename, ' in state')
+            call s:Log.VRB('Closed uberwin group ', a:grouptypename, ' in state')
             let removed = 1
         endif
 
         call WinceModelRemoveUberwins(a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Removed uberwin group ', a:grouptypename, ' from model')
+        call s:Log.VRB('Removed uberwin group ', a:grouptypename, ' from model')
 
         if removed
             " Closing an uberwin changes how much space is available to supwins
             " and their subwins. Close and reopen all subwins.
             call WinceCommonCloseAndReopenAllShownSubwins(info.win)
-            call EchomLog('wince-user', 'verbose', 'Closed and reopened all shown subwins')
+            call s:Log.VRB('Closed and reopened all shown subwins')
         endif
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -229,32 +231,32 @@ function! WinceHideUberwinGroup(grouptypename)
     try
         call WinceModelAssertUberwinGroupIsNotHidden(a:grouptypename)
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'WinceHideUberwinGroup cannot hide uberwin group ', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceHideUberwinGroup cannot hide uberwin group ', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceHideUberwinGroup ', a:grouptypename)
+    call s:Log.INF('WinceHideUberwinGroup ', a:grouptypename)
 
     let grouptype = g:wince_uberwingrouptype[a:grouptypename]
 
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         call WinceCommonCloseUberwinsByGroupTypeName(a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Closed uberwin group ', a:grouptypename, ' in state')
+        call s:Log.VRB('Closed uberwin group ', a:grouptypename, ' in state')
         call WinceModelHideUberwins(a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Hid uberwin group ', a:grouptypename, ' in model')
+        call s:Log.VRB('Hid uberwin group ', a:grouptypename, ' in model')
 
         " Closing an uberwin changes how much space is available to supwins
         " and their subwins. Close and reopen all subwins.
         call WinceCommonCloseAndReopenAllShownSubwins(info.win)
-        call EchomLog('wince-user', 'verbose', 'Closed and reopened all shown subwins')
+        call s:Log.VRB('Closed and reopened all shown subwins')
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -267,48 +269,48 @@ function! WinceShowUberwinGroup(grouptypename, suppresserror)
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'WinceShowUberwinGroup cannot show uberwin group ', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceShowUberwinGroup cannot show uberwin group ', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceShowUberwinGroup ', a:grouptypename)
+    call s:Log.INF('WinceShowUberwinGroup ', a:grouptypename)
 
     let grouptype = g:wince_uberwingrouptype[a:grouptypename]
 
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         " Each uberwin must be, at the time it is opened, the one with the
         " highest priority. So close all uberwins with higher priority.
         let highertypes = WinceCommonCloseUberwinsWithHigherPriority(grouptype.priority)
-        call EchomLog('wince-user', 'verbose', 'Closed higher-priority uberwin groups ', highertypes)
+        call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
         try
             try
                 let winids = WinceCommonDoWithoutSubwins(info.win, function('WinceCommonOpenUberwins'), [a:grouptypename, 1], 1)
                 let dims = WinceStateGetWinDimensionsList(winids)
-                call EchomLog('wince-user', 'verbose', 'Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
+                call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
                 call WinceModelShowUberwins(a:grouptypename, winids, dims)
-                call EchomLog('wince-user', 'verbose', 'Showed uberwin group ', a:grouptypename, ' in model')
+                call s:Log.VRB('Showed uberwin group ', a:grouptypename, ' in model')
 
             catch /.*/
                 if a:suppresserror
                     return
                 endif
-                call EchomLog('wince-user', 'warning', 'WinceShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                call EchomLog('wince-user', 'debug', v:throwpoint)
-                call EchomLog('wince-user', 'warning', v:exception)
+                call s:Log.WRN('WinceShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+                call s:Log.DBG(v:throwpoint)
+                call s:Log.WRN(v:exception)
                 return
             endtry
         " Reopen the uberwins we closed
         finally
             call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonReopenUberwins'), [highertypes, 1], 1)
-            call EchomLog('wince-user', 'verbose', 'Reopened higher-priority uberwins groups')
+            call s:Log.VRB('Reopened higher-priority uberwins groups')
         endtry
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -323,19 +325,19 @@ function! WinceSubwinFlags()
     " Due to a bug in Vim, these functions sometimes throws E315 in terminal
     " windows
     try
-        call EchomLog('wince-user', 'debug', 'Retrieving subwin flags string for current supwin')
+        call s:Log.DBG('Retrieving subwin flags string for current supwin')
         for grouptypename in WinceModelSubwinGroupTypeNames()
-            call EchomLog('wince-user', 'verbose', 'Retrieving subwin flags string for subwin ', grouptypename, ' of current supwin')
+            call s:Log.VRB('Retrieving subwin flags string for subwin ', grouptypename, ' of current supwin')
             let flagsstr .= WinceCommonSubwinFlagStrByGroup(grouptypename)
         endfor
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'Failed to retrieve Subwin flags: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('Failed to retrieve Subwin flags: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return ''
     endtry
 
-    call EchomLog('wince-user', 'verbose', 'Subwin flags string for current supwin: ', flagsstr)
+    call s:Log.VRB('Subwin flags string for current supwin: ', flagsstr)
     return flagsstr
 endfunction
 
@@ -346,44 +348,44 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'WinceAddSubwinGroup cannot add subwin group ', a:supwinid, ':', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceAddSubwinGroup cannot add subwin group ', a:supwinid, ':', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
     " If we're adding the subwin group as hidden, add it only to the model
     if a:hidden
-        call EchomLog('wince-user', 'info', 'WinceAddSubwinGroup hidden ', a:supwinid, ':', a:grouptypename)
+        call s:Log.INF('WinceAddSubwinGroup hidden ', a:supwinid, ':', a:grouptypename)
         call WinceModelAddSubwins(a:supwinid, a:grouptypename, [], [])
         call s:RunPostUserOpCallbacks()
         return
     endif
 
-    call EchomLog('wince-user', 'info', 'WinceAddSubwinGroup shown ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinceAddSubwinGroup shown ', a:supwinid, ':', a:grouptypename)
 
     let grouptype = g:wince_subwingrouptype[a:grouptypename]
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinceCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
-        call EchomLog('wince-user', 'verbose', 'Closed higher-priority subwin groups for supwin ', a:supwinid, ': ', highertypes)
+        call s:Log.VRB('Closed higher-priority subwin groups for supwin ', a:supwinid, ': ', highertypes)
         try
             try
                 let winids = WinceCommonOpenSubwins(a:supwinid, a:grouptypename)
                 let supwinnr = WinceStateGetWinnrByWinid(a:supwinid)
                 let reldims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call EchomLog('wince-user', 'verbose', 'Opened subwin group ', a:supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
+                call s:Log.VRB('Opened subwin group ', a:supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
                 call WinceModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
-                call EchomLog('wince-user', 'verbose', 'Added subwin group ', a:supwinid, ':', a:grouptypename, ' to model')
+                call s:Log.VRB('Added subwin group ', a:supwinid, ':', a:grouptypename, ' to model')
             catch /.*/
                 if !a:suppresserror
-                    call EchomLog('wince-user', 'warning', 'WinceAddSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', a:supwinid, ':')
-                    call EchomLog('wince-user', 'debug', v:throwpoint)
-                    call EchomLog('wince-user', 'warning', v:exception)
+                    call s:Log.WRN('WinceAddSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', a:supwinid, ':')
+                    call s:Log.DBG(v:throwpoint)
+                    call s:Log.WRN(v:exception)
                 endif
                 call WinceAddSubwinGroup(a:supwinid, a:grouptypename, 1, a:suppresserror)
                 return
@@ -392,12 +394,12 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
         " Reopen the subwins we closed
         finally
             call WinceCommonReopenSubwins(a:supwinid, highertypes)
-            call EchomLog('wince-user', 'verbose', 'Reopened higher-priority subwin groups')
+            call s:Log.VRB('Reopened higher-priority subwin groups')
         endtry
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -407,15 +409,15 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
     try
         call WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'WinceRemoveSubwinGroup cannot remove subwin group ', a:supwinid, ':', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', a:supwinid, ':', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceRemoveSubwinGroup ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinceRemoveSubwinGroup ', a:supwinid, ':', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
 
         let grouptype = g:wince_subwingrouptype[a:grouptypename]
@@ -423,24 +425,24 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
         let removed = 0
         if !WinceModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
             call WinceCommonCloseSubwins(a:supwinid, a:grouptypename)
-            call EchomLog('wince-user', 'verbose', 'Closed subwin group ', a:supwinid, ':', a:grouptypename, ' in state')
+            call s:Log.VRB('Closed subwin group ', a:supwinid, ':', a:grouptypename, ' in state')
             let removed = 1
         endif
 
         call WinceModelRemoveSubwins(a:supwinid, a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Removed subwin group ', a:supwinid, ':', a:grouptypename, ' from model')
+        call s:Log.VRB('Removed subwin group ', a:supwinid, ':', a:grouptypename, ' from model')
 
         if removed
             call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
            \    a:supwinid,
            \    grouptype.priority
            \)
-            call EchomLog('wince-user', 'verbose', 'Closed and reopened all shown subwins of supwin ', a:supwinid, ' with priority higher than ', a:grouptypename)
+            call s:Log.VRB('Closed and reopened all shown subwins of supwin ', a:supwinid, ' with priority higher than ', a:grouptypename)
         endif
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -451,31 +453,31 @@ function! WinceHideSubwinGroup(winid, grouptypename)
         let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:winid)
         call WinceModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'WinceHideSubwinGroup cannot hide subwin group ', a:winid, ':', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceHideSubwinGroup cannot hide subwin group ', a:winid, ':', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceHideSubwinGroup ', a:grouptypename)
+    call s:Log.INF('WinceHideSubwinGroup ', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         let grouptype = g:wince_subwingrouptype[a:grouptypename]
 
         call WinceCommonCloseSubwins(supwinid, a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Closed subwin group ', supwinid, ':', a:grouptypename, ' in state')
+        call s:Log.VRB('Closed subwin group ', supwinid, ':', a:grouptypename, ' in state')
         call WinceModelHideSubwins(supwinid, a:grouptypename)
-        call EchomLog('wince-user', 'verbose', 'Hid subwin group ', supwinid, ':', a:grouptypename, ' in model')
+        call s:Log.VRB('Hid subwin group ', supwinid, ':', a:grouptypename, ' in model')
         call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
        \    supwinid,
        \    grouptype.priority
        \)
-        call EchomLog('wince-user', 'verbose', 'Closed and reopened all shown subwins of supwin ', supwinid, ' with priority higher than ', a:grouptypename)
+        call s:Log.VRB('Closed and reopened all shown subwins of supwin ', supwinid, ' with priority higher than ', a:grouptypename)
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
@@ -489,50 +491,50 @@ function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'WinceShowSubwinGroup cannot show subwin group ', a:srcid, ':', a:grouptypename, ': ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceShowSubwinGroup cannot show subwin group ', a:srcid, ':', a:grouptypename, ': ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
     let grouptype = g:wince_subwingrouptype[a:grouptypename]
 
-    call EchomLog('wince-user', 'info', 'WinceShowSubwinGroup ', supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinceShowSubwinGroup ', supwinid, ':', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinceCommonCloseSubwinsWithHigherPriority(supwinid, grouptype.priority)
-        call EchomLog('wince-user', 'verbose', 'Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
+        call s:Log.VRB('Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
         try
             try
                 let winids = WinceCommonOpenSubwins(supwinid, a:grouptypename)
                 let supwinnr = WinceStateGetWinnrByWinid(supwinid)
                 let reldims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call EchomLog('wince-user', 'verbose', 'Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
+                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
                 call WinceModelShowSubwins(supwinid, a:grouptypename, winids, reldims)
-                call EchomLog('wince-user', 'verbose', 'Showed subwin group ', supwinid, ':', a:grouptypename, ' in model')
+                call s:Log.VRB('Showed subwin group ', supwinid, ':', a:grouptypename, ' in model')
 
             catch /.*/
                 if a:suppresserror
                     return
                 endif
-                call EchomLog('wince-user', 'warning', 'WinceShowSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', supwinid, ':')
-                call EchomLog('wince-user', 'debug', v:throwpoint)
-                call EchomLog('wince-user', 'warning', v:exception)
+                call s:Log.WRN('WinceShowSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', supwinid, ':')
+                call s:Log.DBG(v:throwpoint)
+                call s:Log.WRN(v:exception)
                 return
             endtry
 
         " Reopen the subwins we closed
         finally
             call WinceCommonReopenSubwins(supwinid, highertypes)
-            call EchomLog('wince-user', 'verbose', 'Reopened higher-priority subwin groups')
+            call s:Log.VRB('Reopened higher-priority subwin groups')
         endtry
 
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
 
     call WinceCommonRecordAllDimensions()
@@ -541,7 +543,7 @@ endfunction
 
 " Retrieve subwins and supwins' statuslines from the model
 function! WinceNonDefaultStatusLine()
-    call EchomLog('wince-user', 'debug', 'Retrieving non-default statusline for current window')
+    call s:Log.DBG('Retrieving non-default statusline for current window')
     let info = WinceCommonGetCursorPosition().win
     return WinceModelStatusLineByInfo(info)
 endfunction
@@ -553,33 +555,32 @@ endfunction
 " In particular, the 'relyonresolver' flag causes the resolver to be invoked
 " at the end of the operation
 function! WinceDoCmdWithFlags(cmd,
-                          \ count,
-                          \ preservecursor,
-                          \ ifuberwindonothing, ifsubwingotosupwin,
-                          \ dowithoutuberwins, dowithoutsubwins,
-                          \ preservesupdims, relyonresolver)
-    call EchomLog('wince-user', 'info', 'WinceDoCmdWithFlags ' . a:cmd . ' ' . a:count . ' [' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
+                            \ count,
+                            \ startmode,
+                            \ preservecursor,
+                            \ ifuberwindonothing, ifsubwingotosupwin,
+                            \ dowithoutuberwins, dowithoutsubwins,
+                            \ preservesupdims, relyonresolver)
+    call s:Log.INF('WinceDoCmdWithFlags ' . a:cmd . ' ' . a:count . ' ' . string(a:startmode) . ' [' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
 
     if info.win.category ==# 'uberwin' && a:ifuberwindonothing
-        call EchomLog('wince-user', 'warning', 'Cannot run ', a:cmd, ' in uberwin')
-        return
+        call s:Log.WRN('Cannot run ', a:cmd, ' in uberwin')
+        return a:startmode
     endif
 
+    let endmode = a:startmode
     if info.win.category ==# 'subwin' && a:ifsubwingotosupwin
-        call EchomLog('wince-user', 'debug', 'Going from subwin to supwin')
-        if a:preservecursor
-            let mode = WinceStateRetrievePreservedMode()
-        endif
-        call WinceGotoSupwin(info.win.supwin)
-        if a:preservecursor
-            call WinceStateForcePreserveMode(mode)
-        endif
+        call s:Log.DBG('Going from subwin to supwin')
+        " Drop the mode. It'll be restored from a:startmode if we restore the
+        " cursor position
+        let endmode = WinceGotoSupwin(info.win.supwin, 0)
     endif
+
 
     let cmdinfo = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Running command from window ', cmdinfo)
+    call s:Log.VRB('Running command from window ', cmdinfo)
 
     let reselect = 1
     if a:relyonresolver
@@ -588,151 +589,159 @@ function! WinceDoCmdWithFlags(cmd,
 
     try
         if a:dowithoutuberwins && a:dowithoutsubwins
-            call EchomLog('wince-user', 'debug', 'Running command without uberwins or subwins')
-            call WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, 1], reselect, a:preservesupdims)
+            call s:Log.DBG('Running command without uberwins or subwins')
+            let endmode = WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, endmode], reselect, a:preservesupdims)
         elseif a:dowithoutuberwins
-            call EchomLog('wince-user', 'debug', 'Running command without uberwins')
-            call WinceCommonDoWithoutUberwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, 1], reselect)
+            call s:Log.DBG('Running command without uberwins')
+            let endmode = WinceCommonDoWithoutUberwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, endmode], reselect)
         elseif a:dowithoutsubwins
-            call EchomLog('wince-user', 'debug', 'Running command without subwins')
-            call WinceCommonDoWithoutSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, 1], reselect)
+            call s:Log.DBG('Running command without subwins')
+            let endmode = WinceCommonDoWithoutSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, a:cmd, endmode], reselect)
         else
-            call EchomLog('wince-user', 'debug', 'Running command')
-            call WinceStateWincmd(a:count, a:cmd, 1)
+            call s:Log.DBG('Running command')
+            let endmode = WinceStateWincmd(a:count, a:cmd, endmode)
         endif
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'WinceDoCmdWithFlags failed: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
-        return
+        call s:Log.DBG('WinceDoCmdWithFlags failed: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+        return endmode
     finally
         if a:relyonresolver
             " This call to the resolver from the user operations is
             " unfortunate, but necessary
             call WinceResolve()
+            let endmode = {'mode':'n'}
         else
             call WinceCommonRecordAllDimensions()
         endif
         let endinfo = WinceCommonGetCursorPosition()
         if a:preservecursor
             call WinceCommonRestoreCursorPosition(info)
-            call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+            let endmode = a:startmode
+            call s:Log.VRB('Restored cursor position')
         elseif !a:relyonresolver && WinceModelIdByInfo(info.win) !=# WinceModelIdByInfo(endinfo.win)
             call WinceModelSetPreviousWinInfo(info.win)
             call WinceModelSetCurrentWinInfo(endinfo.win)
         endif
     endtry
     call s:RunPostUserOpCallbacks()
+    return endmode
 endfunction
 
 " Navigation
 
 " Movement between different categories of windows is restricted and sometimes
 " requires afterimaging and deafterimaging
-function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename, suppresserror)
+function! s:GoUberwinToUberwin(dstgrouptypename, dsttypename, startmode, suppresserror)
     try
         call WinceModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'GoUberwinToUberwin failed: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('GoUberwinToUberwin failed: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'debug', 'GoUberwinToUberwin ', a:dstgrouptypename, ':', a:dsttypename)
+    call s:Log.DBG('GoUberwinToUberwin ', a:dstgrouptypename, ':', a:dsttypename)
     if WinceModelUberwinGroupIsHidden(a:dstgrouptypename)
         call WinceShowUberwinGroup(a:dstgrouptypename, a:suppresserror)
-        call EchomLog('wince-user', 'info', 'Showing uberwin group ', a:dstgrouptypename, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
+        call s:Log.INF('Showing uberwin group ', a:dstgrouptypename, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
     endif
     let winid = WinceModelIdByInfo({
    \    'category': 'uberwin',
    \    'grouptype': a:dstgrouptypename,
    \    'typename': a:dsttypename
    \})
-    call EchomLog('wince-user', 'verbose', 'Destination winid is ', winid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(winid)
+    call s:Log.VRB('Destination winid is ', winid)
+    return WinceStateMoveCursorToWinidAndUpdateMode(winid, a:startmode)
 endfunction
 
-function! s:GoUberwinToSupwin(dstsupwinid)
-    call EchomLog('wince-user', 'debug', 'GoUberwinToSupwin ', a:dstsupwinid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid)
+function! s:GoUberwinToSupwin(dstsupwinid, startmode)
+    call s:Log.DBG('GoUberwinToSupwin ', a:dstsupwinid, ' ', a:startmode)
+    let endmode = WinceStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid, a:startmode)
     let cur = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', cur)
-        call EchomLog('wince-user', 'verbose', 'Deafterimaging subwins of destination supwin ', a:dstsupwinid)
-        call WinceCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
+    call s:Log.VRB('Preserved cursor position ', cur)
+    call s:Log.VRB('Deafterimaging subwins of destination supwin ', a:dstsupwinid)
+    call WinceCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
     call WinceCommonRestoreCursorPosition(cur)
-    call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+    call s:Log.VRB('Restored cursor position')
+    return endmode
 endfunction
 
-function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename, suppresserror)
+function! s:GoSupwinToUberwin(srcsupwinid, dstgrouptypename, dsttypename, startmode, suppresserror)
     try
         call WinceModelAssertUberwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'GoSupwinToUberwin failed: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('GoSupwinToUberwin failed: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'debug', 'GoSupwinToUberwin ', a:srcsupwinid, ', ', a:dstgrouptypename, ':', a:dsttypename)
+    call s:Log.DBG('GoSupwinToUberwin ', a:srcsupwinid, ', ', a:dstgrouptypename, ':', a:dsttypename)
     if WinceModelUberwinGroupIsHidden(a:dstgrouptypename)
-        call EchomLog('wince-user', 'info', 'Showing uberwin group ', a:dstgrouptypename, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
+        call s:Log.INF('Showing uberwin group ', a:dstgrouptypename, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
         call WinceShowUberwinGroup(a:dstgrouptypename, a:suppresserror)
     endif
-    call EchomLog('wince-user', 'verbose', 'Afterimaging subwins of source supwin ', a:srcsupwinid)
+    call s:Log.VRB('Afterimaging subwins of source supwin ', a:srcsupwinid)
     call WinceCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
     let winid = WinceModelIdByInfo({
    \    'category': 'uberwin',
    \    'grouptype': a:dstgrouptypename,
    \    'typename': a:dsttypename
    \})
-    call EchomLog('wince-user', 'verbose', 'Destination winid is ', winid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(winid)
+    call s:Log.VRB('Destination winid is ', winid)
+    " This is done so that WinceStateMoveCursorToWinidAndUpdateMode can start
+    " in (and therefore restore the mode to) the correct window
+    call WinceStateMoveCursorToWinidSilently(a:srcsupwinid)
+    return WinceStateMoveCursorToWinidAndUpdateMode(winid, a:startmode)
 endfunction
 
-function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid)
-    call EchomLog('wince-user', 'debug', 'GoSupwinToSupwin ', a:srcsupwinid, ', ', a:dstsupwinid)
-    call EchomLog('wince-user', 'verbose', 'Afterimaging subwins of soruce supwin ',a:srcsupwinid)
+function! s:GoSupwinToSupwin(srcsupwinid, dstsupwinid, startmode)
+    call s:Log.DBG('GoSupwinToSupwin ', a:srcsupwinid, ', ', a:dstsupwinid)
+    call s:Log.VRB('Afterimaging subwins of soruce supwin ',a:srcsupwinid)
     call WinceCommonAfterimageSubwinsBySupwin(a:srcsupwinid)
-    " This is done so that WinceStateMoveCursorToWinidAndUpdateMode will restore
-    " the mode in the source supwin, and not in whatever the last subwin to be
-    " afterimaged turns out to be
-    call WinceStateMoveCursorToWinid(a:srcsupwinid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid)
+    " This is done so that WinceStateMoveCursorToWinidAndUpdateMode can start
+    " in (and therefore restore the mode to) the correct window
+    call WinceStateMoveCursorToWinidSilently(a:srcsupwinid)
+    let endmode = WinceStateMoveCursorToWinidAndUpdateMode(a:dstsupwinid, a:startmode)
     let cur = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', cur)
-        call EchomLog('wince-user', 'verbose', 'Deafterimaging subwins of destination supwin ', a:dstsupwinid)
-        call WinceCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
+    call s:Log.VRB('Preserved cursor position ', cur)
+    call s:Log.VRB('Deafterimaging subwins of destination supwin ', a:dstsupwinid)
+    " Don't update the mode here
+    call WinceCommonDeafterimageSubwinsBySupwin(a:dstsupwinid)
     call WinceCommonRestoreCursorPosition(cur)
-    call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+    call s:Log.VRB('Restored cursor position')
+    return endmode
 endfunction
 
-function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename, suppresserror)
+function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename, startmode, suppresserror)
     try
         call WinceModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'debug', 'GoSupwinToSubwin failed: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('GoSupwinToSubwin failed: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'debug', 'GoSupwinToSupwin ', a:srcsupwinid, ':', a:dstgrouptypename, ':', a:dsttypename)
+    call s:Log.DBG('GoSupwinToSupwin ', a:srcsupwinid, ':', a:dstgrouptypename, ':', a:dsttypename)
 
     if WinceModelSubwinGroupIsHidden(a:srcsupwinid, a:dstgrouptypename)
-        call EchomLog('wince-user', 'info', 'Showing subwin group ', a:srcsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
+        call s:Log.INF('Showing subwin group ', a:srcsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
         call WinceShowSubwinGroup(a:srcsupwinid, a:dstgrouptypename, a:suppresserror)
     endif
-    call EchomLog('wince-user', 'verbose', 'Afterimaging subwins of source supwin ', a:srcsupwinid, ' except destination subwin group ', a:dstgrouptypename)
+    call s:Log.VRB('Afterimaging subwins of source supwin ', a:srcsupwinid, ' except destination subwin group ', a:dstgrouptypename)
     call WinceCommonAfterimageSubwinsBySupwinExceptOne(a:srcsupwinid, a:dstgrouptypename)
     let winid = WinceModelIdByInfo({
    \    'category': 'subwin',
@@ -740,34 +749,38 @@ function! s:GoSupwinToSubwin(srcsupwinid, dstgrouptypename, dsttypename, suppres
    \    'grouptype': a:dstgrouptypename,
    \    'typename': a:dsttypename
    \})
-    call EchomLog('wince-user', 'verbose', 'Destination winid is ', winid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(winid)
+    call s:Log.VRB('Destination winid is ', winid)
+    " This is done so that WinceStateMoveCursorToWinidAndUpdateMode can start
+    " in (and therefore restore the mode to) the correct window
+    call WinceStateMoveCursorToWinidSilently(a:srcsupwinid)
+    return WinceStateMoveCursorToWinidAndUpdateMode(winid, a:startmode)
 endfunction
 
-function! s:GoSubwinToSupwin(srcsupwinid)
-    call EchomLog('wince-user', 'debug', 'GoSubwinToSupwin ', a:srcsupwinid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(a:srcsupwinid)
+function! s:GoSubwinToSupwin(srcsupwinid, startmode)
+    call s:Log.DBG('GoSubwinToSupwin ', a:srcsupwinid)
+    let endmode = WinceStateMoveCursorToWinidAndUpdateMode(a:srcsupwinid, a:startmode)
     let cur = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', cur)
-        call EchomLog('wince-user', 'verbose', 'Deafterimaging subwins of source supwin ', a:srcsupwinid)
-        call WinceCommonDeafterimageSubwinsBySupwin(a:srcsupwinid)
+    call s:Log.VRB('Preserved cursor position ', cur)
+    call s:Log.VRB('Deafterimaging subwins of source supwin ', a:srcsupwinid)
+    call WinceCommonDeafterimageSubwinsBySupwin(a:srcsupwinid)
     call WinceCommonRestoreCursorPosition(cur)
-    call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+    call s:Log.VRB('Restored cursor position')
+    return endmode
 endfunction
-function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename, suppresserror)
-    call EchomLog('wince-user', 'debug', 'GoSubwinToSubwin ', a:srcsupwinid, ':', a:srcgrouptypename, ':', a:dsttypename)
+function! s:GoSubwinToSubwin(srcsupwinid, srcgrouptypename, dsttypename, startmode, suppresserror)
+    call s:Log.DBG('GoSubwinToSubwin ', a:srcsupwinid, ':', a:srcgrouptypename, ':', a:dsttypename)
     let winid = WinceModelIdByInfo({
    \    'category': 'subwin',
    \    'supwin': a:srcsupwinid,
    \    'grouptype': a:srcgrouptypename,
    \    'typename': a:dsttypename
    \})
-    call EchomLog('wince-user', 'verbose', 'Destination winid is ', winid)
-    call WinceStateMoveCursorToWinidAndUpdateMode(winid)
+    call s:Log.VRB('Destination winid is ', winid)
+    return WinceStateMoveCursorToWinidAndUpdateMode(winid, a:startmode)
 endfunction
 
 " Move the cursor to a given uberwin
-function! WinceGotoUberwin(dstgrouptype, dsttypename, suppresserror)
+function! WinceGotoUberwin(dstgrouptype, dsttypename, startmode, suppresserror)
     try
         call WinceModelAssertUberwinTypeExists(a:dstgrouptype, a:dsttypename)
         call WinceModelAssertUberwinGroupExists(a:dstgrouptype)
@@ -775,89 +788,95 @@ function! WinceGotoUberwin(dstgrouptype, dsttypename, suppresserror)
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'warning', 'Cannot go to uberwin ', a:dstgrouptype, ':', a:dsttypename, ':')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.WRN('Cannot go to uberwin ', a:dstgrouptype, ':', a:dsttypename, ':')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceGotoUberwin ', a:dstgrouptype, ':', a:dsttypename)
+    call s:Log.INF('WinceGotoUberwin ', a:dstgrouptype, ':', a:dsttypename, ' ', a:startmode)
 
     if WinceModelUberwinGroupIsHidden(a:dstgrouptype)
-        call EchomLog('wince-user', 'info', 'Showing uberwin group ', a:dstgrouptype, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
+        call s:Log.INF('Showing uberwin group ', a:dstgrouptype, ' so that the cursor can be moved to its uberwin ', a:dsttypename)
         call WinceShowUberwinGroup(a:dstgrouptype, a:suppresserror)
     endif
 
     let cur = WinceCommonGetCursorPosition()
     call WinceModelSetPreviousWinInfo(cur.win)
-    call EchomLog('wince-user', 'verbose', 'Previous window set to ', cur.win)
+    call s:Log.VRB('Previous window set to ', cur.win)
+    let endmode = a:startmode
     
     " Moving from subwin to uberwin must be done via supwin
     if cur.win.category ==# 'subwin'
-        call EchomLog('wince-user', 'debug', 'Moving to supwin first')
-        call s:GoSubwinToSupwin(cur.win.supwin)
+        call s:Log.DBG('Moving to supwin first')
+        let endmode = s:GoSubwinToSupwin(cur.win.supwin, endmode)
         let cur = WinceCommonGetCursorPosition()
     endif
 
     if cur.win.category ==# 'supwin'
-        call s:GoSupwinToUberwin(cur.win.id, a:dstgrouptype, a:dsttypename, a:suppresserror)
+       let endmode = s:GoSupwinToUberwin(cur.win.id, a:dstgrouptype, a:dsttypename, endmode, a:suppresserror)
         call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
         call s:RunPostUserOpCallbacks()
-        return
+        return endmode
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToUberwin(a:dstgrouptype, a:dsttypename, a:suppresserror)
+        let endmode = s:GoUberwinToUberwin(a:dstgrouptype, a:dsttypename, endmode, a:suppresserror)
         call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
         call s:RunPostUserOpCallbacks()
-        return
+        return endmode
     endif
 
     throw 'Cursor window is neither subwin nor supwin nor uberwin'
 endfunction
 
 " Move the cursor to a given supwin
-function! WinceGotoSupwin(dstwinid)
+function! WinceGotoSupwin(dstwinid, startmode)
     try
         let dstsupwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
     catch /.*/
-        call EchomLog('wince-user', 'warning', 'Cannot go to supwin ', a:dstwinid, ':')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
-        return
+        call s:Log.WRN('Cannot go to supwin ', a:dstwinid, ':')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+        return a:startmode
     endtry
 
-    call EchomLog('wince-user', 'info', 'WinceGotoSupwin ', a:dstwinid)
+    call s:Log.INF('WinceGotoSupwin ', a:dstwinid, ' ', a:startmode)
 
     let cur = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Previous window set to ', cur.win)
+    call s:Log.VRB('Previous window set to ', cur.win)
     call WinceModelSetPreviousWinInfo(cur.win)
 
+    let endmode = a:startmode
+
     if cur.win.category ==# 'subwin'
-        call EchomLog('wince-user', 'debug', 'Moving to supwin first')
-        call s:GoSubwinToSupwin(cur.win.supwin)
+        call s:Log.DBG('Moving to supwin first')
+        let endmode = s:GoSubwinToSupwin(cur.win.supwin, endmode)
         let cur = WinceCommonGetCursorPosition()
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToSupwin(dstsupwinid)
+        let endmode = s:GoUberwinToSupwin(dstsupwinid, endmode)
         call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
         call s:RunPostUserOpCallbacks()
-        return
+        return endmode
     endif
 
     if cur.win.category ==# 'supwin'
+        let endmode = a:startmode
         if cur.win.id != dstsupwinid
-            call s:GoSupwinToSupwin(cur.win.id,  dstsupwinid)
+            let endmode = s:GoSupwinToSupwin(cur.win.id, dstsupwinid, endmode)
         endif
         call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
         call s:RunPostUserOpCallbacks()
-        return
+        return endmode
     endif
+
+    return endmode
 endfunction
 
 " Move the cursor to a given subwin
-function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, suppresserror)
+function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, suppresserror)
     try
         let dstsupwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
         call WinceModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
@@ -866,38 +885,40 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, suppresserror
         if a:suppresserror
             return
         endif
-        call EchomLog('wince-user', 'warning', 'Cannot go to subwin ', a:dstgrouptypename, ':', a:dsttypename, ' of supwin ', a:dstwinid, ':')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.WRN('Cannot go to subwin ', a:dstgrouptypename, ':', a:dsttypename, ' of supwin ', a:dstwinid, ':')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
     
-    call EchomLog('wince-user', 'info', 'WinceGotoSubwin ', a:dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename)
+    call s:Log.INF('WinceGotoSubwin ', a:dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename, ' ', a:startmode)
 
     if WinceModelSubwinGroupIsHidden(dstsupwinid, a:dstgrouptypename)
-        call EchomLog('wince-user', 'info', 'Showing subwin group ', dstsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
+        call s:Log.INF('Showing subwin group ', dstsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)
         call WinceShowSubwinGroup(dstsupwinid, a:dstgrouptypename, a:suppresserror)
     endif
 
     let cur = WinceCommonGetCursorPosition()
     call WinceModelSetPreviousWinInfo(cur.win)
-    call EchomLog('wince-user', 'verbose', 'Previous window set to ', cur.win)
+    call s:Log.VRB('Previous window set to ', cur.win)
+
+    let endmode = a:startmode
 
     if cur.win.category ==# 'subwin'
         if cur.win.supwin ==# dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
-            call s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename, a:suppresserror)
+           let endmode =  s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename, endmode, a:suppresserror)
             call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
             call s:RunPostUserOpCallbacks()
-            return
+            return endmode
         endif
 
-        call EchomLog('wince-user', 'debug', 'Moving to supwin first')
-        call s:GoSubwinToSupwin(cur.win.supwin)
+        call s:Log.DBG('Moving to supwin first')
+        let endmode = s:GoSubwinToSupwin(cur.win.supwin, endmode)
         let cur = WinceCommonGetCursorPosition()
     endif
 
     if cur.win.category ==# 'uberwin'
-        call s:GoUberwinToSupwin(dstsupwinid)
+        let endmode = s:GoUberwinToSupwin(dstsupwinid, endmode)
         let cur = WinceCommonGetCursorPosition()
     endif
 
@@ -906,17 +927,19 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, suppresserror
     endif
 
     if cur.win.id !=# dstsupwinid
-        call s:GoSupwinToSupwin(cur.win.id, dstsupwinid)
+        let endmode = s:GoSupwinToSupwin(cur.win.id, dstsupwinid, endmode)
         let cur = WinceCommonGetCursorPosition()
     endif
 
-    call s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename, a:suppresserror)
+    let endmode = s:GoSupwinToSubwin(cur.win.id, a:dstgrouptypename, a:dsttypename, endmode, a:suppresserror)
     call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
     call s:RunPostUserOpCallbacks()
+
+    return endmode
 endfunction
 
 function! WinceAddOrShowUberwinGroup(grouptypename)
-    call EchomLog('wince-user', 'info', 'WinAddOrShowUberwin ', a:grouptypename)
+    call s:Log.INF('WinAddOrShowUberwin ', a:grouptypename)
     if !WinceModelUberwinGroupExists(a:grouptypename)
         call WinceAddUberwinGroup(a:grouptypename, 0, 1)
     else
@@ -925,7 +948,7 @@ function! WinceAddOrShowUberwinGroup(grouptypename)
 endfunction
 
 function! WinceAddOrShowSubwinGroup(supwinid, grouptypename)
-    call EchomLog('wince-user', 'info', 'WinAddOrShowSubwin ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinAddOrShowSubwin ', a:supwinid, ':', a:grouptypename)
     if !WinceModelSubwinGroupExists(a:supwinid, a:grouptypename)
         call WinceAddSubwinGroup(a:supwinid, a:grouptypename, 0, 1)
     else
@@ -933,74 +956,73 @@ function! WinceAddOrShowSubwinGroup(supwinid, grouptypename)
     endif
 endfunction
 
-function! WinceAddOrGotoUberwin(grouptypename, typename)
-    call EchomLog('wince-user', 'info', 'WinceAddOrGotoUberwin ', a:grouptypename, ':', a:typename)
+function! WinceAddOrGotoUberwin(grouptypename, typename, startmode)
+    call s:Log.INF('WinceAddOrGotoUberwin ', a:grouptypename, ':', a:typename, ' ', a:startmode)
     if !WinceModelUberwinGroupExists(a:grouptypename)
         call WinceAddUberwinGroup(a:grouptypename, 0, 1)
     endif
-    call WinceGotoUberwin(a:grouptypename, a:typename, 1)
+    return WinceGotoUberwin(a:grouptypename, a:typename, a:startmode, 1)
 endfunction
 
-function! WinceAddOrGotoSubwin(supwinid, grouptypename, typename)
-    call EchomLog('wince-user', 'info', 'WinceAddOrGotoSubwin ', a:supwinid, ':', a:grouptypename, ':', a:typename)
+function! WinceAddOrGotoSubwin(supwinid, grouptypename, typename, startmode)
+    call s:Log.INF('WinceAddOrGotoSubwin ', a:supwinid, ':', a:grouptypename, ':', a:typename, ' ', a:startmode)
     if !WinceModelSubwinGroupExists(a:supwinid, a:grouptypename)
         call WinceAddSubwinGroup(a:supwinid, a:grouptypename, 0, 1)
     endif
-    call WinceGotoSubwin(a:supwinid, a:grouptypename, a:typename, 1)
+    call WinceGotoSubwin(a:supwinid, a:grouptypename, a:typename, a:startmode, 1)
 endfunction
 
-function! s:GotoByInfo(info)
-    call EchomLog('wince-user', 'debug', 'GotoByInfo ', a:info)
+function! s:GotoByInfo(info, startmode)
+    call s:Log.DBG('GotoByInfo ', a:info)
     if a:info.category ==# 'uberwin'
-        call WinceGotoUberwin(a:info.grouptype, a:info.typename, 0)
-        return
+        return WinceGotoUberwin(a:info.grouptype, a:info.typename, a:startmode, 0)
     endif
     if a:info.category ==# 'supwin'
-        call WinceGotoSupwin(a:info.id)
-        return
+        return WinceGotoSupwin(a:info.id, a:startmode)
     endif
     if a:info.category ==# 'subwin'
-        call WinceGotoSubwin(a:info.supwin, a:info.grouptype, a:info.typename, 0)
-        return
+        return WinceGotoSubwin(a:info.supwin, a:info.grouptype, a:info.typename, a:startmode, 0)
     endif
     throw 'Cannot go to window with category ' . a:info.category
 endfunction
 
-function! WinceGotoPrevious(count)
-    call EchomLog('wince-user', 'info', 'WinceGotoPrevious ', a:count)
+function! WinceGotoPrevious(count, startmode)
+    call s:Log.INF('WinceGotoPrevious ', a:count, ' ', a:startmode)
     if a:count !=# 0 && a:count % 2 ==# 0
-        call EchomLog('wince-user', 'debug', 'Count is even. Doing nothing')
+        call s:Log.DBG('Count is even. Doing nothing')
         return
     endif
     let dst = WinceModelPreviousWinInfo()
     if !WinceModelIdByInfo(dst)
-        call EchomLog('wince-user', 'debug', 'Previous window does not exist in model. Doing nothing.')
+        call s:Log.DBG('Previous window does not exist in model. Doing nothing.')
         return
     endif
     
     let src = WinceCommonGetCursorPosition().win
 
     call WinceModelSetPreviousWinInfo(src)
-    call s:GotoByInfo(dst)
+    let endmode = s:GotoByInfo(dst, a:startmode)
     call WinceModelSetCurrentWinInfo(dst)
 
-    call EchomLog('wince-user', 'verbose', 'Previous window set to ', src)
+    call s:Log.VRB('Previous window set to ', src)
     call s:RunPostUserOpCallbacks()
+    return endmode
 endfunction
 
-function! s:GoInDirection(count, direction)
-    call EchomLog('wince-user', 'debug', 'GoInDirection ', a:count, ', ', a:direction)
+function! s:GoInDirection(count, direction, startmode)
+    call s:Log.DBG('GoInDirection ', a:count, ', ', a:direction, ' ', a:startmode)
     if type(a:count) ==# v:t_string && empty(a:count)
-        call EchomLog('wince-user', 'debug', 'Defaulting count to 1')
+        call s:Log.DBG('Defaulting count to 1')
         let thecount = 1
     else
         let thecount = a:count
     endif
+    let endmode = a:startmode
     for iter in range(thecount)
-        call EchomLog('wince-user', 'debug', 'Iteration ', iter)
+        call s:Log.DBG('Iteration ', iter)
         let srcwinid = WinceStateGetCursorWinId()
         let srcinfo = WinceModelInfoById(srcwinid)
-        call EchomLog('wince-user', 'debug', 'Source window is ', srcinfo)
+        call s:Log.DBG('Source window is ', srcinfo)
         let srcsupwin = -1
         if srcinfo.category ==# 'subwin'
             let srcsupwin = srcinfo.supwin
@@ -1011,73 +1033,74 @@ function! s:GoInDirection(count, direction)
         let dstwinid = 0
         while 1
             let prvwinid = curwinid
-            call EchomLog('wince-user', 'verbose', 'Silently moving cursor in direction ', a:direction)
+            call s:Log.VRB('Silently moving cursor in direction ', a:direction)
             call WinceStateSilentWincmd(1, a:direction, 0)
 
             let curwinid = WinceStateGetCursorWinId()
             let curwininfo = WinceModelInfoById(curwinid)
-            call EchomLog('wince-user', 'verbose', 'Landed in ', curwininfo)
+            call s:Log.VRB('Landed in ', curwininfo)
  
             if curwininfo.category ==# 'supwin'
-                call EchomLog('wince-user', 'debug', 'Found supwin ', curwinid)
+                call s:Log.DBG('Found supwin ', curwinid)
                 let dstwinid = curwinid
                 break
             endif
             if curwininfo.category ==# 'subwin' && curwininfo.supwin !=# srcwinid &&
            \   curwininfo.supwin !=# srcsupwin
-                call EchomLog('wince-user', 'debug', 'Found supwin ', curwininfo.supwin, ' by its subwin ', curwininfo.grouptype, ':', curwininfo.typename)
+                call s:Log.DBG('Found supwin ', curwininfo.supwin, ' by its subwin ', curwininfo.grouptype, ':', curwininfo.typename)
                 let dstwinid = curwininfo.supwin
                 break
             endif
             if curwinid == prvwinid
-                call EchomLog('wince-user', 'verbose', 'Did not move from last step')
+                call s:Log.VRB('Did not move from last step')
                 break
             endif
         endwhile
 
-        call EchomLog('wince-user', 'verbose', 'Selected destination supwin ', dstwinid, '. Silently returning to source window')
+        call s:Log.VRB('Selected destination supwin ', dstwinid, '. Silently returning to source window')
         call WinceStateMoveCursorToWinidSilently(srcwinid)
         if dstwinid
-            call EchomLog('wince-user', 'verbose', 'Moving to destination supwin ', dstwinid)
-            call WinceGotoSupwin(dstwinid)
+            call s:Log.VRB('Moving to destination supwin ', dstwinid)
+            let endmode = WinceGotoSupwin(dstwinid, endmode)
         endif
     endfor
+    return endmode
 endfunction
 
 " Move the cursor to the supwin on the left
-function! WinceGoLeft(count)
-    call EchomLog('wince-user', 'info', 'WinceGoLeft ', a:count)
-    call s:GoInDirection(a:count, 'h')
+function! WinceGoLeft(count, startmode)
+    call s:Log.INF('WinceGoLeft ', a:count, ' ', a:startmode)
+    return s:GoInDirection(a:count, 'h', a:startmode)
 endfunction
 
 " Move the cursor to the supwin below
-function! WinceGoDown(count)
-    call EchomLog('wince-user', 'info', 'WinceGoDown ', a:count)
-    call s:GoInDirection(a:count, 'j')
+function! WinceGoDown(count, startmode)
+    call s:Log.INF('WinceGoDown ', a:count, ' ', a:startmode)
+    return s:GoInDirection(a:count, 'j', a:startmode)
 endfunction
 
 " Move the cursor to the supwin above
-function! WinceGoUp(count)
-    call EchomLog('wince-user', 'info', 'WinceGoUp ', a:count)
-    call s:GoInDirection(a:count, 'k')
+function! WinceGoUp(count, startmode)
+    call s:Log.INF('WinceGoUp ', a:count, ' ', a:startmode)
+    return s:GoInDirection(a:count, 'k', a:startmode)
 endfunction
 
 " Move the cursor to the supwin to the right
-function! WinceGoRight(count)
-    call EchomLog('wince-user', 'info', 'WinceGoRight ', a:count)
-    call s:GoInDirection(a:count, 'l')
+function! WinceGoRight(count, startmode)
+    call s:Log.INF('WinceGoRight ', a:count, ' ', a:startmode)
+    return s:GoInDirection(a:count, 'l', a:startmode)
 endfunction
 
 " Close all windows except for either a given supwin, or the supwin of a given
 " subwin
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. It is designed to rely on the resolver.
-function! WinceOnly(count)
-    call EchomLog('wince-user', 'info', 'WinceOnly ', a:count)
+function! WinceOnly(count, startmode)
+    call s:Log.INF('WinceOnly ', a:count, ' ', a:startmode)
     if type(a:count) ==# v:t_string && empty(a:count)
         let winid = WinceStateGetCursorWinId()
         let thecount = WinceStateGetWinnrByWinid(winid)
-        call EchomLog('wince-user', 'debug', 'Defaulting to current winnr ', thecount)
+        call s:Log.DBG('Defaulting to current winnr ', thecount)
     else
         let thecount = a:count
     endif
@@ -1090,22 +1113,24 @@ function! WinceOnly(count)
         return
     endif
     if info.category ==# 'subwin'
-        call EchomLog('wince-user', 'debug', 'shifting target to supwin')
+        call s:Log.DBG('shifting target to supwin')
         let info = WinceModelInfoById(info.supwin)
     endif
 
-    call EchomLog('wince-user', 'verbose', 'target window ', info)
+    call s:Log.VRB('target window ', info)
 
     call s:GotoByInfo(info)
 
-    call WinceStateWincmd('', 'o', 1)
+    let endmode = WinceStateWincmd('', 'o', 1)
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
+    return endmode
 endfunction
 
 " Exchange the current supwin (or current subwin's supwin) with a different
 " supwin
-function! WinceExchange(count)
+function! WinceExchange(count, startmode)
+    call s:Log.INF('WinceExchange ', a:count, ' ', a:startmode)
     let info = WinceCommonGetCursorPosition()
 
     if info.win.category ==# 'uberwin'
@@ -1113,40 +1138,44 @@ function! WinceExchange(count)
         return
     endif
 
-    call EchomLog('wince-user', 'info', 'WinceExchange ', a:count)
+    call s:Log.INF('WinceExchange ', a:count)
 
     if info.win.category ==# 'subwin'
-        call EchomLog('wince-user', 'debug', 'Moving to supwin first')
-        call WinceGotoSupwin(info.win.supwin)
+        call s:Log.DBG('Moving to supwin first')
+        " Don't change the mode
+        call WinceGotoSupwin(info.win.supwin, 0)
     endif
 
     let cmdinfo = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Running command from window ', cmdinfo)
+    call s:Log.VRB('Running command from window ', cmdinfo)
 
     try
-        call WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, 'x', 1], 1, 0)
+        let endmode =  WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, 'x', a:startmode], 1, 0)
         if info.win.category ==# 'subwin'
-            call EchomLog('wince-user', 'verbose', 'Returning to subwin ' info.win)
-            call WinceGotoSubwin(WinceStateGetCursorWinId(), info.win.grouptype, info.win.typename, 0)
+            call s:Log.VRB('Returning to subwin ', info.win)
+            " Drop the mode
+            let endmode = {'mode':'n'}
+            call WinceGotoSubwin(WinceStateGetCursorWinId(), info.win.grouptype, info.win.typename, 0, 0)
         endif
     catch /.*/
-        call EchomLog('wince-user', 'debug', 'WinceExchange failed: ')
-        call EchomLog('wince-user', 'debug', v:throwpoint)
-        call EchomLog('wince-user', 'warning', v:exception)
+        call s:Log.DBG('WinceExchange failed: ')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
         return
     endtry
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
+    return endmode
 endfunction
 
 function! s:ResizeGivenNoSubwins(width, height)
-    call EchomLog('wince-user', 'debug', 'ResizeGivenNoSubwins ', ', [', a:width, ',', a:height, ']')
+    call s:Log.DBG('ResizeGivenNoSubwins ', ', [', a:width, ',', a:height, ']')
 
     let winid = WinceModelIdByInfo(WinceCommonGetCursorPosition().win)
 
     let preclosedim = WinceStateGetWinDimensions(winid)
 
-    call EchomLog('wince-user', 'debug', 'Closing all uberwins')
+    call s:Log.DBG('Closing all uberwins')
     let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriority(-1)
     try
         call WinceStateMoveCursorToWinid(winid)
@@ -1158,7 +1187,7 @@ function! s:ResizeGivenNoSubwins(width, height)
         let finalh = a:height + deltah
         let dow = 1
         let doh = 1
-        call EchomLog('wince-user', 'debug', 'Deltas: dw=', deltaw, ' dh=', deltah)
+        call s:Log.DBG('Deltas: dw=', deltaw, ' dh=', deltah)
 
         if a:width ==# ''
             let finalw = ''
@@ -1174,38 +1203,37 @@ function! s:ResizeGivenNoSubwins(width, height)
         endif
 
         if dow
-            call EchomLog('wince-user', 'debug', 'Resizing to width ', finalw)
+            call s:Log.DBG('Resizing to width ', finalw)
             call WinceStateWincmd(finalw, '|', 0)
         endif
         if doh
-            call EchomLog('wince-user', 'debug', 'Resizing to height ', finalh)
+            call s:Log.DBG('Resizing to height ', finalh)
             call WinceStateWincmd(finalh, '_', 0)
         endif
     finally
-        call EchomLog('wince-user', 'debug', 'Reopening all uberwins')
+        call s:Log.DBG('Reopening all uberwins')
         call WinceCommonReopenUberwins(closeduberwingroups, 1)
     endtry
 endfunction
 
-function! WinceResizeCurrentSupwin(width, height)
+function! WinceResizeCurrentSupwin(width, height, startmode)
     let info = WinceCommonGetCursorPosition()
 
     if info.win.category ==# 'uberwin'
         throw 'Cannot resize an uberwin'
-        return
+        return a:startmode
     endif
 
-    call EchomLog('wince-user', 'info', 'WinceResizeCurrentSupwin ', a:width, ' ', a:height)
+    call s:Log.INF('WinceResizeCurrentSupwin ', a:width, ' ', a:height)
 
     if info.win.category ==# 'subwin'
-        call EchomLog('wince-user', 'debug', 'Moving to supwin first')
-        let mode = WinceStateRetrievePreservedMode()
-        call WinceGotoSupwin(info.win.supwin)
-        call WinceStateForcePreserveMode(mode)
+        call s:Log.DBG('Moving to supwin first')
+        " Don't change the mode
+        call WinceGotoSupwin(info.win.supwin, 0)
     endif
 
     let cmdinfo = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Running command from window ', cmdinfo)
+    call s:Log.VRB('Running command from window ', cmdinfo)
 
     try
         call WinceCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height], 1)
@@ -1215,39 +1243,41 @@ function! WinceResizeCurrentSupwin(width, height)
 
     call WinceCommonRecordAllDimensions()
     call s:RunPostUserOpCallbacks()
+    return a:startmode
 endfunction
 
-function! WinceResizeVertical(count)
-    call EchomLog('wince-user', 'info', 'WinceResizeVertical ' . a:count)
-    call WinceResizeCurrentSupwin(a:count, -1)
+function! WinceResizeVertical(count, startmode)
+    call s:Log.INF('WinceResizeVertical ' . a:count)
+    return WinceResizeCurrentSupwin(a:count, -1, a:startmode)
 endfunction
-function! WinceResizeHorizontal(count)
-    call EchomLog('wince-user', 'info', 'WinceResizeHorizontal ' . a:count)
-    call WinceResizeCurrentSupwin(-1, a:count)
+function! WinceResizeHorizontal(count, startmode)
+    call s:Log.INF('WinceResizeHorizontal ' . a:count)
+    return WinceResizeCurrentSupwin(-1, a:count, a:startmode)
 endfunction
-function! WinceResizeHorizontalDefaultNop(count)
-    call EchomLog('wince-user', 'info', 'WinceResizeHorizontalDefaultNop ' . a:count)
+function! WinceResizeHorizontalDefaultNop(count, startmode)
+    call s:Log.INF('WinceResizeHorizontalDefaultNop ' . a:count)
     if a:count ==# ''
-        return
+        return a:startmode
     endif
-    call WinceResizeCurrentSupwin(-1, a:count)
+    return WinceResizeCurrentSupwin(-1, a:count, a:startmode)
 endfunction
 
 " Run a command in every supwin
 " WARNING! This particular user operation is not guaranteed to leave the state
 " and model consistent. Avoid passing commands that change the window state.
 function! SupwinDo(command, range)
-    call EchomLog('wince-user', 'info', 'SupwinDo <', a:command, '>, ', a:range)
+    call s:Log.INF('SupwinDo <', a:command, '>, ', a:range)
     let info = WinceCommonGetCursorPosition()
-    call EchomLog('wince-user', 'verbose', 'Preserved cursor position ', info)
+    call s:Log.VRB('Preserved cursor position ', info)
     try
         for supwinid in WinceModelSupwinIds()
-            call WinceGotoSupwin(supwinid)
-            call EchomLog('wince-user', 'verbose', 'running command <', a:range, a:command, '>')
+            " Don't change the mode
+            call WinceGotoSupwin(supwinid, 0)
+            call s:Log.VRB('running command <', a:range, a:command, '>')
             execute a:range . a:command
         endfor
     finally
         call WinceCommonRestoreCursorPosition(info)
-        call EchomLog('wince-user', 'verbose', 'Restored cursor position')
+        call s:Log.VRB('Restored cursor position')
     endtry
 endfunction

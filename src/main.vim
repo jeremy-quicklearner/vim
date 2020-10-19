@@ -5,16 +5,17 @@
 " scripts
 source <sfile>:p:h/paths.vim
 
-" Util must be available to all of my code (except paths.vim which should do
-" nothing besides changing settings)
-source <sfile>:p:h/util.vim
+" Things that need to be done early on
+source <sfile>:p:h/pre.vim
 
-" Anything I do should take precedence over anything a plugin does
+" Plugins need to be available for autoloading, so set them up first
 source <sfile>:p:h/plugin.vim
 
 " Statusline and Tabline come after the Uberwindow/Subwindow groups because
 " all groups need to be registered before the default statusline (with subwin
-" flags) is generated
+" flags) is generated.
+" Currently, Wince is source directly from plugin.vim
+" TODO: Figure out a fix for this
 source <sfile>:p:h/statusline.vim
 source <sfile>:p:h/tabline.vim
 

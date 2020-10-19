@@ -1,14 +1,16 @@
 " Wince Reference Definition for Help uberwin
+let s:Log = jer_log#LogFunctions('wince-help-uberwin')
+
 if !exists('g:wince_enable_help') || !g:wince_enable_help
-    call EchomLog('wince-help-uberwin', 'config', 'Help uberwin disabled')
+    call s:Log.CFG('Help uberwin disabled')
     finish
 endif
 
 " WinceToIdentifyLocHelp relies on getwininfo, and also on getloclist with the
 " winid key. So Vim-native winids are required. I see no other way to
 " implement WinceToIdentifyLocHelp.
-if g:wince_legacywinid
-    call EchomLog('wince-help-uberwin', 'error', 'The lochelp uberwin group is not supported for Vim versions older than 8.0')
+if jer_win#Legacy()
+    call s:Log.ERR('The lochelp uberwin group is not supported with legacy winids')
 endif
 
 if !exists('g:wince_help_left')
@@ -29,17 +31,17 @@ endif
 
 " Callback that opens the help window without a location list
 function! WinceToOpenHelp()
-    call EchomLog('wince-help-uberwin', 'info', 'WinceToOpenHelp')
+    call s:Log.INF('WinceToOpenHelp')
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(Wince_id2win(winid), '&ft', '') ==? 'help'
+        if getwinvar(jer_win#id2win(winid), '&ft', '') ==? 'help'
             throw 'Help window already open'
         endif
     endfor
 
-    let prevwinid = Wince_getid_cur()
+    let prevwinid = jer_win#getid()
 
     if !exists('t:j_help')
-        call EchomLog('wince-help-uberwin', 'debug', 'Help window has not been closed yet')
+        call s:Log.DBG('Help window has not been closed yet')
         " noautocmd is intentionally left out here so that syntax highlighting
         " is applied
         if g:wince_help_left
@@ -59,7 +61,7 @@ function! WinceToOpenHelp()
     let &l:scrollbind = 0
     let &l:cursorbind = 0
     noautocmd vertical resize 89
-    let winid = Wince_getid_cur()
+    let winid = jer_win#getid()
 
     if exists('t:j_help')
         silent execute 'buffer ' . t:j_help.bufnr
@@ -68,15 +70,15 @@ function! WinceToOpenHelp()
 
     let &winfixwidth = 1
 
-    noautocmd call Wince_gotoid(prevwinid)
+    noautocmd call jer_win#gotoid(prevwinid)
 
     return [winid]
 endfunction
 
-if !g:wince_legacywinid
+if !jer_win#Legacy()
     " Callback that opens the help window with a location list
     function! WinceToOpenLocHelp()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceToOpenLocHelp')
+        call s:Log.INF('WinceToOpenLocHelp')
         if !exists('t:j_help') || !has_key(t:j_help, 'loclist')
             throw 'No location list for help window'
         endif
@@ -84,11 +86,11 @@ if !g:wince_legacywinid
         call setloclist(helpwinid, t:j_help.loclist.list)
         call setloclist(helpwinid, [], 'a', t:j_help.loclist.what)
         
-        let curwinid = Wince_getid_cur()
-        noautocmd call Wince_gotoid(helpwinid)
+        let curwinid = jer_win#getid()
+        noautocmd call jer_win#gotoid(helpwinid)
         noautocmd lopen
         let &syntax = 'qf'
-        let locwinid = Wince_getid_cur()
+        let locwinid = jer_win#getid()
         noautocmd call win_gotoid(curwinid)
         
         return [helpwinid, locwinid]
@@ -97,10 +99,10 @@ endif
 
 " Callback that closes the help window
 function! WinceToCloseHelp()
-    call EchomLog('wince-help-uberwin', 'info', 'WinceToCloseHelp')
+    call s:Log.INF('WinceToCloseHelp')
     let helpwinid = 0
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(Wince_id2win(winid), '&ft', '') ==? 'help'
+        if getwinvar(jer_win#id2win(winid), '&ft', '') ==? 'help'
             let helpwinid = winid
         endif
     endfor
@@ -110,7 +112,7 @@ function! WinceToCloseHelp()
     endif
 
     let t:j_help = WinceStatePreCloseAndReopen(helpwinid)
-    let t:j_help.bufnr = winbufnr(Wince_id2win(helpwinid))
+    let t:j_help.bufnr = winbufnr(jer_win#id2win(helpwinid))
 
     " helpclose fails if the help window is the last window, so use :quit
     " instead
@@ -122,13 +124,13 @@ function! WinceToCloseHelp()
     helpclose
 endfunction
 
-if !g:wince_legacywinid
+if !jer_win#Legacy()
     " Callback that closes the help window with a location list
     function! WinceToCloseLocHelp()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceToCloseLocHelp')
+        call s:Log.INF('WinceToCloseLocHelp')
         let helpwinid = 0
         for winid in WinceStateGetWinidsByCurrentTab()
-            if getwinvar(Wince_id2win(winid), '&ft', '') ==? 'help'
+            if getwinvar(jer_win#id2win(winid), '&ft', '') ==? 'help'
                 let helpwinid = winid
             endif
         endfor
@@ -143,8 +145,8 @@ if !g:wince_legacywinid
         let loclist = {'list':getloclist(helpwinid)}
         let loclist.what = getloclist(helpwinid, {'changedtick':0,'context':0,'efm':'','idx':0,'title':''})
 
-        let curwinid = Wince_getid_cur()
-        noautocmd call Wince_gotoid(helpwinid)
+        let curwinid = jer_win#getid()
+        noautocmd call jer_win#gotoid(helpwinid)
         noautocmd lclose
         noautocmd call win_gotoid(curwinid)
 
@@ -156,20 +158,20 @@ endif
 " Callback that returns 'help' if the supplied winid is for the help window
 " and has no location list
 function! WinceToIdentifyHelp(winid)
-    call EchomLog('wince-help-uberwin', 'debug', 'WinceToIdentifyHelp ', a:winid)
-    if getwinvar(Wince_id2win(a:winid), '&ft', '') ==? 'help' &&
+    call s:Log.DBG('WinceToIdentifyHelp ', a:winid)
+    if getwinvar(jer_win#id2win(a:winid), '&ft', '') ==? 'help' &&
    \   get(getloclist(a:winid, {'size':0}), 'size', 0) == 0
         return 'help'
     endif
     return ''
 endfunction
 
-if !g:wince_legacywinid
+if !jer_win#Legacy()
     " Callback that returns 'help' if the supplied winid is for the help window
     " and has a location list, or 'loclist' if the supplied winid is for the
     " location window of a help window
     function! WinceToIdentifyLocHelp(winid)
-        call EchomLog('wince-help-uberwin', 'info', 'WinceToIdentifyLocHelp ', a:winid)
+        call s:Log.INF('WinceToIdentifyLocHelp ', a:winid)
         if getwinvar(a:winid, '&ft', '') ==? 'help' &&
        \   get(getloclist(a:winid, {'size':0}), 'size', 0) != 0
            return 'help'
@@ -187,7 +189,7 @@ if !g:wince_legacywinid
 endif
 
 function! WinceHelpStatusLine()
-    call EchomLog('wince-help-uberwin', 'debug', 'HelpStatusLine')
+    call s:Log.DBG('HelpStatusLine')
     let statusline = ''
 
     " 'Help' string
@@ -212,7 +214,7 @@ function! WinceHelpStatusLine()
 endfunction
 
 function! WinceHelpLocStatusLine()
-    call EchomLog('wince-help-uberwin', 'debug', 'HelpLocStatusLine')
+    call s:Log.DBG('HelpLocStatusLine')
     let statusline = ''
 
     " 'Loclist' string
@@ -247,7 +249,7 @@ call WinceAddUberwinGroupType('help', ['help'],
                            \function('WinceToCloseHelp'),
                            \function('WinceToIdentifyHelp'))
 
-if !g:wince_legacywinid
+if !jer_win#Legacy()
     " The lochelp uberwin has a lower priority value than the help uberwin
     " because we want the Resolver to call its ToIdentify callback first
     call WinceAddUberwinGroupType('lochelp', ['help', 'loclist'],
@@ -269,7 +271,7 @@ if !g:wince_legacywinid
     " resolver runs.
     " Also, when the resolver stomps 
     function! ResolveLocHelpWindows()
-        call EchomLog('wince-help-uberwin', 'info', 'ResolveLocHelpWindows')
+        call s:Log.INF('ResolveLocHelpWindows')
         for winid in WinceStateGetWinidsByCurrentTab()
             if getwinvar(winid, '&ft', '') !=? 'help'
                 continue
@@ -279,14 +281,14 @@ if !g:wince_legacywinid
             let haswin = get(getloclist(winid, {'winid':-1}), 'winid', -1) != 0
 
             if haslist && !haswin
-                let curwinid = Wince_getid_cur()
-                noautocmd call Wince_gotoid(winid)
+                let curwinid = jer_win#getid()
+                noautocmd call jer_win#gotoid(winid)
                 noautocmd lopen
                 let &syntax = 'qf'
                 noautocmd call win_gotoid(curwinid)
             elseif !haslist && haswin
-                let curwinid = Wince_getid_cur()
-                noautocmd call Wince_gotoid(winid)
+                let curwinid = jer_win#getid()
+                noautocmd call jer_win#gotoid(winid)
                 noautocmd lclose
                 noautocmd call win_gotoid(curwinid)
             endif
@@ -296,12 +298,12 @@ if !g:wince_legacywinid
             break
         endfor
     endfunction
-    call RegisterCursorHoldCallback(function('ResolveLocHelpWindows'), [], 0, -50, 1, 0, 1)
+    call jer_chc#Register(function('ResolveLocHelpWindows'), [], 0, -50, 1, 0, 1)
 
     " Disallow help and lochelp uberwin groups from existing simultaneously in
     " the model
     function! MutexHelpUberwins()
-        call EchomLog('wince-help-uberwin', 'info', 'MutexHelpUberwins')
+        call s:Log.INF('MutexHelpUberwins')
         let helpexists = WinceModelUberwinGroupExists('help')
         let lochelpexists = WinceModelUberwinGroupExists('lochelp')
 
@@ -309,29 +311,29 @@ if !g:wince_legacywinid
             return
         endif
 
-        call EchomLog('wince-help-uberwin', 'debug', 'Help and Lochelp both present')
+        call s:Log.DBG('Help and Lochelp both present')
         let helphidden =  WinceModelUberwinGroupIsHidden('help')
         let lochelphidden =  WinceModelUberwinGroupIsHidden('lochelp')
 
         if helphidden && !lochelphidden
-            call EchomLog('wince-help-uberwin', 'debug', 'Only Help is hidden. Removing')
+            call s:Log.DBG('Only Help is hidden. Removing')
             call WinceRemoveUberwinGroup('help')
             return
         elseif !helphidden && lochelphidden
-            call EchomLog('wince-help-uberwin', 'debug', 'Only Lochelp is hidden. Removing')
+            call s:Log.DBG('Only Lochelp is hidden. Removing')
             call WinceRemoveUberwinGroup('lochelp')
             return
         endif
 
         if has_key(t:j_help, 'loclist')
-            call EchomLog('wince-help-uberwin', 'debug', 'Both hidden and loclist exists. Removing Help')
+            call s:Log.DBG('Both hidden and loclist exists. Removing Help')
             call WinceRemoveUberwinGroup('help')
         else
-            call EchomLog('wince-help-uberwin', 'debug', 'Both hidden and no loclist. Removing Lochelp')
+            call s:Log.DBG('Both hidden and no loclist. Removing Lochelp')
             call WinceRemoveUberwinGroup('lochelp')
         endif
     endfunction
-    call RegisterCursorHoldCallback(function('MutexHelpUberwins'), [], 0, 30, 1, 0, 1)
+    call jer_chc#Register(function('MutexHelpUberwins'), [], 0, 30, 1, 0, 1)
 endif
 
 augroup WinceHelp
@@ -340,13 +342,13 @@ augroup WinceHelp
 augroup END
 
 " Mappings
-if g:wince_legacywinid
+if jer_win#Legacy()
     call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowUberwinGroup("help")')
     call WinceMappingMapUserOp('<leader>hc', 'call WinceHideUberwinGroup("help")')
-    call WinceMappingMapUserOp('<leader>hh', 'call WinceAddOrGotoUberwin("help","help")')
+    call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoUberwin("help","help",g:wince_map_mode)')
 else
     function! WinceAddOrShowHelp()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceAddOrShowHelp')
+        call s:Log.INF('WinceAddOrShowHelp')
         if exists('t:j_help') && has_key(t:j_help, 'loclist')
             call WinceAddOrShowUberwinGroup('lochelp')
         else
@@ -354,29 +356,31 @@ else
         endif
     endfunction
     function! WinceHideHelp()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceHideHelp')
+        call s:Log.INF('WinceHideHelp')
         if WinceModelUberwinGroupExists('lochelp')
             call WinceHideUberwinGroup('lochelp')
         else
             call WinceHideUberwinGroup('help')
         endif
     endfunction
-    function! WinceAddOrGotoHelp()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceAddOrGotoHelp')
+    function! WinceAddOrGotoHelp(startmode)
+        call s:Log.INF('WinceAddOrGotoHelp ', a:startmode)
         if WinceModelUberwinGroupExists('lochelp')
-            call WinceAddOrGotoUberwin('lochelp', 'help')
+            return WinceAddOrGotoUberwin('lochelp', 'help', a:startmode)
         else
-            call WinceAddOrGotoUberwin('help', 'help')
+            return WinceAddOrGotoUberwin('help', 'help', a:startmode)
         endif
+        return a:startmode
     endfunction
-    function! WinceAddOrGotoHelpLoc()
-        call EchomLog('wince-help-uberwin', 'info', 'WinceAddOrGotoHelpLoc')
+    function! WinceAddOrGotoHelpLoc(startmode)
+        call s:Log.INF('WinceAddOrGotoHelpLoc')
         if exists('t:j_help') && has_key(t:j_help, 'loclist')
-            call WinceAddOrGotoUberwin('lochelp', 'loclist')
+            return WinceAddOrGotoUberwin('lochelp', 'loclist', a:startmode)
         endif
+        return a:startmode
     endfunction
     call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowHelp()')
     call WinceMappingMapUserOp('<leader>hc', 'call WinceHideHelp()')
-    call WinceMappingMapUserOp('<leader>hh', 'call WinceAddOrGotoHelp()')
-    call WinceMappingMapUserOp('<leader>hl', 'call WinceAddOrGotoHelpLoc()')
+    call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoHelp(g:wince_map_mode)')
+    call WinceMappingMapUserOp('<leader>hl', 'let g:wince_map_mode = WinceAddOrGotoHelpLoc(g:wince_map_mode)')
 endif

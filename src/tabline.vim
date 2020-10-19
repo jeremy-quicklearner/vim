@@ -74,7 +74,7 @@ function! GetTabString(tabnum, tabcols)
     let winnr = tabpagewinnr(a:tabnum)
 
     " Name of file in active window of the tab
-    let wininfo = getwininfo(Wince_getid_tab(winnr, a:tabnum))
+    let wininfo = getwininfo(jer_win#getid(winnr, a:tabnum))
 
     " Quickfix and location lists are special cases
     if len(wininfo) && wininfo[0]['loclist']

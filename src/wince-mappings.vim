@@ -7,33 +7,35 @@
 " TODO: Ensure all mappings behave similarly to their native counterparts when
 "       invoked from visual mode
 " TODO: Thoroughly test every mapping
+let s:Log = jer_log#LogFunctions('wince-mappings')
 
 if !exists('g:wince_disable_mappings')
+    call s:Log.CFG('Mappings disabled')
     let g:wince_disable_mappings = 0
 endif
 
 " This function is a helper for group definitions which want to define
 " mappings for adding, removing, showing, hiding, and jumping to their groups
 function! WinceMappingMapUserOp(lhs, rhs)
-    call EchomLog('wince-mappings', 'config', 'Map ', a:lhs, ' to ', a:rhs)
-    execute 'nnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinceStateDetectMode("n")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>'
-    execute 'xnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinceStateDetectMode("v")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>'
-    execute 'snoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinceStateDetectMode("s")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>'
-    execute 'tnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call WinceStateDetectMode("t")<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>'
+    call s:Log.CFG('Map ', a:lhs, ' to ', a:rhs)
+    execute 'nnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
+    execute 'xnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
+    execute 'snoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("s")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
+    execute 'tnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("t")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
 endfunction
 
 " Process v:count and v:count1 into a single count
 function! WinceMappingProcessCounts(allow0)
-    call EchomLog('wince-mappings', 'debug', 'WinceMappingProcessCounts ' , a:allow0)
+    call s:Log.DBG('WinceMappingProcessCounts ' , a:allow0)
     " v:count and v:count1 default to different values when no count is
     " provided
     if v:count !=# v:count1
-        call EchomLog('wince-mappings', 'debug', 'Count not set')
+        call s:Log.DBG('Count not set')
         return ''
     endif
 
     if !a:allow0 && v:count <= 0
-        call EchomLog('wince-mappings', 'debug', 'Count 0 not allowed. Substituting 1.')
+        call s:Log.DBG('Count 0 not allowed. Substituting 1.')
         return 1
     endif
 
@@ -42,24 +44,24 @@ endfunction
 
 " Stop here if mappings are disabled
 if g:wince_disable_mappings
-    call EchomLog('wince-mappings', 'config', 'Mappings disabled')
+    call s:Log.CFG('Mappings disabled')
     finish
 endif
 
 " Map a command of the form <c-w><cmd> to run an Ex command with a count
 function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinselectmode, mapinterminalmode)
-    call EchomLog('wince-mappings', 'debug', 'DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinselectmode, ',', a:mapinterminalmode, ']')
+    call s:Log.DBG('DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinselectmode, ',', a:mapinterminalmode, ']')
     if a:mapinnormalmode
-        execute 'nnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinceStateDetectMode(\"n\")<cr><c-w>:<c-u>execute " . WinceMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>"'
+        execute 'nnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' n"<cr>'
     endif
     if a:mapinvisualmode
-        execute 'xnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinceStateDetectMode(\"v\")<cr><c-w>:<c-u>execute " . WinceMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>"'
+        execute 'xnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' v"<cr>'
     endif
     if a:mapinselectmode
-        execute 'snoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinceStateDetectMode(\"s\")<cr><c-w>:<c-u>execute " . WinceMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>"'
+        execute 'snoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' s"<cr>'
     endif
     if a:mapinterminalmode
-        execute 'tnoremap <expr> <silent> ' . a:cmd . ' "<c-w>:<c-u>call WinceStateDetectMode(\"t\")<cr><c-w>:<c-u>execute " . WinceMappingProcessCounts(' . a:allow0 . ') . "\"' . a:exCmd . '\"<cr><c-w>:<c-u>call WinceStateRestoreMode()<cr>"'
+        execute 'tnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' t"<cr>'
     endif
 endfunction
 
@@ -67,7 +69,7 @@ endfunction
 function! WinceMappingMapCmd(cmds, exCmdName, allow0,
                          \ mapinnormalmode, mapinvisualmode, mapinselectmode,
                          \ mapinterminalmode)
-    call EchomLog('wince-mappings', 'config', 'Map ', a:cmds, ' to ', a:exCmdName)
+    call s:Log.DBG('Map ', a:cmds, ' to ', a:exCmdName)
     for cmd in a:cmds
         call s:DefineMappings(cmd, a:exCmdName, a:allow0, a:mapinnormalmode, a:mapinvisualmode, a:mapinselectmode, a:mapinterminalmode)
     endfor
@@ -80,15 +82,15 @@ endfunction
 " These top-level mappings are just on the first character and first digit of
 " {nr}. 0 Is ommitted because Vim's default behaviour on <c-w>0 and z0 is
 " already a nop
+" When we start reading characters, we preserve/retrieve the current mode.
 for idx in range(1,9)
-    execute 'nnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call WinceStateDetectMode("n")<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
-    execute 'xnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call WinceStateDetectMode("v")<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
+    execute 'nnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
+    execute 'xnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
     " There is no snoremap for <c-w> because no <c-w> commands can be run from
     " select mode
-
-    execute 'nnoremap <silent> z' . idx . ' <c-w>:<c-u>call WinceStateDetectMode("n")<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
-    execute 'xnoremap <silent> z' . idx . ' <c-w>:<c-u>call WinceStateDetectMode("v")<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
-    execute 'snoremap <silent> z' . idx . ' <c-w>:<c-u>call WinceStateDetectMode("s")<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
+    execute 'nnoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
+    execute 'xnoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
+    execute 'snoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("s")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
 endfor
 
 " Tracks the characters typed so far
@@ -96,12 +98,12 @@ let s:sofar = ''
 
 " These functions call WinceMappingScan() which will read more characters.
 function! WinceMappingScanW(firstdigit)
-    call EchomLog('wince-mappings', 'debug', 'WinceMappingScanW ', a:firstdigit)
+    call s:Log.DBG('WinceMappingScanW ', a:firstdigit)
     let s:sofar = "\<c-w>" . a:firstdigit
     call WinceMappingScan()
 endfunction
 function! WinceMappingScanZ(firstdigit)
-    call EchomLog('wince-mappings', 'debug', 'WinceMappingScanZ ', a:firstdigit)
+    call s:Log.DBG('WinceMappingScanZ ', a:firstdigit)
     let s:sofar = "z" . a:firstdigit
     call WinceMappingScan()
 endfunction
@@ -122,7 +124,8 @@ map <silent> <plug>WinMappingParse<plug> <nop>
 " wait a while due to the ambiguity (during which characters can be typed by
 " the user) and then run the mapping which calls this function again. So the
 " function runs over and over reading one character at a time.
-"
+" The mode that was preserve/retrieved by the top-level mappings is restored
+" each time.
 " If the user is not partway through typing such a command (either because
 " they've finished typing it or because they typed a character that isn't in
 " the command), stop feedkeys'ing the ambiguous mapping and pass the
@@ -135,20 +138,22 @@ function! WinceMappingScan()
 
     " If no characters are available now, setup another call.
     if !getchar(1)
-        call EchomLog('wince-mappings', 'verbose', 'WinceMappingScan sees no new characters')
-        call WinceStateRestoreMode()
+        call s:Log.VRB('WinceMappingScan sees no new characters')
+        call jer_mode#ForcePreserve(g:wince_map_mode)
+        call jer_mode#Restore()
         call feedkeys("\<plug>WinMappingParse")
         return
     endif
 
     " A character is available. Read it.
     let s:sofar .= nr2char(getchar())
-    call EchomLog('wince-mappings', 'debug', 'WinceMappingScan captured ', s:sofar)
+    call s:Log.DBG('WinceMappingScan captured ', s:sofar)
     " If it was a number, setup another call because there may be more
     " characters
     if s:sofar[1:] =~# '^\d*$'
-        call EchomLog('wince-mappings', 'debug', 'Not finished scanning yet')
-        call WinceStateRestoreMode()
+        call s:Log.DBG('Not finished scanning yet')
+        call jer_mode#ForcePreserve(g:wince_map_mode)
+        call jer_mode#Restore()
         call feedkeys("\<plug>WinMappingParse")
         return
     endif
@@ -163,12 +168,15 @@ endfunction
 " Given a command with an infixed count, use feedkeys to run it but with the
 " count prefixed instead of infixed. If there is a non-hacky mapping that uses
 " v:count, it will be triggered.
+" Also restore the mode that was preserve/retrieved by the top-level mappings,
+" so that the non-hacky mapping runs in the same mode that we started in
 function! s:RunInfixCmd(cmd)
     if index(["\<c-w>", 'z'], a:cmd[0]) <# 0
         throw 's:RunInfixCmd on invalid command ' . a:cmd
     endif
-    call EchomLog('wince-mappings', 'info', 'RunInfixCmd ', a:cmd, ' -> ', a:cmd[1:-2], a:cmd[0], a:cmd[-1:-1])
-    call WinceStateRestoreMode()
+    call s:Log.INF('RunInfixCmd ', a:cmd, ' -> ', a:cmd[1:-2], a:cmd[0], a:cmd[-1:-1])
+    call jer_mode#ForcePreserve(g:wince_map_mode)
+    call jer_mode#Restore()
     call feedkeys(a:cmd[1:-2] . a:cmd[0] . a:cmd[-1:-1])
 endfunction
 
