@@ -1018,7 +1018,8 @@ function! s:ValidateNewDimensionsList(category, grouptypename, dims)
         " TODO? Fill in missing dicts with -1,-1,-1
         " - This will only be required if there's ever a case where multiple
         "   windows are added to the model at the same time, but only some of
-        "   them have non-dummy dimensions
+        "   them have non-dummy dimensions. At the moment, I see no reason why
+        "   that would happen
         let dim = a:dims[typeidx]
         let typename = g:wince_uberwingrouptype[a:grouptypename].typenames[typeidx]
         if type(dim) !=# v:t_dict
@@ -1089,7 +1090,8 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
         " TODO? Fill in missing dicts with 0,-1,-1
         " - This will only be required if there's ever a case where multiple
         "   windows are added to the model at the same time, but only some of
-        "   them have non-dummy dimensions
+        "   them have non-dummy dimensions. At the moment, I see no reason why
+        "   that would happen
         let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
         let dim = a:dims[typeidx]
 
@@ -1981,4 +1983,4 @@ endfunction
 " TODO? Some individual types may need an option for a non-default toClose
 " callback so that the resolver doesn't have to stomp them with :q! when their groups
 " become incomplete
-" - So far that hasn't been needed
+" - So far there's been no need for something like that

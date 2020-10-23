@@ -1,18 +1,17 @@
 " Wince Reference Definition for Loclist subwin
 let s:Log = jer_log#LogFunctions('wince-loclist-subwin')
+" Figure out why sometimes the syntax highlighting doesn't get applied
+
+" This helper is used in the help uberwin
+function! LoclistFieldForStatusline(fieldname)
+    call s:Log.DBG('LoclistFieldForStatusline')
+    return jer_util#SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
+endfunction
 
 if !exists('g:wince_enable_loclist') || !g:wince_enable_loclist
     call s:Log.CFG('Loclist subwin disabled')
     finish
 endif
-
-
-" This helper is used in the help uberwin
-" TODO: Make sure this always gets loaded
-function! LoclistFieldForStatusline(fieldname)
-    call s:Log.DBG('LoclistFieldForStatusline')
-    return jer_util#SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
-endfunction
 
 " WinceToIdentifyLoclist relies on getwininfo, and also on getloclist with the
 " winid key. So Vim-native winids are required. I see no other way to implement
@@ -196,7 +195,11 @@ endif
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateLoclistSubwins.
-call WinceMappingMapUserOp('<leader>ls', 'call WinceShowSubwinGroup(win_getid(), "loclist", 1)')
-call WinceMappingMapUserOp('<leader>lh', 'call WinceHideSubwinGroup(win_getid(), "loclist")')
-call WinceMappingMapUserOp('<leader>ll', 'let g:wince_map_mode = WinceGotoSubwin(win_getid(), "loclist", "loclist", g:wince_map_mode, 1)')
-call WinceMappingMapUserOp('<leader>lc', 'lexpr [] \| call UpdateLoclistSubwins()')
+if exists('g:wince_disable_loclist_mappings') && g:wince_disable_loclist_mappings
+    call s:Log.CFG('Loclist uberwin mappings disabled')
+else
+    call WinceMappingMapUserOp('<leader>ls', 'call WinceShowSubwinGroup(win_getid(), "loclist", 1)')
+    call WinceMappingMapUserOp('<leader>lh', 'call WinceHideSubwinGroup(win_getid(), "loclist")')
+    call WinceMappingMapUserOp('<leader>ll', 'let g:wince_map_mode = WinceGotoSubwin(win_getid(), "loclist", "loclist", g:wince_map_mode, 1)')
+    call WinceMappingMapUserOp('<leader>lc', 'lexpr [] \| call UpdateLoclistSubwins()')
+endif

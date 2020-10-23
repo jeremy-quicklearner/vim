@@ -168,20 +168,24 @@ augroup WinceQuickfix
     " If the uberwin needs to be added don't hide it
     autocmd QuickFixCmdPost * call UpdateQuickfixUberwinShow()
 
-    " If there are location windows when mksession is invoked, the locations lists
+    " If there are location windows when mksession is invoked, the location lists
     " they display do not persist. When the session is reloaded, the location
     " windows are opened without location lists. If there is no quickfix
     " window, Vim misidentifies the dangling location windows as quickfix
     " windows. This breaks the assumption that there is only ever one quickfix
     " window, which the Quickfix uberwin definition relies on. To be safe, invoke
-    " cclose from every window. This will close all dangling location windows.
-    autocmd SessionLoadPost * call jer_util#TabDo('', 'call jer_chc#Register(function("CloseDanglingQuickfixWindows"), [], 1, -99, 0, 0, 0)'
+    " cclose in every tab until there are no quickfix windows. 
+    autocmd SessionLoadPost * call jer_util#TabDo('', 'call jer_chc#Register(function("CloseDanglingQuickfixWindows"), [], 1, -99, 0, 0, 0)')
 augroup END
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateQuickfixUberwin.
-call WinceMappingMapUserOp('<leader>qs', 'call WinceShowUberwinGroup("quickfix", 1)')
-call WinceMappingMapUserOp('<leader>qh', 'call WinceHideUberwinGroup("quickfix")')
-call WinceMappingMapUserOp('<leader>qq', 'let g:wince_map_mode = WinceGotoUberwin("quickfix", "quickfix", g:wince_map_mode, 1)')
-call WinceMappingMapUserOp('<leader>qc', 'call WinceRemoveUberwinGroup("quickfix") \| cexpr []')
+if exists('g:wince_disable_quickfix_mappings') && g:wince_disable_quickfix_mappings
+    call s:Log.CFG('Quickfix uberwin mappings disabled')
+else
+    call WinceMappingMapUserOp('<leader>qs', 'call WinceShowUberwinGroup("quickfix", 1)')
+    call WinceMappingMapUserOp('<leader>qh', 'call WinceHideUberwinGroup("quickfix")')
+    call WinceMappingMapUserOp('<leader>qq', 'let g:wince_map_mode = WinceGotoUberwin("quickfix", "quickfix", g:wince_map_mode, 1)')
+    call WinceMappingMapUserOp('<leader>qc', 'call WinceRemoveUberwinGroup("quickfix") \| cexpr []')
+endif

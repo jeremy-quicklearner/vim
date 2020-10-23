@@ -8,8 +8,9 @@ endif
 
 " TODO? Close and reopen the option window whenever the current window
 "       changes, so as to update its record of window-local options
-"       - Probably not worth doing
-" TODO: Check if this uberwin group plays well with session reloading
+"       - Probably not worth doing. The options and their possible values
+"         all stay the same anway - only the positions of the possible values
+"         would change
 
 if !exists('g:wince_option_right')
     let g:wince_option_right = 0
@@ -173,7 +174,11 @@ call WinceAddUberwinGroupType('option', ['option'],
                            \function('WinceToIdentifyOption'))
 
 " Mappings
-call WinceMappingMapUserOp('<leader>os', 'call WinceAddOrShowUberwinGroup("option")')
-call WinceMappingMapUserOp('<leader>oo', 'let g:wince_map_mode = WinceAddOrGotoUberwin("option","option",g:wince_map_mode)')
-call WinceMappingMapUserOp('<leader>oh', 'call WinceRemoveUberwinGroup("option")')
-call WinceMappingMapUserOp('<leader>oc', 'call WinceRemoveUberwinGroup("option")')
+if exists('g:wince_disable_option_mappings') && g:wince_disable_option_mappings
+    call s:Log.CFG('Option uberwin mappings disabled')
+else
+    call WinceMappingMapUserOp('<leader>os', 'call WinceAddOrShowUberwinGroup("option")')
+    call WinceMappingMapUserOp('<leader>oo', 'let g:wince_map_mode = WinceAddOrGotoUberwin("option","option",g:wince_map_mode)')
+    call WinceMappingMapUserOp('<leader>oh', 'call WinceRemoveUberwinGroup("option")')
+    call WinceMappingMapUserOp('<leader>oc', 'call WinceRemoveUberwinGroup("option")')
+endif

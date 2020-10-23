@@ -232,29 +232,29 @@ function! WinceCommonReselectCursorWindow(oldpos)
     return pos
 endfunction
 
-" Fix the scroll position of all windows such that opening and closing new windows
-" won't change them. ('Shield' them). Return information about the shielded windows'
-" previous fixedness so that they can later be unshielded. Exclude some
-" windows.
+" Preserve the view (scroll and cursor position) in all windows except for
+" some exceptions
 function! WinceCommonShieldAllWindows(excludedwinids)
     call s:Log.DBG('WinceCommonShieldAllWindows')
     let supwinids = copy(WinceModelSupwinIds())
+    let curwin = WinceStateGetCursorWinId()
 
     let preshield = {}
     for winid in WinceStateGetWinidsByCurrentTab()
         if index(a:excludedwinids, str2nr(winid)) >=# 0
             continue
         endif
-        let onlyscroll = (index(supwinids, str2nr(winid)) >= 0)
-        call s:Log.VRB('Shield ', winid, ' ' . onlyscroll)
-        let preshield[winid] = WinceStateShieldWindow(winid, onlyscroll)
+        call s:Log.VRB('Shield ', winid)
+        let preshield[winid] = WinceStateShieldWindow(winid)
     endfor
+
+    call WinceStateMoveCursorToWinidSilently(curwin)
     
     call s:Log.VRB('Shielded: ', preshield)
     return preshield
 endfunction
 
-" Unshield windows that were shielded with WinceCommonShieldAllWindows()
+" Restore views from WinceCommonShieldAllWindows()
 function! WinceCommonUnshieldWindows(preshield)
     call s:Log.DBG('WinceCommonUnshieldWindows')
     for winid in keys(a:preshield)
@@ -285,31 +285,19 @@ function! WinceCommonRestoreCursorPosition(info)
     endif
 endfunction
 
-" Wrapper for WinceStateCloseUberwinsByGroupType that shields windows whose
-" dimensions shouldn't change and validates that the windows it removes from
-" the state are the ones associated with the correct uberwin group type in the
-" model
+" When windows are closed, Vim needs to choose which other windows to
+" expand to fill the free space and how to change those windows' scroll
+" positions. Sometimes Vim makes choices I don't like, such as scrolling
+" down in the windows it expands. So before closing the uberwin, Remember the
+" scroll and cursor position scroll position of every window except the ones
+" being closed. This is a wrapper that does just that. It also ensures that
+" ToClose is closing the right windows.
 function! WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
     call s:Log.DBG('WinceCommonCloseUberwinsByGroupTypeName ', a:grouptypename)
-    " When windows are closed, Vim needs to choose which other windows to
-    " expand to fill the free space and how to change those windows' scroll
-    " positions. Sometimes Vim makes choices I don't like, such as scrolling
-    " down in the windows it expands. So before closing the uberwin, fix the
-    " scroll position of every window except the ones being closed.
-    " Do ***NOT*** optimize this by not excluding the windows being closed! It
-    " leads to trouble.
-    " While the scrollbind option is said to be window-local in Vim's Help, a
-    " particularly nasty undocumented behaviour applies when a scrollbound window
-    " is closed: Vim preserves the scrollbind option for that window's buffer and
-    " then applies it to the next window that the buffer enters. That's what
-    " would happen here: WinceCommonShieldAllWindows() would set scrollbind on
-    " the uberwins, then WinceStateCloseUberwinsByGroupType would close them.
-    " Vim would internally preserve scrollbind for the uberwins' buffers,
-    " which could then be opened in other windows causing scrollbind to be
-    " restored to those windows. Now we have scrollbind set for windows that
-    " should not have it set, and a very confused user.
     let uberwinids = WinceModelUberwinIdsByGroupTypeName(a:grouptypename)
+
     let preshield = WinceCommonShieldAllWindows(uberwinids)
+
     try
         let grouptype = g:wince_uberwingrouptype[a:grouptypename]
         let preclosewinids = WinceStateGetWinidsByCurrentTab()
@@ -369,18 +357,18 @@ function! s:RestoreDimensionsByWinid(winid, olddims, prefertopleftdividers)
     " non-supwin must be an uberwin.
     let isuberwin = (index(WinceModelSupwinIds(), str2nr(a:winid)) <# 0 )
     let fixed = WinceStateFixednessByWinid(a:winid)
-    if a:olddims.w <# newdims.w || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
+    if (a:olddims.w <# newdims.w ) || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
         call s:Log.DBG('Set width for window ', a:winid, ' to ', a:olddims.w)
         call WinceStateResizeHorizontal(a:winid, a:olddims.w, a:prefertopleftdividers)
     endif
-    if a:olddims.h <# newdims.h || (isuberwin && fixed.h && a:olddims.h ># newdims.h)
+    if (a:olddims.h <# newdims.h ) || (isuberwin && fixed.h && a:olddims.h ># newdims.h)
         call s:Log.DBG('Set height for window ', a:winid, ' to ', a:olddims.h)
         call WinceStateResizeVertical(a:winid, a:olddims.h, a:prefertopleftdividers)
     endif
 endfunction
 " Restore dimensions remembered with WinceCommonPreserveDimensions
 function! WinceCommonRestoreDimensions(windims)
-    call s:Log.DBG('WinceCommonRestoreDimensions')
+    call s:Log.DBG('WinceCommonRestoreDimensions ')
     let sorted = copy(keys(a:windims))
     call sort(sorted, function('s:CompareWinidsByWinnr'))
     for winid in sorted
@@ -446,30 +434,18 @@ endfunction
 
 " Wrapper for WinceStateOpenUberwinsByGroupType that freezes scroll positions
 " and corrects dimensions for existing windows
-function! WinceCommonOpenUberwins(grouptypename, correctdims)
-    call s:Log.DBG('WinceCommonOpenUberwins ', a:grouptypename, ' ', a:correctdims)
-    " Shielding only protects windows from scrolling when they are not
-    " the current window, so explicitly save and restore the current
-    " window's scroll position. Shielding is preferred for other
-    " windows due to performance. This is the reason why it is required that
-    " uberwin groups' toOpen callbacks not move the cursor before opening the
-    " uberwin
-    let curtopline = WinceStatePreserveScrollPosition()
+function! WinceCommonOpenUberwins(grouptypename)
+    call s:Log.DBG('WinceCommonOpenUberwins ', a:grouptypename)
     let curwin = WinceStateGetCursorWinId()
-
     let preshield = WinceCommonShieldAllWindows([])
     try
-        if a:correctdims
-            let windims = WinceCommonPreserveDimensions()
-        endif
+        let windims = WinceCommonPreserveDimensions()
         try
             let grouptype = g:wince_uberwingrouptype[a:grouptypename]
             let winids = WinceStateOpenUberwinsByGroupType(grouptype)
 
         finally
-            if a:correctdims
-                call WinceCommonRestoreDimensions(windims)
-            endif
+            call WinceCommonRestoreDimensions(windims)
         endtry
 
     finally
@@ -478,10 +454,6 @@ function! WinceCommonOpenUberwins(grouptypename, correctdims)
         " The ToOpen callback may have moved the cursor, so move it back
         " before restoring the scroll position
         call WinceStateMoveCursorToWinidSilently(curwin)
-
-        " The scroll position must be restored after unshielding, or else it
-        " may cause other windows to scroll
-        call WinceStateRestoreScrollPosition(curtopline)
     endtry
     call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' with winids ', winids)
     return winids
@@ -515,8 +487,8 @@ endfunction
 
 " Reopens uberwins that were closed by WinceCommonCloseUberwinsWithHigherPriority
 " and updates the model with the new winids
-function! WinceCommonReopenUberwins(preserved, correctdims)
-    call s:Log.DBG('WinceCommonReopenUberwins ', a:correctdims)
+function! WinceCommonReopenUberwins(preserved)
+    call s:Log.DBG('WinceCommonReopenUberwins')
     " Open all uberwins first, then apply PostCloseAndReopenUberwins to them
     " all. This is done because sometimes opening an uberwin will cause other
     " lower-priority uberwins' dimensions to change, and we don't want that to
@@ -525,7 +497,7 @@ function! WinceCommonReopenUberwins(preserved, correctdims)
     for grouptype in a:preserved
         call s:Log.DBG('Reopening preserved uberwin group ', grouptype.grouptypename)
         try
-            let winids[grouptype.grouptypename] = WinceCommonOpenUberwins(grouptype.grouptypename, a:correctdims)
+            let winids[grouptype.grouptypename] = WinceCommonOpenUberwins(grouptype.grouptypename)
             call s:Log.VRB('Reopened uberwin group ', grouptype.grouptypename, ' with winids ', winids)
         catch /.*/
              call s:Log.WRN('WinceCommonReopenUberwins failed to open ', grouptype.grouptypename, ' uberwin group:')
@@ -929,8 +901,8 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
-function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect, preservesupdims)
-    call s:Log.DBG('DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ',', a:preservesupdims, ']')
+function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
+    call s:Log.DBG('DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ']')
     let supwinids = WinceModelSupwinIds()
     let closedsubwingroupsbysupwin = {}
     for supwinid in supwinids
@@ -968,11 +940,9 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect, p
     let posttabnr = pretabnr
     try
         let closeduberwingroups = []
+        let supdims = {}
         if a:nouberwins
             call s:Log.DBG('Closing all uberwins')
-            if a:preservesupdims
-                let supdims = WinceCommonPreserveDimensions()
-            endif
             let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriority(-1)
         endif
         try
@@ -997,10 +967,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect, p
                 call WinceStateGotoTab(pretabnr)
             endif
             call s:Log.DBG('Reopening all uberwins')
-            call WinceCommonReopenUberwins(closeduberwingroups, !a:preservesupdims)
-            if a:preservesupdims
-                call WinceCommonRestoreDimensions(supdims)
-            endif
+            call WinceCommonReopenUberwins(closeduberwingroups)
         endtry
 
     finally
@@ -1062,17 +1029,17 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect, p
 endfunction
 function! WinceCommonDoWithoutUberwins(curwin, callback, args, reselect)
     call s:Log.DBG('WinceCommonDoWithoutUberwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0, a:reselect, 0)
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 0, a:reselect)
 endfunction
 
 function! WinceCommonDoWithoutSubwins(curwin, callback, args, reselect)
     call s:Log.DBG('WinceCommonDoWithoutSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect)
-    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1, a:reselect, 0)
+    return s:DoWithout(a:curwin, a:callback, a:args, 0, 1, a:reselect)
 endfunction
 
-function! WinceCommonDoWithoutUberwinsOrSubwins(curwin, callback, args, reselect, preservesupdims)
-    call s:Log.DBG('WinceCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect, ', ', a:preservesupdims)
-    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1, a:reselect, a:preservesupdims)
+function! WinceCommonDoWithoutUberwinsOrSubwins(curwin, callback, args, reselect)
+    call s:Log.DBG('WinceCommonDoWithoutUberwinsOrSubwins ', a:curwin, ', ', a:callback, ', ', a:args, ', ', a:reselect, )
+    return s:DoWithout(a:curwin, a:callback, a:args, 1, 1, a:reselect)
 endfunction
 
 function! s:Nop()

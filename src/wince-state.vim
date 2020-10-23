@@ -169,45 +169,18 @@ function! WinceStateRestoreCursorPosition(pos)
     call winrestview(a:pos)
 endfunction
 
-" Scroll position preserve/restore
-function! WinceStatePreserveScrollPosition()
-    call s:Log.DBG('WinceStatePreserveScrollPosition')
-    let topline = winsaveview().topline
-    call s:Log.DBG('Scroll position preserved: ', topline)
-    return topline
-endfunction
-function! WinceStateRestoreScrollPosition(topline)
-    call s:Log.DBG('WinceStateRestoreScrollPosition ', a:topline)
-    let newview = winsaveview()
-    let newview.topline = a:topline
-    call WinceStateRestoreCursorPosition(newview)
-endfunction
-
 " Window shielding
-function! WinceStateShieldWindow(winid, onlyscroll)
-    call s:Log.INF('WinceStateShieldWindow ', a:winid, ' ', a:onlyscroll)
-    let preshield = {
-   \    'w': getwinvar(jer_win#id2win(a:winid), '&winfixwidth'),
-   \    'h': getwinvar(jer_win#id2win(a:winid), '&winfixheight'),
-   \    'sb': getwinvar(jer_win#id2win(a:winid), '&scrollbind'),
-   \    'cb': getwinvar(jer_win#id2win(a:winid), '&cursorbind')
-   \}
-    call s:Log.VRB('Pre-shield fixedness for window ', a:winid, ': ', preshield)
-    if !a:onlyscroll
-        "call setwinvar(jer_win#id2win(a:winid), '&winfixwidth', 1)
-        "call setwinvar(jer_win#id2win(a:winid), '&winfixheight', 1)
-    endif
-    call setwinvar(jer_win#id2win(a:winid), '&scrollbind', 1)
-    call setwinvar(jer_win#id2win(a:winid), '&cursorbind', 0)
-    return preshield
+function! WinceStateShieldWindow(winid)
+     call s:Log.INF('WinceStateShieldWindow ', a:winid)
+     noautocmd silent call jer_win#gotoid(a:winid)
+     let saved = winsaveview()
+     return saved
 endfunction
 
 function! WinceStateUnshieldWindow(winid, preshield)
-    call s:Log.INF('WinceStateUnshieldWindow ', a:winid, ' ', a:preshield)
-    "call setwinvar(jer_win#id2win(a:winid), '&winfixwidth', a:preshield.w)
-    "call setwinvar(jer_win#id2win(a:winid), '&winfixheight', a:preshield.h)
-    call setwinvar(jer_win#id2win(a:winid), '&scrollbind', a:preshield.sb)
-    call setwinvar(jer_win#id2win(a:winid), '&cursorbind', a:preshield.cb)
+     call s:Log.INF('WinceStateUnshieldWindow ', a:winid, ' ', a:preshield)
+     noautocmd silent call jer_win#gotoid(a:winid)
+     call winrestview(a:preshield)
 endfunction
 
 " Generic Ctrl-W commands
@@ -665,7 +638,7 @@ function! WinceStateAfterimageWindow(winid)
     " enew from the tree window and close the diff window
     noautocmd enew!
     setlocal buftype=nofile
-    setlocal bufhidden=hide
+    setlocal bufhidden=wipe
     setlocal noswapfile
     setlocal nobuflisted
     call s:MaybeRedraw()

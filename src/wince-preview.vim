@@ -150,7 +150,11 @@ call WinceAddUberwinGroupType('preview', ['preview'],
                            \function('WinceToIdentifyPreview'))
 
 " Mappings
-call WinceMappingMapUserOp('<leader>ps', 'call WinceShowUberwinGroup("preview", 1)')
-call WinceMappingMapUserOp('<leader>ph', 'call WinceHideUberwinGroup("preview")')
-call WinceMappingMapUserOp('<leader>pc', 'call WinceHideUberwinGroup("preview")')
-call WinceMappingMapUserOp('<leader>pp', 'let g:wince_map_mode = WinceGotoUberwin("preview", "preview", g:wince_map_mode, 1)')
+if exists('g:wince_disable_preview_mappings') && g:wince_disable_preview_mappings
+    call s:Log.CFG('Preview uberwin mappings disabled')
+else
+    call WinceMappingMapUserOp('<leader>ps', 'call WinceShowUberwinGroup("preview", 1)')
+    call WinceMappingMapUserOp('<leader>ph', 'call WinceHideUberwinGroup("preview")')
+    call WinceMappingMapUserOp('<leader>pc', 'call WinceHideUberwinGroup("preview")')
+    call WinceMappingMapUserOp('<leader>pp', 'let g:wince_map_mode = WinceGotoUberwin("preview", "preview", g:wince_map_mode, 1)')
+endif

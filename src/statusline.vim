@@ -32,45 +32,44 @@ function! SpaceIfArgs()
 endfunction
 
 " Set the status line for a supwin
-function! SetDefaultStatusLine()
-    " Always show the status line
-    set laststatus=2
-
-    set statusline=
+function! GetDefaultStatusLine()
+    let statusline=''
 
     " Buffer type
-    set statusline+=%3*%y
+    let statusline .= '%3*%y'
 
     " Buffer state
-    set statusline+=%4*%r
-    set statusline+=%4*%m
+    let statusline .= '%4*%r'
+    let statusline .= '%4*%m'
 
     " Start truncating
-    set statusline+=%<
+    let statusline .= '%<'
 
     " Buffer number
-    set statusline+=%1*[%n]
+    let statusline .= '%1*[%n]'
 
     " Filename
-    set statusline+=%1*[%f]
+    let statusline .= '%1*[%f]'
 
     " Argument status
-    set statusline+=%5*%a%{SpaceIfArgs()}%1*
+    let statusline .= '%5*%a' . SpaceIfArgs() . '%1*'
 
     " Right-justify from now on
-    set statusline+=%=%<
+    let statusline .= '%=%<'
 
     " Subwin flags
-    execute 'set statusline+=' . WinceSubwinFlags()
+    let statusline .= WinceSubwinFlags()
 
     " Diff flag
-    set statusline+=%6*%{DiffFlag()}
+    let statusline .= '%6*' . DiffFlag()
 
     " [Column][Current line/Total lines][% of file]
-    set statusline+=%3*[%c][%l/%L][%p%%]
+    let statusline .= '%3*[%c][%l/%L][%p%%]'
+
+    return statusline
 endfunction
 
-function! SetCmdwinStatusLine()
+function! GetCmdwinStatusLine()
     let statusline = ''
 
     " 'Preview' string
@@ -91,7 +90,7 @@ function! SetCmdwinStatusLine()
     " [Column][Current line/Total lines][% of buffer]
     let statusline .= '%7*[%c][%l/%L][%p%%]'
 
-    let &l:statusline = statusline
+    return statusline
 endfunction
 
 
@@ -99,7 +98,7 @@ endfunction
 " It defers to the default by returning an empty string that won't supersede
 " the global default statusline
 function! SetSpecificStatusLine()
-    execute 'setlocal statusline=' . WinceNonDefaultStatusLine()
+    execute 'let &l:statusline = "' . WinceNonDefaultStatusLine() . '"'
 endfunction
 
 function! CorrectAllStatusLines()
@@ -121,12 +120,15 @@ augroup StatusLine
     autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
 
     " Apply the command-line window's statusline on entering
-    autocmd CmdWinEnter * call SetCmdwinStatusLine()
+    autocmd CmdWinEnter * let &l:statusline = '%!GetCmdwinStatusLine()'
 
     " Netrw windows also have local statuslines that get set by some autocmd
     " someplace. Overwrite them as well.
     autocmd FileType netrw call RegisterCorrectStatusLines()
 augroup END
 
+" Always show the status line
+set laststatus=2
+
 " The default status line is the value of the global statusline option
-call SetDefaultStatusLine()
+set statusline=%!GetDefaultStatusLine()

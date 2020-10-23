@@ -60,7 +60,7 @@ function! WinceToOpenHelp()
 
     let &l:scrollbind = 0
     let &l:cursorbind = 0
-    noautocmd vertical resize 89
+    execute 'noautocmd vertical resize ' . g:wince_help_width
     let winid = jer_win#getid()
 
     if exists('t:j_help')
@@ -256,7 +256,7 @@ if !jer_win#Legacy()
                                \[g:wince_help_statusline, g:wince_helploc_statusline],
                                \'HL', 'hl', 4,
                                \39, [1, 1],
-                               \[g:wince_help_width, g:wince_help_width], [g:wince_help_width, 10],
+                               \[g:wince_help_width, g:wince_help_width], [-1, 10],
                                \function('WinceToOpenLocHelp'),
                                \function('WinceToCloseLocHelp'),
                                \function('WinceToIdentifyLocHelp'))
@@ -343,9 +343,13 @@ augroup END
 
 " Mappings
 if jer_win#Legacy()
-    call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowUberwinGroup("help")')
-    call WinceMappingMapUserOp('<leader>hc', 'call WinceHideUberwinGroup("help")')
-    call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoUberwin("help","help",g:wince_map_mode)')
+    if exists('g:wince_disable_help_mappings') && g:wince_disable_help_mappings
+        call s:Log.CFG('Help uberwin mappings disabled')
+    else
+        call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowUberwinGroup("help")')
+        call WinceMappingMapUserOp('<leader>hc', 'call WinceHideUberwinGroup("help")')
+        call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoUberwin("help","help",g:wince_map_mode)')
+    endif
 else
     function! WinceAddOrShowHelp()
         call s:Log.INF('WinceAddOrShowHelp')
@@ -379,8 +383,12 @@ else
         endif
         return a:startmode
     endfunction
-    call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowHelp()')
-    call WinceMappingMapUserOp('<leader>hc', 'call WinceHideHelp()')
-    call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoHelp(g:wince_map_mode)')
-    call WinceMappingMapUserOp('<leader>hl', 'let g:wince_map_mode = WinceAddOrGotoHelpLoc(g:wince_map_mode)')
+    if exists('g:wince_disable_help_mappings') && g:wince_disable_help_mappings
+        call s:Log.CFG('Help uberwin mappings disabled')
+    else
+        call WinceMappingMapUserOp('<leader>hs', 'call WinceAddOrShowHelp()')
+        call WinceMappingMapUserOp('<leader>hc', 'call WinceHideHelp()')
+        call WinceMappingMapUserOp('<leader>hh', 'let g:wince_map_mode = WinceAddOrGotoHelp(g:wince_map_mode)')
+        call WinceMappingMapUserOp('<leader>hl', 'let g:wince_map_mode = WinceAddOrGotoHelpLoc(g:wince_map_mode)')
+    endif
 endif

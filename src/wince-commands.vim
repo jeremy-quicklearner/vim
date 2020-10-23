@@ -32,9 +32,8 @@ function! WinceCmdRunCmd(cmdname, wincmd, range, count, startmode,
                        \ ifsubwingotosupwin,
                        \ dowithoutuberwins,
                        \ dowithoutsubwins,
-                       \ preservesupdims,
                        \ relyonresolver)
-    call s:Log.INF('WinceCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . string(a:startmode) . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:preservesupdims . ',' . a:relyonresolver . ']')
+    call s:Log.INF('WinceCmdRunCmd ' . a:cmdname . ', ' . a:wincmd . ', [' . a:range . ',' . a:count . ',' . string(a:startmode) . ',' . a:defaultcount . ',' . a:preservecursor . ',' . a:ifuberwindonothing . ',' . a:ifsubwingotosupwin . ',' . a:dowithoutuberwins . ',' . a:dowithoutsubwins . ',' . a:relyonresolver . ']')
     try
         let opcount = s:SanitizeRange(a:cmdname, a:range, a:count, a:defaultcount)
     catch /.*/
@@ -48,7 +47,6 @@ function! WinceCmdRunCmd(cmdname, wincmd, range, count, startmode,
                            \ a:ifsubwingotosupwin,
                            \ a:dowithoutuberwins,
                            \ a:dowithoutsubwins,
-                           \ a:preservesupdims,
                            \ a:relyonresolver)
 endfunction
 
@@ -70,7 +68,7 @@ function! WinceCmdDefineCmd(cmdname, wincmd, defaultcount,
                           \ preservecursor,
                           \ ifuberwindonothing, ifsubwingotosupwin,
                           \ dowithoutuberwins, dowithoutsubwins,
-                          \ preservesupdims, relyonresolver)
+                          \ relyonresolver)
     call s:Log.DBG('Command: ', a:cmdname)
     execute 'command! -nargs=? -range=0 -complete=command ' . a:cmdname .
    \        ' call jer_mode#Detect("<args>") | '
@@ -85,7 +83,6 @@ function! WinceCmdDefineCmd(cmdname, wincmd, defaultcount,
    \        a:ifsubwingotosupwin . ',' .
    \        a:dowithoutuberwins . ',' .
    \        a:dowithoutsubwins . ',' .
-   \        a:preservesupdims . ',' .
    \        a:relyonresolver . ')) | ' .
    \        'call jer_mode#Restore()'
 endfunction
@@ -250,9 +247,13 @@ let s:cmdsWithSubwinToSupwin = [
 \   'WinceSplitSearchMacro'
 \]
 let s:cmdsWithoutUberwins = [
+\   'WinceDecreaseHeight',
+\   'WinceDecreaseWidth',
 \   'WinceGoFirst',
 \   'WinceGoLast',
 \   'WinceGoNext',
+\   'WinceIncreaseHeight',
+\   'WinceIncreaseWidth',
 \   'WinceMoveToBottomEdge',
 \   'WinceMoveToLeftEdge',
 \   'WinceMoveToRightEdge',
@@ -291,11 +292,6 @@ let s:cmdsWithoutSubwins = [
 \   'WinceSplitSearchMacro'
 \]
 
-let s:cmdsThatPreserveSupwinDims = [
-\   'WinceRotate',
-\   'WinceReverseRotate'
-\]
-
 " Commands in this list are the ones that WinceDoCmdWithFlags isn't
 " smart enough to handle, but the resolver is smart enough for
 let s:cmdsThatRelyOnResolver = [
@@ -327,7 +323,6 @@ for cmdname in keys(s:allNonSpecialCmds)
    \    index(s:cmdsWithSubwinToSupwin,     cmdname) >= 0,
    \    index(s:cmdsWithoutUberwins,        cmdname) >= 0,
    \    index(s:cmdsWithoutSubwins,         cmdname) >= 0,
-   \    index(s:cmdsThatPreserveSupwinDims, cmdname) >= 0,
    \    index(s:cmdsThatRelyOnResolver,     cmdname) >= 0
    \)
 endfor

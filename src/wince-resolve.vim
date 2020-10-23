@@ -6,13 +6,13 @@ let s:Log = jer_log#LogFunctions('wince-resolve')
 " The cursor's final position is used in multiple places
 let s:curpos = {}
 
-" Internal conditions - flags used by different helpers to communicate with
-" each other
+" Internal variables - used by different helpers to communicate with each other
 let s:supwinsaddedcond = 0
+let s:relistedcond = 0
 
 " Input conditions - flags that influence the resolver's behaviour, set before
 " it runs
-let t:winresolvetabenteredcond = 1
+let t:wince_resolvetabenteredcond = 1
 
 " Helpers
 
@@ -181,8 +181,8 @@ function! s:WinceResolveStateToModel()
     " uberwin group hidden in the model and relist the window as a supwin
     " If there are multiple uberwins in this group and only one of them is a
     " terminal window, then this change renders that uberwin group incomplete
-    " and the non-terminal windows will be ignored in STEP 1.4, then cleaned
-    " up in STEP 2.1
+    " and the non-terminal windows will be ignored in STEP 1.4, then stomped
+    " in STEP 2.1
     call s:Log.VRB('Step 1.1')
     for grouptypename in WinceModelShownUberwinGroupTypeNames()
         for typename in WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
@@ -206,8 +206,8 @@ function! s:WinceResolveStateToModel()
     " subwin group hidden in the model and relist the window as a supwin
     " If there are multiple subwins in this group and only one of them is a
     " terminal window, then this change renders that subwin group incomplete
-    " and the non-terminal windows will be ignored in STEP 1.4, then cleaned
-    " up in STEP 2.1
+    " and the non-terminal windows will be ignored in STEP 1.4, then stomped
+    " in STEP 2.1
     for supwinid in WinceModelSupwinIds()
         for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             for typename in WinceModelSubwinTypeNamesByGroupTypeName(grouptypename)
@@ -297,8 +297,9 @@ function! s:WinceResolveStateToModel()
     "           says it should, relist it in the model
     " If any window is listed in the model as an uberwin but doesn't
     " satisfy its type's constraints, mark the uberwin group hidden
-    " in the model and relist the window as a supwin. 
+    " in the model and relist the window as a supwin.
     call s:Log.VRB('Step 1.3')
+    let s:relistedcond = 0
     for grouptypename in WinceModelShownUberwinGroupTypeNames()
         for typename in WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
             call s:Log.VRB('Checking model uberwin ', grouptypename, ':', typename, ' for toIdentify compliance')
@@ -312,6 +313,7 @@ function! s:WinceResolveStateToModel()
                 call WinceModelHideUberwins(grouptypename)
                 call WinceModelAddSupwin(winid, -1, -1, -1)
                 let s:supwinsaddedcond = 1
+                let s:relistedcond = 1
                 break
             endif
         endfor
@@ -344,6 +346,7 @@ function! s:WinceResolveStateToModel()
                     call WinceModelHideSubwins(supwinid, grouptypename)
                     call WinceModelAddSupwin(winid, -1, -1, -1)
                     let s:supwinsaddedcond = 1
+                    let s:relistedcond = 1
                     break
                 endif
             endfor
@@ -456,7 +459,7 @@ function! s:WinceResolveModelToState()
     " TODO? Do something more civilized than stomping each window
     "       individually. So far it's ok but some other group type
     "       may require it in the future. This would require a new
-    "       parameter for WinAdd(Uber|Sub)winGroupType - a list of
+    "       parameter for WinceAdd(Uber|Sub)winGroupType - a list of
     "       callbacks which close individual windows and not whole
     "       groups
     call s:Log.VRB('Step 2.1')
@@ -528,6 +531,11 @@ function! s:WinceResolveModelToState()
     "           operation or by the previous execution of the resolver, which would
     "           have left its model dimensions consistent with its state
     "           dimensions.
+    "           One exception is a window that was relisted in STEP 1. But
+    "           since windows can be relisted as supwins (which we have no way
+    "           of closing and reopening robustly), we can't just close and
+    "           reopen them. Instead, if any window was relisted, just close
+    "           all uberwins and subwins.
     "           If there is an inconsistency, then the window has been touched by
     "           something else after the user operation or resolver last
     "           touched it. That touch may have put it in the wrong place.
@@ -550,7 +558,7 @@ function! s:WinceResolveModelToState()
         for grouptypename in WinceModelShownUberwinGroupTypeNames()
             call s:Log.VRB('Check uberwin group ', grouptypename)
             if WinceCommonUberwinGroupExistsInState(grouptypename)
-                if uberwinsremoved ||
+                if uberwinsremoved || s:relistedcond ||
                \   !WinceCommonUberwinGroupDimensionsMatch(grouptypename)
                     let preserveduberwins[grouptypename] =
                    \    WinceCommonPreCloseAndReopenUberwins(grouptypename)
@@ -570,7 +578,7 @@ function! s:WinceResolveModelToState()
             " If we removed uberwins, flag all shown subwins for removal
             " Also flag all shown subwins of any supwin with dummy or inconsistent
             " dimensions
-            if uberwinsremoved || !WinceCommonSupwinDimensionsMatch(supwinid)
+            if uberwinsremoved || s:relistedcond || !WinceCommonSupwinDimensionsMatch(supwinid)
                 call s:Log.DBG('Flag all subwin groups for supwin ', supwinid, ' for removal from state')
                 let toremove[supwinid] = WinceModelShownSubwinGroupTypeNamesBySupwinId(
                \    supwinid
@@ -631,7 +639,7 @@ function! s:WinceResolveModelToState()
         if !WinceCommonUberwinGroupExistsInState(grouptypename)
             try
                 call s:Log.INF('Step 2.3 adding uberwin group ', grouptypename, ' to state')
-                let winids = WinceCommonOpenUberwins(grouptypename, 1)
+                let winids = WinceCommonOpenUberwins(grouptypename)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
                 call WinceModelChangeUberwinIds(grouptypename, winids)
@@ -770,13 +778,13 @@ function! WinceResolve()
 
     " If this is the first time running the resolver after entering a tab, run
     " the appropriate callbacks
-    if t:winresolvetabenteredcond
+    if t:wince_resolvetabenteredcond
         call s:Log.DBG('Tab entered. Running callbacks')
         for TabEnterCallback in WinceModelTabEnterPreResolveCallbacks()
             call s:Log.VRB('Running tab-entered callback ', TabEnterCallback)
             call TabEnterCallback()
         endfor
-        let t:winresolvetabenteredcond = 0
+        let t:wince_resolvetabenteredcond = 0
     endif
 
     " STEP 1: The state may have changed since the last WinceResolve() call. Adapt the
@@ -843,5 +851,5 @@ augroup WinceResolve
     autocmd!
     
     " Use the TabEnter event to detect when a tab has been entered
-    autocmd TabEnter * let t:winresolvetabenteredcond = 1
+    autocmd TabEnter * let t:wince_resolvetabenteredcond = 1
 augroup END

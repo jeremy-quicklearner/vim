@@ -330,15 +330,19 @@ augroup UndotreeSubwin
     " of extra supwins with the undotree filetype and no content. I see no
     " reason why the user would ever want to keep these windows around, so
     " they are removed here
-    autocmd SessionLoadPost * call jer_util#Tabdo('', 'call jer_chc#Register(function("CloseDanglingUndotreeWindows"), [], 1, -100, 0, 0, 0)'
+    autocmd SessionLoadPost * call jer_util#TabDo('', 'call jer_chc#Register(function("CloseDanglingUndotreeWindows"), [], 1, -100, 0, 0, 0)')
 augroup END
 
 " Mappings
 " No explicit mappings to add or remove. Those operations are done by
 " UpdateUndotreeSubwins.
-call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(jer_win#getid(), "undotree", 1)')
-call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(jer_win#getid(), "undotree")')
-call WinceMappingMapUserOp('<leader>uu', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "tree", g:wince_map_mode, 1)')
-if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
-    call WinceMappingMapUserOp('<leader>ud', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "diff", g:wince_map_mode, 1)')
+if exists('g:wince_undotree_disable_mappings') && g:wince_undotree_disable_mappings
+    call s:Log.CFG('Undotree uberwin mappings disabled')
+else
+    call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(jer_win#getid(), "undotree", 1)')
+    call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(jer_win#getid(), "undotree")')
+    call WinceMappingMapUserOp('<leader>uu', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "tree", g:wince_map_mode, 1)')
+    if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
+        call WinceMappingMapUserOp('<leader>ud', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "diff", g:wince_map_mode, 1)')
+    endif
 endif

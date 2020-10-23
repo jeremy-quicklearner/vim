@@ -35,6 +35,6 @@ augroup Misc
     " location list will be added to every window from the session. So remove it.
     " TODO: Move this to some kind of session management plugin if I ever
     "       write one
-    autocmd SessionLoadPost * call jer_util#Windo('', 'lexpr []')
+    autocmd SessionLoadPost * call jer_util#WinDo('', 'lexpr []')
 augroup END
 

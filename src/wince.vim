@@ -177,12 +177,15 @@
 "    TODO: Investigate whether the undotree can be persisted outside the
 "          session and restored after this happens
 "
-" TODO: Make mappings from the reference definitions disable-able
 " TODO? Preserve folds, signs, etc. when subwins and uberwins are hidden. Not
 "       sure if this is desirable - would they still be restored after
 "       location list contents change? Would different blobs of persisted
 "       state be stored for each location list? Maybe just leave it as the
-"       responsibility of files like loclist.vim and undotree.vim:w
+"       responsibility of files like loclist.vim and undotree.vim. Probably
+"       too complicated - the state of subwins and uberwins is currently only
+"       persisted when they quickly close and then reopen without unwinding to
+"       the event loop. Trying to persist state across multiple events is
+"       asking for trouble.
 " TODO? Figure out why folds keep appearing in the help window on
 "       WinShowUberwin. Haven't seen this happen in some time - maybe it's
 "       fixed?
@@ -194,7 +197,9 @@
 "         closed, but the user (or some plugin) may do it directly without
 "         freeing. So the Resolver needs to check if any have disappeared by
 "         maintaining a list. That list needs to be tab-local because
-"         afterimage buffers may be in use in other tabs.
+"         afterimage buffers may be in use in other tabs, and it needs to go in
+"         the model because everything in the core is stateless except for the
+"         state (duh) and model and t:wince_resolvetabenteredcond which is bad
 " TODO? Figure out why terminal windows keep breaking the resolver and
 "       statuslines
 "       - It's got to do with an internal bug in Vim. Maybe it can be
@@ -218,10 +223,11 @@
 " TODO: Audit all files for insufficient documentation
 " TODO: Audit all files for lines longer than 80 characters
 " TODO: Audit all files for 'endfunction!'
-" TODO: Move the whole window engine to a plugin
+" TODO: Move the whole thing to a plugin
 " TODO: Autoload where appropriate
 " TODO: Move undotree subwin to its own plugin so that the window engine
 "       doesn't depend on mbbill/undotree
+" TODO? Rewrite as much as possible using vim9script
 
 " Logging facilities - all in one place so they can be changed easily
 call jer_log#SetLevel('wince-model',   'CFG', 'WRN')
