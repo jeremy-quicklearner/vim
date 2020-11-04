@@ -1,6 +1,6 @@
 " Wince Reference Definition for Loclist subwin
 let s:Log = jer_log#LogFunctions('wince-loclist-subwin')
-" Figure out why sometimes the syntax highlighting doesn't get applied
+" TODO: Figure out why sometimes the syntax highlighting doesn't get applied
 
 " This helper is used in the help uberwin
 function! LoclistFieldForStatusline(fieldname)

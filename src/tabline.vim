@@ -269,6 +269,7 @@ function! GetRegListString()
              \'Z']
         " Call HyphenIfEmpty() dynamically so that the register list will
         " update without messy autocmds
+        " TODO: I'm not sure this is actually necessary with GetTabline()
         let rv .= '%{HyphenIfEmpty("' . i . '")}'
     endfor
     let rv .= ']'

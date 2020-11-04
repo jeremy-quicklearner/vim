@@ -12,14 +12,6 @@ function! WinceAddTabEnterPreResolveCallback(callback)
     call s:Log.CFG('TabEnter pre-resolve callback: ', a:callback)
 endfunction
 
-" Register a callback to run partway through the resolver if new supwins have
-" been added to the model
-" TODO: Remove this and everything that uses it
-function! WinceAddSupwinsAddedResolveCallback(callback)
-    call WinceModelAddSupwinsAddedResolveCallback(a:callback)
-    call s:Log.CFG('Supwins-added pre-resolve callback: ', a:callback)
-endfunction
-
 " Register a callback to run after any successful user operation that changes
 " the state or model and leaves them consistent
 function! WinceAddPostUserOperationCallback(callback)
@@ -165,7 +157,7 @@ function! WinceAddUberwinGroup(grouptypename, hidden, suppresserror)
         " Each uberwin must be, at the time it is opened, the one with the
         " highest priority. So close all uberwins with higher priority.
         let grouptype = g:wince_uberwingrouptype[a:grouptypename]
-        let highertypes = WinceCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(grouptype.name)
         call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
         try
             try
@@ -285,7 +277,7 @@ function! WinceShowUberwinGroup(grouptypename, suppresserror)
     try
         " Each uberwin must be, at the time it is opened, the one with the
         " highest priority. So close all uberwins with higher priority.
-        let highertypes = WinceCommonCloseUberwinsWithHigherPriority(grouptype.priority)
+        let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(grouptype.name)
         call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
         try
             try
@@ -320,7 +312,7 @@ endfunction
 " Subwins
 
 " For supwins' statusline generation
-function! WinceSubwinFlags()
+function! WinceSubwinFlagsForGlobalStatusline()
     let flagsstr = ''
 
     " Due to a bug in Vim, these functions sometimes throws E315 in terminal
@@ -372,7 +364,7 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
-        let highertypes = WinceCommonCloseSubwinsWithHigherPriority(a:supwinid, grouptype.priority)
+        let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(a:supwinid, a:grouptypename)
         call s:Log.VRB('Closed higher-priority subwin groups for supwin ', a:supwinid, ': ', highertypes)
         try
             try
@@ -408,7 +400,7 @@ endfunction
 
 function! WinceRemoveSubwinGroup(supwinid, grouptypename)
     try
-        call WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
+        let grouptype = WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
         call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', a:supwinid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
@@ -420,8 +412,6 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-
-        let grouptype = g:wince_subwingrouptype[a:grouptypename]
 
         let removed = 0
         if !WinceModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
@@ -436,7 +426,7 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
         if removed
             call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
            \    a:supwinid,
-           \    grouptype.priority
+           \    a:grouptypename
            \)
             call s:Log.VRB('Closed and reopened all shown subwins of supwin ', a:supwinid, ' with priority higher than ', a:grouptypename)
         endif
@@ -472,7 +462,7 @@ function! WinceHideSubwinGroup(winid, grouptypename)
         call s:Log.VRB('Hid subwin group ', supwinid, ':', a:grouptypename, ' in model')
         call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
        \    supwinid,
-       \    grouptype.priority
+       \    a:grouptypename
        \)
         call s:Log.VRB('Closed and reopened all shown subwins of supwin ', supwinid, ' with priority higher than ', a:grouptypename)
 
@@ -506,7 +496,7 @@ function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
     try
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
-        let highertypes = WinceCommonCloseSubwinsWithHigherPriority(supwinid, grouptype.priority)
+        let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, a:grouptypename)
         call s:Log.VRB('Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
         try
             try
@@ -567,7 +557,7 @@ function! WinceDoCmdWithFlags(cmd,
     call s:Log.VRB('Preserved cursor position ', info)
 
     if info.win.category ==# 'uberwin' && a:ifuberwindonothing
-        call s:Log.WRN('Cannot run ', a:cmd, ' in uberwin')
+        call s:Log.WRN('Cannot run wincmd ', a:cmd, ' in uberwin')
         return a:startmode
     endif
 
@@ -880,7 +870,6 @@ endfunction
 function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, suppresserror)
     try
         let dstsupwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
-        call WinceModelAssertSubwinTypeExists(a:dstgrouptypename, a:dsttypename)
         call WinceModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
     catch /.*/
         if a:suppresserror
@@ -1177,7 +1166,7 @@ function! s:ResizeGivenNoSubwins(width, height)
     let preclosedim = WinceCommonPreserveDimensions()
 
     call s:Log.DBG('Closing all uberwins')
-    let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriority(-1)
+    let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriorityThan('')
     try
         call WinceStateMoveCursorToWinid(winid)
 

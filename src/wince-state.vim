@@ -13,9 +13,15 @@ if !exists('g:wince_extra_redraw')
 endif
 function! s:MaybeRedraw()
     call s:Log.DBG('MaybeRedraw')
+    if v:profiling
+        profile pause
+    endif
     if g:wince_extra_redraw
         call s:Log.DBG('Redraw')
         redraw
+    endif
+    if v:profiling
+        profile continue
     endif
 endfunction
 

@@ -30,7 +30,6 @@ endfunction
 
 " Returns false if the dimensions in the model of any uberwin in a shown group of
 " a given type are dummies or inconsistent with the state. True otherwise.
-
 function! WinceCommonUberwinGroupDimensionsMatch(grouptypename)
     call s:Log.DBG('WinceCommonUberwinGroupDimensionsMatch ', a:grouptypename)
     for typename in WinceModelUberwinTypeNamesByGroupTypeName(a:grouptypename)
@@ -461,13 +460,13 @@ endfunction
 
 " Closes all uberwins with priority higher than a given, and returns a list of
 " group types closed. The model is unchanged.
-function! WinceCommonCloseUberwinsWithHigherPriority(priority)
-    call s:Log.DBG('WinceCommonCloseUberwinsWithHigherPriority ', a:priority)
-    let grouptypenames = WinceModelUberwinGroupTypeNamesByMinPriority(a:priority)
+function! WinceCommonCloseUberwinsWithHigherPriorityThan(grouptypename)
+    call s:Log.DBG('WinceCommonCloseUberwinsWithHigherPriorityThan ', a:grouptypename)
+    let grouptypenames = WinceModelShownUberwinGroupTypeNamesWithHigherPriorityThan(a:grouptypename)
     let preserved = []
 
     " grouptypenames is reversed so that we close uberwins in descending
-    " priority order. See comments in WinceCommonCloseSubwinsWithHigherPriority
+    " priority order. See comments in WinceCommonCloseSubwinsWithHigherPriorityThan
     let reversegrouptypenames = reverse(copy(grouptypenames))
 
     " Apply PreCloseAndReopenUberwins to all uberwins first, then close them
@@ -485,7 +484,7 @@ function! WinceCommonCloseUberwinsWithHigherPriority(priority)
     return reverse(copy(preserved))
 endfunction
 
-" Reopens uberwins that were closed by WinceCommonCloseUberwinsWithHigherPriority
+" Reopens uberwins that were closed by WinceCommonCloseUberwinsWithHigherPriorityThan
 " and updates the model with the new winids
 function! WinceCommonReopenUberwins(preserved)
     call s:Log.DBG('WinceCommonReopenUberwins')
@@ -526,7 +525,7 @@ function! WinceCommonCloseSubwins(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonCloseSubwins ', a:supwinid, ':', a:grouptypename)
     let preunfix = WinceStateUnfixDimensions(a:supwinid)
     try
-        if WinceModelSubwinGroupHasAfterimagedSubwin(a:supwinid, a:grouptypename)
+        if WinceModelSubwinGroupIsAfterimaged(a:supwinid, a:grouptypename)
             call s:Log.DBG('Subwin group ', a:supwinid, ':', a:grouptypename, ' is partially afterimaged. Stomping subwins individually.')
             for subwinid in WinceModelSubwinIdsByGroupTypeName(
            \    a:supwinid,
@@ -563,6 +562,11 @@ function! WinceCommonCloseSubwins(supwinid, grouptypename)
                 endif
             endfor
         endif
+    catch /.*/
+        call s:Log.WRN('WinceCommonCloseSubwins failed on ', a:supwinid, ':', a:grouptypename, ':')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+        call WinceModelHideSubwins(a:supwinid, grouptype.grouptypename)
     finally
         call WinceStateRefixDimensions(a:supwinid, preunfix)
     endtry
@@ -588,11 +592,11 @@ endfunction
 
 " Closes all subwins for a given supwin with priority higher than a given, and
 " returns a list of group types closed. The model is unchanged.
-function! WinceCommonCloseSubwinsWithHigherPriority(supwinid, priority)
-    call s:Log.DBG('WinceCommonCloseSubwinsWithHigherPriority ', a:supwinid, ' ', a:priority)
-    let grouptypenames = WinceModelSubwinGroupTypeNamesByMinPriority(
+function! WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, grouptypename)
+    call s:Log.DBG('WinceCommonCloseSubwinsWithHigherPriorityThan ', a:supwinid, ':', a:grouptypename)
+    let grouptypenames = WinceModelShownSubwinGroupTypeNamesWithHigherPriorityThan(
    \    a:supwinid,
-   \    a:priority
+   \    a:grouptypename
    \)
     let preserved = []
 
@@ -615,7 +619,7 @@ function! WinceCommonCloseSubwinsWithHigherPriority(supwinid, priority)
     return reverse(copy(preserved))
 endfunction
 
-" Reopens subwins that were closed by WinceCommonCloseSubwinsWithHigherPriority
+" Reopens subwins that were closed by WinceCommonCloseSubwinsWithHigherPriorityThan
 " and updates the model with the new winids
 function! WinceCommonReopenSubwins(supwinid, preserved)
     call s:Log.DBG('WinceCommonReopenSubwins ', a:supwinid)
@@ -732,9 +736,9 @@ endfunction
 
 " Closes and reopens all shown subwins of a given supwin with priority higher
 " than a given
-function! WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(supwinid, priority)
-    call s:Log.DBG('WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin ', a:supwinid, ', ', a:priority)
-    let preserved = WinceCommonCloseSubwinsWithHigherPriority(a:supwinid, a:priority)
+function! WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(supwinid, grouptypename)
+    call s:Log.DBG('WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin ', a:supwinid, ':', a:grouptypename)
+    let preserved = WinceCommonCloseSubwinsWithHigherPriorityThan(a:supwinid, a:grouptypename)
     call s:Log.VRB('Preserved subwins across close-and-reopen: ', preserved)
     call WinceCommonReopenSubwins(a:supwinid, preserved)
 
@@ -746,21 +750,19 @@ endfunction
 " Closes and reopens all shown subwins of a given supwin
 function! WinceCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
     call s:Log.DBG('WinceCommonCloseAndReopenAllShownSubwinsBySupwin ', a:supwinid)
-    call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(a:supwinid, -1)
+    call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(a:supwinid, '')
 endfunction
 
 " Afterimages all afterimaging non-afterimaged subwins of a non-hidden subwin group
 function! WinceCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonAfterimageSubwinsByInfo ', a:supwinid, ':', a:grouptypename)
-    call WinceModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename)
-
     " Don't bother even moving to the supwin if all the afterimaging subwins in
     " the group are already afterimaged
     let afterimagingneeded = 0
     for typeidx in range(len(g:wince_subwingrouptype[a:grouptypename].typenames))
         let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
-        if g:wince_subwingrouptype[a:grouptypename].afterimaging[typeidx] &&
-       \   !WinceModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
+        if has_key(g:wince_subwingrouptype[a:grouptypename].afterimaging, typename) &&
+       \   !WinceModelSubwinGroupIsAfterimaged(a:supwinid, a:grouptypename)
             call s:Log.DBG('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' needs afterimaging')
             let afterimagingneeded = 1
             break
@@ -777,20 +779,15 @@ function! WinceCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
 
     " Each subwin type can be individually afterimaging, so deal with them one
     " by one
+    let aibufs = {}
     for typeidx in range(len(g:wince_subwingrouptype[a:grouptypename].typenames))
         " Don't afterimage non-afterimaging subwins
-        if !g:wince_subwingrouptype[a:grouptypename].afterimaging[typeidx]
+        let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
+        if !has_key(g:wince_subwingrouptype[a:grouptypename].afterimaging, typename)
             call s:Log.VRB('Subwin type ', a:grouptypename, ':', g:wince_subwingrouptype[a:grouptypename].typenames[typeidx], ' does not afterimage')
             continue
         endif
 
-        " Don't afterimage subwins that are already afterimaged
-        let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
-        if WinceModelSubwinIsAfterimaged(a:supwinid, a:grouptypename, typename)
-            call s:Log.DBG('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' is already afterimaged')
-            continue
-        endif
-        
         " Get the subwin ID
         let subwinid = WinceModelIdByInfo({
        \    'category': 'subwin',
@@ -802,11 +799,11 @@ function! WinceCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
         call s:Log.DBG('Afterimaging subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' with winid ', subwinid)
 
         " Afterimage the subwin in the state
-        let aibuf = WinceStateAfterimageWindow(subwinid)
-
-        " Afterimage the subwin in the model
-        call WinceModelAfterimageSubwin(a:supwinid, a:grouptypename, typename, aibuf)
+        let aibufs[typename] = WinceStateAfterimageWindow(subwinid)
     endfor
+
+    " Afterimage the subwin group in the model
+    call WinceModelAfterimageSubwinsByGroup(a:supwinid, a:grouptypename, aibufs)
 endfunction
 
 " Afterimages all afterimaging non-afterimaged shown subwins of a supwin
@@ -832,17 +829,19 @@ endfunction
 " them as non-afterimaged
 function! WinceCommonDeafterimageSubwinsBySupwin(supwinid)
     call s:Log.DBG('WinceCommonDeafterimageSubwinsBySupwin ', a:supwinid)
+    let prevgrouptypename = ''
     for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(a:supwinid)
         call s:Log.VRB('Subwin group ', a:supwinid, ':', grouptypename)
-        if WinceModelSubwinGroupHasAfterimagedSubwin(a:supwinid, grouptypename)
+        if WinceModelSubwinGroupIsAfterimaged(a:supwinid, grouptypename)
             call s:Log.DBG(' Closing-and-reopening subwin groups of supwin ', a:supwinid, ' starting with partially afterimaged group ', grouptypename)
             let priority = g:wince_subwingrouptype[grouptypename].priority
             call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
            \    a:supwinid,
-           \    priority - 1
+           \    prevgrouptypename
            \)
             return
         endif
+        let prevgrouptypename = grouptypename
     endfor
 endfunction
 
@@ -932,7 +931,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
         call s:Log.DBG('Closing all subwins')
         for supwinid in supwinids
              let closedsubwingroupsbysupwin[supwinid] = 
-            \    WinceCommonCloseSubwinsWithHigherPriority(supwinid, -1)
+            \    WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, '')
         endfor
     endif
 
@@ -943,7 +942,7 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
         let supdims = {}
         if a:nouberwins
             call s:Log.DBG('Closing all uberwins')
-            let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriority(-1)
+            let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriorityThan('')
         endif
         try
             if type(a:curwin) ==# v:t_dict
@@ -978,8 +977,8 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
             if !WinceStateWinExists(supwinid)
                 if pretabnr !=# posttabnr
                     " There is only one command that removes a window and ends
-                    " in a different tab: WinMoveToNewTab. So if the control
-                    " reaches here, the command is WinMoveToNewTab. We need to
+                    " in a different tab: WinceMoveToNewTab. So if the control
+                    " reaches here, the command is WinceMoveToNewTab. We need to
                     " move the model's record of the supwin to the new tab's
                     " model, and also restore the state subwins in the new
                     " tab.
@@ -1055,15 +1054,36 @@ endfunction
 
 " Returns a statusline-friendly string that will evaluate to the correct
 " colour and flag for the given subwin group
-" This code is awkward because statusline expressions cannot recurse
+" The way that Vim's statusline option works is very restrictive:
+" 1. %!<expr> results in a Vimscript expression, which is evaluated in the
+"    context of the current window to give a statusline string
+" 2. The statusline string is expanded once for each window in the context
+"    of that window, resulting in each window having its own statusline
+" This is problematic because there is only one expansion step that can be done
+" in a window-specific way. Therefore the string that gets expanded by that
+" step needs to be the same for all windows, and evaluate to something
+" different in every window. Each colour change needs to be its own expansion
+" item, so there can't just be a function that returns all the flags - Vim
+" wouldn't recurse expansion on the colour changes between the flags.
+" Wince's approach is to use the WinceSubwinFlagsForGlobalStatusline user
+" operation to craft a long string containing statusline items for all the
+" subwin groups, one after another. Unfortunately this means that every window
+" has to evaluate items for every subwin group, every time.
+" The only other way would be to set a different statusline option value for
+" each supwin, from the resolver. This would mean the user needs to configure
+" some sort of statusline template (with only one expansion item - the subwin
+" flags) which the resolver would then apply supwin-specific flags to. I deem
+" this solution too complicated, as it would surely cause trouble with statusline
+" plugins. The current solution using WinceSubwinFlagsForGlobalStatusline has
+" only one downside - performance. If the user has trouble with statusline
+" evaluation taking too long, they are free to remove the subwin flags from
+" their statusline.
+function! WinceCommonSubwinFlagByGroup(grouptypename)
+    return WinceModelSubwinFlagByGroup(WinceStateGetCursorWinId(), a:grouptypename)
+endfunction
 function! WinceCommonSubwinFlagStrByGroup(grouptypename)
     call s:Log.DBG('WinceCommonSubwinFlagStrByGroup ', a:grouptypename)
     let flagcol = WinceModelSubwinFlagCol(a:grouptypename)
-    let winidexpr = 'WinceStateGetCursorWinId()'
-    let flagexpr = 'WinceModelSubwinFlagByGroup(' .
-   \               winidexpr .
-   \               ",'" .
-   \               a:grouptypename .
-   \               "')"
+    let flagexpr = 'WinceCommonSubwinFlagByGroup("' . a:grouptypename . '")'
     return '%' . flagcol . '*%{' . flagexpr . '}'
 endfunction

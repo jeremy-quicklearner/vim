@@ -80,13 +80,13 @@
 " supwins/buffers can be displayed at any given time. Wince, in addition to
 " constraining positions and dimensions, mitigates this problem with a feature
 " called afterimaging, which gives the user the impression that the content in a
-" subwin is being displayed simultaneously for multiple supwins. If a subwin is
-" designated as afterimaging, the contents of its subwins are 'afterimaged' -
+" subwin group is being displayed simultaneously for multiple supwins. If a subwin
+" type is designated as afterimaging, then subwins of that type are 'afterimaged' -
 " replaced with visually identical (but inert) copies called afterimages - whenever
-" the user leaves the supwin of that subwin. At any given time, no more than one
-" supwin may have a non-afterimaged subwin of that group. So really, the user is
-" looking at what amounts to one real subwin and multiple cardboard cutouts of
-" subwins.
+" the user leaves the supwin of those subwins. At any given time, no more than one
+" supwin may have a non-afterimaged subwin of that type. So really, the user
+" is looking at what amounts to one real subwin and multiple cardboard cutouts
+" of subwins.
 "
 " INTERNALS
 "

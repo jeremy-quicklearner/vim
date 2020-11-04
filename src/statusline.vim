@@ -58,7 +58,7 @@ function! GetDefaultStatusLine()
     let statusline .= '%=%<'
 
     " Subwin flags
-    let statusline .= WinceSubwinFlags()
+    let statusline .= WinceSubwinFlagsForGlobalStatusline()
 
     " Diff flag
     let statusline .= '%6*' . DiffFlag()
@@ -117,6 +117,7 @@ augroup StatusLine
     " Quickfix and Terminal windows have different statuslines that Vim sets
     " when they open or buffers enter them, so overwrite all non-default
     " statuslines after that happens
+    " TODO: Include in Wince
     autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
 
     " Apply the command-line window's statusline on entering

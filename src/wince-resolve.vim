@@ -7,7 +7,6 @@ let s:Log = jer_log#LogFunctions('wince-resolve')
 let s:curpos = {}
 
 " Internal variables - used by different helpers to communicate with each other
-let s:supwinsaddedcond = 0
 let s:relistedcond = 0
 
 " Input conditions - flags that influence the resolver's behaviour, set before
@@ -22,11 +21,6 @@ function! WinceResolveIdentifyAfterimagedSubwin(winid)
     call s:Log.VRB('WinceResolveIdentifyAfterimagedSubwin ', a:winid)
     let wininfo = WinceModelInfoById(a:winid)
     if wininfo.category ==# 'subwin' && 
-   \   WinceModelSubwinIsAfterimaged(
-   \       wininfo.supwin,
-   \       wininfo.grouptype,
-   \       wininfo.typename
-   \   ) &&
    \   WinceModelSubwinAibufBySubwinId(a:winid) ==# WinceStateGetBufnrByWinid(a:winid)
         call s:Log.VRB('Afterimaged subwin identified as ', wininfo)
         return wininfo
@@ -196,7 +190,6 @@ function! s:WinceResolveStateToModel()
                 call s:Log.INF('Step 1.1 relisting terminal window ', winid, ' from uberwin ', grouptypename, ':', typename, 'to supwin')
                 call WinceModelHideUberwins(grouptypename)
                 call WinceModelAddSupwin(winid, -1, -1, -1)
-                let s:supwinsaddedcond = 1
                 break
             endif
         endfor
@@ -222,7 +215,6 @@ function! s:WinceResolveStateToModel()
                     call s:Log.INF('Step 1.1 relisting terminal window ', winid, ' from subwin ' supwinid, ':', grouptypename, ':', typename, 'to supwin')
                     call WinceModelHideSubwins(supwinid, grouptypename)
                     call WinceModelAddSupwin(winid, -1, -1, -1)
-                    let s:supwinsaddedcond = 1
                     break
                 endif
             endfor
@@ -312,7 +304,6 @@ function! s:WinceResolveStateToModel()
                 call s:Log.INF('Step 1.3 relisting non-compliant window ', winid, ' from uberwin ', grouptypename, ':', typename, ' to supwin')
                 call WinceModelHideUberwins(grouptypename)
                 call WinceModelAddSupwin(winid, -1, -1, -1)
-                let s:supwinsaddedcond = 1
                 let s:relistedcond = 1
                 break
             endif
@@ -333,7 +324,7 @@ function! s:WinceResolveStateToModel()
                \})
                 " toIdentify consistency isn't required if the subwin is
                 " afterimaged
-                if WinceModelSubwinIsAfterimaged(supwinid, grouptypename, typename)
+                if WinceModelSubwinGroupIsAfterimaged(supwinid, grouptypename) && has_key(g:wince_subwingrouptype[grouptypename].afterimaging, typename)
                     call s:Log.VRB('Afterimaged subwin ', supwinid, ':', grouptypename, ':', typename, ' is exempt from toIdentify compliance')
                     continue
                 endif
@@ -345,7 +336,6 @@ function! s:WinceResolveStateToModel()
                     call s:Log.INF('Step 1.3 relisting non-compliant window ', winid, ' from subwin ', supwinid, ':', grouptypename, ':', typename, ' to supwin')
                     call WinceModelHideSubwins(supwinid, grouptypename)
                     call WinceModelAddSupwin(winid, -1, -1, -1)
-                    let s:supwinsaddedcond = 1
                     let s:relistedcond = 1
                     break
                 endif
@@ -402,14 +392,15 @@ function! s:WinceResolveStateToModel()
            \    []
            \)
         catch /.*/
-            call s:Log.WRN('Step 1.4 failed to add uberwin group ', uberwingrouptypename, ' to model. Possible duplicate uberwins in state.')
+            call s:Log.WRN('Step 1.4 failed to add uberwin group ', uberwingrouptypename, ' to model:')
+            call s:Log.DBG(v:throwpoint)
+            call s:Log.WRN(v:exception)
         endtry
     endfor
     call s:Log.VRB('Add model-missing supwins to model')
     for supwinid in groupedmissingwininfo.supwin
         call s:Log.INF('Step 1.4 adding window ', supwinid, ' to model as supwin')
         call WinceModelAddSupwin(supwinid, -1, -1, -1)
-        let s:supwinsaddedcond = 1
     endfor
     call s:Log.VRB('Add model-missing subwins to model')
     for supwinid in keys(groupedmissingwininfo.subwin)
@@ -429,8 +420,10 @@ function! s:WinceResolveStateToModel()
                \    []
                \)
             catch /.*/
-                call s:Log.WRN('Step 1.4 failed to add subwin group ', subwingrouptypename, ' to model. Possible duplicate subwins in state.')
-            endtry
+                call s:Log.WRN('Step 1.4 failed to add subwin group ', subwingrouptypename, ' to model:')
+                call s:Log.DBG(v:throwpoint)
+                call s:Log.WRN(v:exception)
+                endtry
         endfor
     endfor
 
@@ -614,7 +607,7 @@ function! s:WinceResolveModelToState()
             endif
             " toremove[supwinid] is reversed so that we close subwins in
             " descending priority order. See comments in
-            " WinceCommonCloseSubwinsWithHigherPriority
+            " WinceCommonCloseSubwinsWithHigherPriorityThan
             for grouptypename in reverse(copy(toremove[supwinid]))
                 call s:Log.VRB('Removing flagged subwin group ', supwinid, ':', grouptypename)
                 if WinceCommonSubwinGroupExistsInState(supwinid, grouptypename)
@@ -682,7 +675,7 @@ function! s:WinceResolveModelToState()
                        \) && !WinceModelSubwinGroupIsHidden(
                        \    othersupwinid,
                        \    grouptypename
-                       \) && !WinceModelSubwinGroupHasAfterimagedSubwin(
+                       \) && !WinceModelSubwinGroupIsAfterimaged(
                        \    othersupwinid,
                        \    grouptypename
                        \) && WinceCommonSubwinGroupExistsInState(
@@ -769,13 +762,6 @@ function! WinceResolve()
     let s:toIdentifyUberwins = WinceModelToIdentifyUberwins()
     let s:toIdentifySubwins = WinceModelToIdentifySubwins()
 
-    " STEP 0: Make sure the tab-specific model elements exist
-    call s:Log.VRB('Step 0')
-    if !WinceModelExists()
-        call s:Log.DBG('Initialize tab-specific portion of model')
-        call WinceModelInit()
-    endif
-
     " If this is the first time running the resolver after entering a tab, run
     " the appropriate callbacks
     if t:wince_resolvetabenteredcond
@@ -799,16 +785,6 @@ function! WinceResolve()
 
     " Save the current number of tabs
     let tabcount = WinceStateGetTabCount()
-
-    " Run the supwin-added callbacks
-    if s:supwinsaddedcond
-        call s:Log.DBG('Step 1 added a supwin. Running callbacks')
-        for SupwinsAddedCallback in WinceModelSupwinsAddedResolveCallbacks()
-            call s:Log.VRB('Running supwins-added callback ', SupwinsAddedCallback)
-            call SupwinsAddedCallback()
-        endfor
-        let s:supwinsaddedcond = 0
-    endif
 
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
     call s:WinceResolveModelToState()

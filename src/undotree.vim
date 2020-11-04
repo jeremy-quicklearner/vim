@@ -255,10 +255,6 @@ endif
 " that supwin has undo history
 function! UpdateUndotreeSubwins()
     call s:Log.DBG('UpdateUndotreeSubwins')
-    if !WinceModelExists()
-        return
-    endif
-
     " Make sure scrollbind and cursorbind are off. For reasons I don't
     " understand, moving from window to window when there are
     " scrollbound/cursorbound windows can change those windows' cursor
