@@ -1,6 +1,7 @@
 " Undotree plugin manipulation
 call jer_log#SetLevel('wince-undotree-subwin', 'WRN', 'WRN')
 let s:Log = jer_log#LogFunctions('wince-undotree-subwin')
+let s:Win = jer_win#WinFunctions()
 
 
 if !exists('g:wince_undotree_width')
@@ -74,7 +75,7 @@ function! WinceToOpenUndotree()
         throw 'Not enough room'
     endif
 
-    let jtarget = jer_win#getid()
+    let jtarget = s:Win.getid()
 
     UndotreeShow
 
@@ -84,7 +85,7 @@ function! WinceToOpenUndotree()
     " the undotree is drawn before WinceToOpenUndotree returns, which is required
     " for signs and folds to be properly restored when the undotree window is
     " closed and reopened.
-    noautocmd call jer_win#gotoid(jtarget)
+    noautocmd call s:Win.gotoid(jtarget)
     call undotree#UndotreeUpdate()
 
     let treeid = -1
@@ -102,22 +103,22 @@ function! WinceToOpenUndotree()
         endif
 
         if t:undotree.bufname ==# bufname(winbufnr(winnr))
-            let treeid = jer_win#getid(winnr)
+            let treeid = s:Win.getid(winnr)
             continue
         endif
         
         if t:diffpanel.bufname ==# bufname(winbufnr(winnr))
-            let diffid = jer_win#getid(winnr)
+            let diffid = s:Win.getid(winnr)
             continue
         endif
     endfor
 
-    call setwinvar(jer_win#id2win(treeid), '&number', 1)
-    call setwinvar(jer_win#id2win(treeid), 'j_undotree_target', jtarget)
+    call setwinvar(s:Win.id2win(treeid), '&number', 1)
+    call setwinvar(s:Win.id2win(treeid), 'j_undotree_target', jtarget)
 
     if !diffon
-        call setwinvar(jer_win#id2win(diffid), '&number', 1)
-        call setwinvar(jer_win#id2win(diffid), 'j_undotree_target', jtarget)
+        call setwinvar(s:Win.id2win(diffid), '&number', 1)
+        call setwinvar(s:Win.id2win(diffid), 'j_undotree_target', jtarget)
     endif
 
     if !diffon
@@ -170,15 +171,15 @@ function! WinceToIdentifyUndotree(winid)
         return {}
     endif
 
-    let jtarget = getwinvar(jer_win#id2win(a:winid), 'j_undotree_target', 0)
+    let jtarget = getwinvar(s:Win.id2win(a:winid), 'j_undotree_target', 0)
     if jtarget
         let supwinid = jtarget
     else
         let supwinid = -1
         for winnr in range(1, winnr('$'))
             if getwinvar(winnr, 'undotree_id') == t:undotree.targetid
-                let supwinid = jer_win#getid(winnr)
-                call setwinvar(jer_win#id2win(a:winid), 'j_undotree_target', supwinid)
+                let supwinid = s:Win.getid(winnr)
+                call setwinvar(s:Win.id2win(a:winid), 'j_undotree_target', supwinid)
                 break
             endif
         endfor
@@ -307,7 +308,7 @@ endif
 
 function! CloseDanglingUndotreeWindows()
     for winid in WinceStateGetWinidsByCurrentTab()
-        let statusline = getwinvar(jer_win#id2win(winid), '&statusline', '')
+        let statusline = getwinvar(s:Win.id2win(winid), '&statusline', '')
         if statusline ==# g:wince_undotree_subwin_statusline || statusline ==# g:wince_undodiff_subwin_statusline
             call s:Log.INF('Closing dangling window ', winid)
             call WinceStateCloseWindow(winid, g:wince_undotree_right)
@@ -335,10 +336,10 @@ augroup END
 if exists('g:wince_undotree_disable_mappings') && g:wince_undotree_disable_mappings
     call s:Log.CFG('Undotree uberwin mappings disabled')
 else
-    call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(jer_win#getid(), "undotree", 1)')
-    call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(jer_win#getid(), "undotree")')
-    call WinceMappingMapUserOp('<leader>uu', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "tree", g:wince_map_mode, 1)')
+    call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(0, "undotree", 1)')
+    call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(0, "undotree")')
+    call WinceMappingMapUserOp('<leader>uu', 'let g:wince_map_mode = WinceGotoSubwin(0, "undotree", "tree", g:wince_map_mode, 1)')
     if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
-        call WinceMappingMapUserOp('<leader>ud', 'let g:wince_map_mode = WinceGotoSubwin(jer_win#getid(), "undotree", "diff", g:wince_map_mode, 1)')
+        call WinceMappingMapUserOp('<leader>ud', 'let g:wince_map_mode = WinceGotoSubwin(0, "undotree", "diff", g:wince_map_mode, 1)')
     endif
 endif

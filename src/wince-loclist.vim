@@ -1,5 +1,6 @@
 " Wince Reference Definition for Loclist subwin
 let s:Log = jer_log#LogFunctions('wince-loclist-subwin')
+let s:Win = jer_win#WinFunctions()
 " TODO: Figure out why sometimes the syntax highlighting doesn't get applied
 
 " This helper is used in the help uberwin
@@ -16,7 +17,7 @@ endif
 " WinceToIdentifyLoclist relies on getwininfo, and also on getloclist with the
 " winid key. So Vim-native winids are required. I see no other way to implement
 " WinceToIdentifyLoclist.
-if jer_win#Legacy()
+if s:Win.legacy
     call s:Log.ERR('The loclist subwin group is not supported with legacy winids')
     finish
 endif

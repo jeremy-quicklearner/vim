@@ -212,7 +212,7 @@
 "       the state and model
 " TODO: Audit the common code for functions that are not common to the
 "       resolver and user operations
-" TODO: Audit all the asserts (especially in the model) for redundancy
+" TODO: Audit all the asserts for redundancy
 " TODO: Audit all of the code for performance improvements
 " TODO: Comment out every logging statement that gets skipped by the default
 "       levels. Write some kind of awk or sed script that uncomments and
@@ -228,6 +228,15 @@
 " TODO: Move undotree subwin to its own plugin so that the window engine
 "       doesn't depend on mbbill/undotree
 " TODO? Rewrite as much as possible using vim9script
+
+" JerCheckDep wince
+" \           jersuite_core
+" \           github.com/jeremy-quicklearner/vim-jersuite-core
+" \           1.1.2
+" \           2.0.0
+" let g:wince_version = 0.0.0
+" call jer_log#LogFunctions('jersuite').CFG('wince version ',
+"                                          \ g:jersuite_core_version)
 
 " Logging facilities - all in one place so they can be changed easily
 call jer_log#SetLevel('wince-model',   'CFG', 'WRN')

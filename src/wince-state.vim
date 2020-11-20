@@ -5,6 +5,7 @@
 " this wrapper. Any algorithms that make frequent use of the native window
 " commands are implemented at this level.
 let s:Log = jer_log#LogFunctions('wince-state')
+let s:Win = jer_win#WinFunctions()
 
 " Just for fun - lots of extra redrawing
 if !exists('g:wince_extra_redraw')
@@ -13,15 +14,9 @@ if !exists('g:wince_extra_redraw')
 endif
 function! s:MaybeRedraw()
     call s:Log.DBG('MaybeRedraw')
-    if v:profiling
-        profile pause
-    endif
     if g:wince_extra_redraw
         call s:Log.DBG('Redraw')
         redraw
-    endif
-    if v:profiling
-        profile continue
     endif
 endfunction
 
@@ -37,17 +32,14 @@ endfunction
 
 function! WinceStateGetWinidsByCurrentTab()
     call s:Log.DBG('WinceStateGetWinidsByCurrentTab')
-    let winids = []
-    for winnr in range(1, winnr('$'))
-        call add(winids, jer_win#getid(winnr))
-    endfor
+    let winids = map(range(1, winnr('$')), 's:Win.getid(v:val)')
     call s:Log.DBG('Winids: ', winids)
     return winids
 endfunction
 
 function! WinceStateWinExists(winid)
     call s:Log.DBG('WinceStateWinExists ', a:winid)
-    let winexists = jer_win#id2win(a:winid) != 0
+    let winexists = s:Win.id2win(a:winid) != 0
     if winexists
         call s:Log.DBG('Window exists with winid ', a:winid)
     else
@@ -57,38 +49,39 @@ function! WinceStateWinExists(winid)
 endfunction
 function! WinceStateAssertWinExists(winid)
     call s:Log.DBG('WinceStateAssertWinExists ', a:winid)
-    if !WinceStateWinExists(a:winid)
+    if !s:Win.id2win(a:winid)
         throw 'no window with winid ' . a:winid
     endif
 endfunction
 
 function! WinceStateGetWinnrByWinid(winid)
     call s:Log.DBG('WinceStateGetWinnrByWinid ', a:winid)
-    call WinceStateAssertWinExists(a:winid)
-    let winnr = jer_win#id2win(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if winnr ==# 0
+        throw 'no window with winid ' . a:winid
+    endif
     call s:Log.DBG('Winnr is ', winnr, ' for winid ', a:winid)
     return winnr
 endfunction
 
 function! WinceStateGetWinidByWinnr(winnr)
     call s:Log.DBG('WinceStateGetWinidByWinnr ', a:winnr)
-    let winid = jer_win#getid(a:winnr)
-    call WinceStateAssertWinExists(winid)
+    let winid = s:Win.getid(a:winnr)
     call s:Log.DBG('Winid is ', winid, ' for winnr ', a:winnr)
     return winid
 endfunction
 
-function! WinceStateGetBufnrByWinid(winid)
-    call s:Log.DBG('WinceStateGetBufnrByWinid ', a:winid)
-    call WinceStateAssertWinExists(a:winid)
-    let bufnr = winbufnr(a:winid)
+function! WinceStateGetBufnrByWinidOrWinnr(winid)
+    call s:Log.DBG('WinceStateGetBufnrByWinidOrWinnr ', a:winid)
+    let bufnr = s:Win.bufnr(a:winid)
     call s:Log.DBG('Bufnr is ', bufnr, ' for winid ', a:winid)
     return bufnr
 endfunction
 
 function! WinceStateWinIsTerminal(winid)
     call s:Log.DBG('WinceStateWinIsTerminal ', a:winid)
-    let isterm = WinceStateWinExists(a:winid) && getwinvar(jer_win#id2win(a:winid), '&buftype') ==# 'terminal'
+    let winnr = s:Win.id2win(a:winid)
+    let isterm = winnr && s:Win.getwinvar(winnr, '&buftype') ==# 'terminal'
     if isterm
         call s:Log.DBG('Window ', a:winid, ' is a terminal window')
     else
@@ -99,11 +92,14 @@ endfunction
 
 function! WinceStateGetWinDimensions(winid)
     call s:Log.DBG('WinceStateGetWinDimensions ', a:winid)
-    call WinceStateAssertWinExists(a:winid)
+    let nr = s:Win.id2win(a:winid)
+    if nr ==# 0
+        throw 'no window with winid ' . a:winid
+    endif
     let dims = {
-   \    'nr': jer_win#id2win(a:winid),
-   \    'w': winwidth(a:winid),
-   \    'h': winheight(a:winid)
+   \    'nr': nr,
+   \    'w': s:Win.width(nr),
+   \    'h': s:Win.height(nr)
    \}
     call s:Log.DBG('Dimensions of window ', a:winid, ': ', dims)
     return dims
@@ -124,14 +120,17 @@ endfunction
 
 function! WinceStateGetWinRelativeDimensions(winid, offset)
     call s:Log.DBG('WinceStateGetWinRelativeDimensions ', a:winid, ' ', a:offset)
-    call WinceStateAssertWinExists(a:winid)
+    let nr = s:Win.id2win(a:winid)
+    if nr ==# 0
+        throw 'no window with winid ' . a:winid
+    endif
     if type(a:offset) != v:t_number
         throw 'offset is not a number'
     endif
     let dims = {
-   \    'relnr': jer_win#id2win(a:winid) - a:offset,
-   \    'w': winwidth(a:winid),
-   \    'h': winheight(a:winid)
+   \    'relnr': nr - a:offset,
+   \    'w': s:Win.width(nr),
+   \    'h': s:Win.height(nr)
    \}
     call s:Log.DBG('Relative dimensions of window ', a:winid, 'with offset ', a:offset, ': ', dims)
     return dims
@@ -160,7 +159,7 @@ endfunction
 " Cursor position preserve/restore
 function! WinceStateGetCursorWinId()
     call s:Log.DBG('WinceStateGetCursorWinId')
-    let winid = jer_win#getid()
+    let winid = s:Win.getid()
     call s:Log.DBG('Winid of current window: ', winid)
     return winid
 endfunction!
@@ -178,14 +177,14 @@ endfunction
 " Window shielding
 function! WinceStateShieldWindow(winid)
      call s:Log.INF('WinceStateShieldWindow ', a:winid)
-     noautocmd silent call jer_win#gotoid(a:winid)
+     noautocmd silent call s:Win.gotoid(a:winid)
      let saved = winsaveview()
      return saved
 endfunction
 
 function! WinceStateUnshieldWindow(winid, preshield)
      call s:Log.INF('WinceStateUnshieldWindow ', a:winid, ' ', a:preshield)
-     noautocmd silent call jer_win#gotoid(a:winid)
+     noautocmd silent call s:Win.gotoid(a:winid)
      call winrestview(a:preshield)
 endfunction
 
@@ -222,20 +221,26 @@ endfunction
 " Navigation
 function! WinceStateMoveCursorToWinid(winid)
     call s:Log.DBG('WinceStateMoveCursorToWinid ', a:winid)
-    call WinceStateAssertWinExists(a:winid)
-    call jer_win#gotoid(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    execute winnr . 'wincmd w'
 endfunction
 
 function! WinceStateMoveCursorToWinidSilently(winid)
     call s:Log.DBG('WinceStateMoveCursorToWinidSilently ', a:winid)
-    call WinceStateAssertWinExists(a:winid)
-    noautocmd silent call jer_win#gotoid(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
 endfunction
 
 function! WinceStateMoveCursorToWinidAndUpdateMode(winid, startmode)
     call s:Log.DBG('WinceStateMoveCursorToWinidAndUpdateMode ', a:winid, ' ', a:startmode)
-    let winnr = jer_win#id2win(a:winid)
-    if winnr <=# 0 || winnr ># winnr('$')
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
         return
     endif
     return WinceStateWincmd(winnr, 'w', a:startmode)
@@ -258,33 +263,43 @@ function! WinceStateOpenUberwinsByGroupType(grouptype)
     let winids = ToOpen()
     call s:Log.INF('Opened uberwin group ', a:grouptype.name, ' with winids ', winids)
 
+    let name = a:grouptype.name
+    let widths = a:grouptype.widths
+    let heights = a:grouptype.heights
+    let typenames = a:grouptype.typenames
+    let canhaveloc = a:grouptype.canHaveLoclist
+    let statuslines = a:grouptype.statuslines
     for idx in range(0, len(winids) - 1)
-        if a:grouptype.widths[idx] >= 0
-            call s:Log.VRB('Fixed width for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixwidth', 1)
+        let winnr = s:Win.id2win(winids[idx])
+        let typename = typenames[idx]
+        let statusline = statuslines[idx]
+
+        if widths[idx] >= 0
+            call s:Log.VRB('Fixed width for uberwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixwidth', 1)
         else
-            call s:Log.VRB('Free width for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixwidth', 0)
+            call s:Log.VRB('Free width for uberwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixwidth', 0)
         endif
 
-        if a:grouptype.heights[idx] >= 0
-            call s:Log.VRB('Fixed height for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixheight', 1)
+        if heights[idx] >= 0
+            call s:Log.VRB('Fixed height for uberwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixheight', 1)
         else
-            call s:Log.VRB('Free height for uberwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixheight', 0)
+            call s:Log.VRB('Free height for uberwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixheight', 0)
         endif
 
-        call s:Log.VRB('Set statusline for uberwin ', a:grouptype.name, ':', a:grouptype.typenames[idx], ' to ', a:grouptype.statuslines[idx])
-        call setwinvar(jer_win#id2win(winids[idx]), '&statusline', a:grouptype.statuslines[idx])
+        call s:Log.VRB('Set statusline for uberwin ', name, ':', typename, ' to ', statusline)
+        call s:Win.setwinvar(winnr, '&statusline', statusline)
 
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
         " loclists... Unless the window is itself a location window, in which
         " case of course it should keep its location list. Unfortunately this
         " constitutes special support for the lochelp subwin group.
-        if !a:grouptype.canHaveLoclist[idx]
-            call setloclist(jer_win#id2win(winids[idx]), [])
+        if !canhaveloc[idx]
+            call s:Win.setloclist(winnr, [])
         endif
     endfor
 
@@ -323,46 +338,55 @@ function! WinceStateOpenSubwinsByGroupType(supwinid, grouptype)
         throw 'Given group type has nonfunc toOpen member'
     endif
 
-    if !jer_win#id2win(a:supwinid)
+    let supwinnr = s:Win.id2win(a:supwinid)
+    if !supwinnr
         throw 'Given supwinid ' . a:supwinid . ' does not exist'
     endif
 
-    call jer_win#gotoid(a:supwinid)
+    execute supwinnr . 'wincmd w'
 
-    let top = winsaveview().topline
-    let winids = ToOpen()
     let view = winsaveview()
-    let view.topline = top
+    let winids = ToOpen()
     call winrestview(view)
 
     call s:Log.INF('Opened subwin group ', a:supwinid, ':', a:grouptype.name, ' with winids ', winids)
 
+    let name = a:grouptype.name
+    let widths = a:grouptype.widths
+    let heights = a:grouptype.heights
+    let typenames = a:grouptype.typenames
+    let canhaveloc = a:grouptype.canHaveLoclist
+    let statuslines = a:grouptype.statuslines
     for idx in range(0, len(winids) - 1)
-        if a:grouptype.widths[idx] >= 0
-            call s:Log.VRB('Fixed width for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixwidth', 1)
+        let winnr = s:Win.id2win(winids[idx])
+        let typename = typenames[idx]
+        let statusline = statuslines[idx]
+
+        if widths[idx] >= 0
+            call s:Log.VRB('Fixed width for subwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixwidth', 1)
         else
-            call s:Log.VRB('Free width for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixwidth', 0)
+            call s:Log.VRB('Free width for subwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixwidth', 0)
         endif
-        if a:grouptype.heights[idx] >= 0
-            call s:Log.VRB('Fixed height for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixheight', 1)
+        if heights[idx] >= 0
+            call s:Log.VRB('Fixed height for subwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixheight', 1)
         else
-            call s:Log.VRB('Free height for subwin ', a:grouptype.typenames[idx])
-            call setwinvar(jer_win#id2win(winids[idx]), '&winfixheight', 0)
+            call s:Log.VRB('Free height for subwin ', typename)
+            call s:Win.setwinvar(winnr, '&winfixheight', 0)
         endif
 
-        call s:Log.VRB('Set statusline for subwin ', a:supwinid, ':', a:grouptype.name, ':', a:grouptype.typenames[idx], ' to ', a:grouptype.statuslines[idx])
-        call setwinvar(jer_win#id2win(winids[idx]), '&statusline', a:grouptype.statuslines[idx])
+        call s:Log.VRB('Set statusline for subwin ', a:supwinid, ':', name, ':', typename, ' to ', statusline)
+        call s:Win.setwinvar(winnr, '&statusline', statusline)
 
         " When a window with a loclist splits, Vim gives the new window a
         " loclist. Remove it here so that toOpen doesn't need to worry about
         " loclists... Unless the window is itself a location window, in which
         " case of course it should keep its location list. Unfortunately this
         " constitutes special support for the loclist subwin group.
-        if !a:grouptype.canHaveLoclist[idx]
-            call setloclist(jer_win#id2win(winids[idx]), [])
+        if !canhaveloc[idx]
+            call setloclist(winnr, [])
         endif
     endfor
 
@@ -382,16 +406,14 @@ function! WinceStateCloseSubwinsByGroupType(supwinid, grouptype)
         throw 'Given group type has nonfunc toClose member'
     endif
 
-    if !jer_win#id2win(a:supwinid)
+    let supwinnr = s:Win.id2win(a:supwinid)
+    if !supwinnr
         throw 'Given supwinid ' . a:supwinid . ' does not exist'
     endif
+    execute supwinnr . 'wincmd w'
 
-    call jer_win#gotoid(a:supwinid)
-
-    let top = winsaveview().topline
-    call ToClose()
     let view = winsaveview()
-    let view.topline = top
+    call ToClose()
     call winrestview(view)
 
     call s:MaybeRedraw()
@@ -399,7 +421,10 @@ endfunction
 
 function! s:PreserveSigns(winid)
     call s:Log.VRB('PreserveSigns ', a:winid)
-    let preserved = execute('sign place buffer=' . winbufnr(a:winid))
+    let preserved = split(execute('sign place buffer=' . s:Win.bufnr(a:winid)), '\n')
+    let re = '^\s*line=\d*\s*id=\d*\s*name=.*$'
+    call filter(preserved, 'v:val =~# re')
+    call map(preserved, 'split(v:val, "\\s\\+")')
     call s:Log.DBG('Preserved signs: ', preserved)
     return preserved
 endfunction
@@ -407,27 +432,60 @@ endfunction
 function! s:RestoreSigns(winid, signs)
     call s:Log.VRB('RestoreSigns ', a:winid, ' ...')
     call s:Log.VRB('Preserved signs: ', a:signs)
-    for signstr in split(a:signs, '\n')
-        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
-            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
-            let signname = substitute( signstr, '^.*name=\(.*\).*$', '\1', '')
-            let signline = substitute( signstr, '^.*line=\(\d*\).*$', '\1', '')
-            let cmd =  'sign place ' . signid .
-           \           ' line=' . signline .
-           \           ' name=' . signname .
-           \           ' buffer=' . winbufnr(a:winid)
-            call s:Log.DBG(cmd)
-            execute cmd
-        endif
+    let bufnr = s:Win.bufnr(a:winid)
+    for [linestr, idstr, namestr] in a:signs
+        let signid = substitute(idstr, '^.*id=\(\d*\).*$', '\1', '')
+        let signname = substitute(namestr, '^.*name=\(.*\).*$', '\1', '')
+        let signline = substitute(linestr, '^.*line=\(\d*\).*$', '\1', '')
+        let cmd =  'sign place ' . signid .
+       \           ' line=' . signline .
+       \           ' name=' . signname .
+       \           ' buffer=' . bufnr
+        call s:Log.DBG(cmd)
+        execute cmd
     endfor
 endfunction
 
+function! s:FoldsExist()
+    let startline = line('.')
+
+    " If going to the next fold moves the cursor, folds exist
+    noautocmd silent normal! zj
+    if startline !=# line('.')
+        return 1
+    endif
+
+    " If going to the previous fold moves the cursor, folds exist
+    noautocmd silent normal! zk
+    if startline !=# line('.')
+        return 1
+    endif
+
+    " If the current line is folded, folds exist
+    if foldlevel(startline) ># 0
+        return 1
+    endif
+
+    return 0
+endfunction
 function! s:PreserveManualFolds()
     call s:Log.VRB('PreserveManualFolds')
     " Output
     let folds = {}
 
-    " Step 1: Find folds
+    " Step 0: Make sure folds are enabled so that they can be found
+    let &foldenable = 1
+
+    " Step 1: If there are no folds, skip the rest of the computation
+    let bell = &belloff
+    let &belloff = 'error'
+    let foldsexist = s:FoldsExist()
+    let &belloff = bell
+    if !foldsexist
+        return {'explen': line('$'), 'folds': folds}
+    endif
+
+    " Step 2: Find folds
     " Stack contains the starting lines of folds whose ending lines have not
     " yet been reached, indexed by their foldlevels. Element 0 has a dummy 0
     " in it because a foldlevel of 0 means the line isn't folded
@@ -437,7 +495,7 @@ function! s:PreserveManualFolds()
     let prevfl = 0
     
     " Traverse every line in the buffer
-    for linenr in range(0, line('$') + 1, 1)
+    for linenr in range(0, line('$') + 1)
         " Pretend there are non-folded lines before and after the real ones
         if linenr <=# 0 || linenr >= line('$') + 1
             let foldlevel = 0
@@ -453,7 +511,7 @@ function! s:PreserveManualFolds()
         " If the foldlevel has increased since the previous line, start new
         " folds at the current line - one for each +1 on the foldlevel
         if foldlevel ># prevfl
-            for newfl in range(prevfl + 1, foldlevel, 1)
+            for newfl in range(prevfl + 1, foldlevel)
                 call s:Log.VRB('Start fold at foldlevel ', newfl)
                 call add(foldstack, linenr)
             endfor
@@ -481,10 +539,10 @@ function! s:PreserveManualFolds()
         let prevfl = foldlevel
     endfor
 
-    " Step 2: Determine which folds are closed
+    " Step 3: Determine which folds are closed
     " Vim's fold API cannot see inside closed folds, so we need to open all
     " closed folds after noticing they are closed
-    let foldlevels = sort(copy(keys(folds)), 'n')
+    let foldlevels = sort(keys(folds), 'n')
     for foldlevel in foldlevels
         call s:Log.VRB('Examine folds with foldlevel ', foldlevel)
         for afold in folds[foldlevel]
@@ -495,7 +553,7 @@ function! s:PreserveManualFolds()
             for linenr in range(afold.start, afold.end, 1)
                 if foldclosed(linenr) !=# afold.start ||
                \   foldclosedend(linenr) !=# afold.end
-                    call s:Log.VRB('Fold ', afold, ' is closed')
+                    call s:Log.VRB('Fold ', afold, ' is open')
                     let afold.closed = 0
                     break
                 endif
@@ -512,7 +570,7 @@ function! s:PreserveManualFolds()
     " Delete all folds so that if the call to s:RestoreFolds happens in the same
     " window, it'll start with a clean slate
     call s:Log.VRB('Deleting all folds')
-    normal! zE
+    noautocmd silent normal! zE
 
     let retdict = {'explen': line('$'), 'folds': folds}
     call s:Log.VRB('Preserved manual folds: ', retdict)
@@ -591,8 +649,12 @@ function! WinceStateAfterimageWindow(winid)
     call s:Log.DBG('WinceStateAfterimageWindow ', a:winid)
     " Silent movement (noautocmd) is used here because we want to preserve the
     " state of the window exactly as it was when the function was first
-    " called, and autocmds may fire on jer_win#gotoid that change the state
-    call WinceStateMoveCursorToWinidSilently(a:winid)
+    " called, and autocmds may fire on wincmd w that change the state
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
 
     " Preserve cursor and scroll position
     let view = winsaveview()
@@ -626,12 +688,10 @@ function! WinceStateAfterimageWindow(winid)
     " Preserve signs, but also unplace them so that they don't show up if the
     " real buffer is reused for another supwin
     let signs = s:PreserveSigns(a:winid)
-    for signstr in split(signs, '\n')
-        if signstr =~# '^\s*line=\d*\s*id=\d*\s*name=.*$'
-            let signid = substitute( signstr, '^.*id=\(\d*\).*$', '\1', '')
-            call s:Log.VRB('Unplace sign ', signid)
-            execute 'sign unplace ' . signid
-        endif
+    for [linestr, idstr, namestr] in signs
+        let signid = substitute(idstr, '^.*id=\(\d*\).*$', '\1', '')
+        call s:Log.VRB('Unplace sign ', signid)
+        execute 'sign unplace ' . signid
     endfor
     call s:MaybeRedraw()
 
@@ -691,7 +751,10 @@ endfunction
 
 function! WinceStateCloseWindow(winid, belowright)
     call s:Log.INF('WinceStateCloseWindow ', a:winid, ' ', a:belowright)
-    call WinceStateAssertWinExists(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
 
     " :close fails if called on the last window. Explicitly exit Vim if
     " there's only one window left.
@@ -700,8 +763,6 @@ function! WinceStateCloseWindow(winid, belowright)
         quit
     endif
     
-    let winnr = jer_win#id2win(a:winid)
-
     let oldsr = &splitright
     let oldsb = &splitbelow
     let &splitright = a:belowright
@@ -754,7 +815,11 @@ let s:preservedwinopts = [
 " Preserve/Restore for individual windows
 function! WinceStatePreCloseAndReopen(winid)
     call s:Log.INF('WinceStatePreCloseAndReopen ', a:winid)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
     let retdict = {}
 
     " Preserve cursor position
@@ -791,7 +856,11 @@ endfunction
 function! WinceStatePostCloseAndReopen(winid, preserved)
     call s:Log.INF('WinceStatePostCloseAndReopen ', a:winid, '...')
     call s:Log.VRB(a:preserved)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
 
     " Restore signs
     call s:RestoreSigns(a:winid, a:preserved.sign)
@@ -808,8 +877,7 @@ function! WinceStatePostCloseAndReopen(winid, preserved)
     call s:MaybeRedraw()
 
     " Restore options
-    for optname in keys(a:preserved.opts)
-        let optval = a:preserved.opts[optname]
+    for [optname, optval] in items(a:preserved.opts)
         execute 'let &l:' . optname . ' = ' . string(optval)
     endfor
   
@@ -820,77 +888,108 @@ endfunction
 
 function! WinceStateResizeHorizontal(winid, width, preferleftdivider)
     call s:Log.INF('WinceStateResizeHorizontal ', a:winid, ' ', a:width, ' ', a:preferleftdivider)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
     let wasfixed = &winfixwidth
     let &winfixwidth = 0
     if !a:preferleftdivider
-        call WinceStateSilentWincmd(a:width, '|', 0)
+        noautocmd execute a:width . 'wincmd |'
+        call s:MaybeRedraw()
         let &winfixwidth = wasfixed
         return
     endif
-    call WinceStateSilentWincmd('','h', 0)
-    if jer_win#getid() ==# a:winid
-        call WinceStateResizeHorizontal(a:winid, a:width, 0)
+    noautocmd wincmd h
+    if winnr() ==# winnr
+        noautocmd execute a:width . 'wincmd |'
+        call s:MaybeRedraw()
+        let &winfixwidth = wasfixed
+        return
+    elseif &winfixwidth
+        noautocmd wincmd p
+        noautocmd execute a:width . 'wincmd |'
+        call s:MaybeRedraw()
         let &winfixwidth = wasfixed
         return
     endif
-    if &winfixwidth
-        call WinceStateResizeHorizontal(a:winid, a:width, 0)
-        return
-    endif
-    let otherwidth = winwidth(0)
-    let oldwidth = winwidth(jer_win#id2win(a:winid))
+    let otherwidth = s:Win.width(0)
+    let oldwidth = s:Win.width(winnr)
     let newwidth = otherwidth + oldwidth - a:width
-    call WinceStateSilentWincmd(newwidth, '|', 0)
+    noautocmd execute newwidth . 'wincmd |'
+    call s:MaybeRedraw()
+    noautocmd wincmd p
+    let &winfixwidth = wasfixed
 endfunction
 
 function! WinceStateResizeVertical(winid, height, prefertopdivider)
     call s:Log.INF('WinceStateResizeVertical ', a:winid, ' ', a:height, ' ', a:prefertopdivider)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
+    let winnr = s:Win.id2win(a:winid)
+    if !winnr
+        throw 'no window with winid ' . a:winid
+    endif
+    noautocmd silent execute winnr . 'wincmd w'
     let wasfixed = &winfixheight
     let &winfixheight = 0
     if !a:prefertopdivider
-        call WinceStateSilentWincmd(a:height, '_', 0)
+        noautocmd execute a:height . 'wincmd _'
+        call s:MaybeRedraw()
         let &winfixheight = wasfixed
         return
     endif
-    call WinceStateSilentWincmd('','k', 0)
-    if jer_win#getid() ==# a:winid
-        call WinceStateResizeVertical(a:winid, a:height, 0)
+    noautocmd wincmd k
+
+    if winnr() ==# winnr
+        noautocmd execute a:height . 'wincmd _'
+        call s:MaybeRedraw()
+        let &winfixheight = wasfixed
+        return
+    elseif &winfixheight
+        noautocmd wincmd p
+        noautocmd execute a:height . 'wincmd _'
+        call s:MaybeRedraw()
         let &winfixheight = wasfixed
         return
     endif
-    if &winfixheight
-        call WinceStateResizeVertical(a:winid, a:height, 0)
-        return
-    endif
-    let otherheight = winheight(0)
-    let oldheight = winheight(jer_win#id2win(a:winid))
+
+    let otherheight = s:Win.height(0)
+    let oldheight = s:Win.height(winnr)
     let newheight = otherheight + oldheight - a:height
-    call WinceStateSilentWincmd(newheight, '_', 0)
+    noautocmd execute newheight . 'wincmd _'
+    call s:MaybeRedraw()
+    noautocmd wincmd p
+    let &winfixheight = wasfixed
 endfunction
 
 function! WinceStateFixednessByWinid(winid)
     call s:Log.DBG('WinceStateFixednessByWinid ', a:winid)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
-    let fixedness = {'w':&winfixwidth,'h':&winfixheight}
+    let winnr = s:Win.id2win(a:winid)
+    let fixedness = {
+   \    'w': s:Win.getwinvar(winnr, '&winfixwidth'),
+   \    'h': s:Win.getwinvar(winnr, '&winfixheight')
+   \}
     call s:Log.VRB(fixedness)
     return fixedness
 endfunction
 
 function! WinceStateUnfixDimensions(winid)
     call s:Log.INF('WinceStateUnfixDimensions ', a:winid)
-    let preunfix = WinceStateFixednessByWinid(a:winid)
-    " WinceStateFixednessByWinid moves to the window
-    let &winfixwidth = 0
-    let &winfixheight = 0
+    let winnr = s:Win.id2win(a:winid)
+    let preunfix = {
+   \    'w': s:Win.getwinvar(winnr, '&winfixwidth'),
+   \    'h': s:Win.getwinvar(winnr, '&winfixheight')
+   \}
+    call s:Win.setwinvar(winnr, '&winfixwidth', 0)
+    call s:Win.setwinvar(winnr, '&winfixheight', 0)
+    call s:Log.VRB(preunfix)
     return preunfix
 endfunction
 
 function! WinceStateRefixDimensions(winid, preunfix)
     call s:Log.INF('WinceStateRefixDimensions ', a:winid, ' ', a:preunfix)
-    call WinceStateMoveCursorToWinidSilently(a:winid)
-    let &winfixwidth = a:preunfix.w
-    let &winfixheight = a:preunfix.h
+    let winnr = s:Win.id2win(a:winid)
+    call s:Win.setwinvar(winnr, '&winfixwidth', a:preunfix.w)
+    call s:Win.setwinvar(winnr, '&winfixheight', a:preunfix.h)
 endfunction
 

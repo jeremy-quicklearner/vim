@@ -1,5 +1,6 @@
 " Wince Reference Definiton for Quickfix uberwin
 let s:Log = jer_log#LogFunctions('wince-quickfix-uberwin')
+let s:Win = jer_win#WinFunctions()
 
 
 if !exists('g:wince_enable_quickfix') || !g:wince_enable_quickfix
@@ -10,7 +11,7 @@ endif
 
 " WinceToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
 " are required.. I see no other way to implement WinceToIdentifyQuickfix.
-if jer_win#Legacy()
+if s:Win.legacy
     call s:Log.ERR('The quickfix uberwin group is not supported with legacy winids')
     finish
 endif
@@ -46,7 +47,7 @@ function! WinceToOpenQuickfix()
 
     " copen also moves the cursor to the quickfix window, so return the
     " current window ID
-    return [jer_win#getid()]
+    return [s:Win.getid()]
 endfunction
 
 " Callback that closes the quickfix window

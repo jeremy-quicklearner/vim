@@ -335,13 +335,18 @@ function! WinceSubwinFlagsForGlobalStatusline()
 endfunction
 
 function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
+    if !a:supwinid
+        let supwinid = WinceStateGetCursorWinId()
+    else
+        let supwinid = a:supwinid
+    endif
     try
-        call WinceModelAssertSubwinGroupDoesntExist(a:supwinid, a:grouptypename)
+        call WinceModelAssertSubwinGroupDoesntExist(supwinid, a:grouptypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call s:Log.DBG('WinceAddSubwinGroup cannot add subwin group ', a:supwinid, ':', a:grouptypename, ': ')
+        call s:Log.DBG('WinceAddSubwinGroup cannot add subwin group ', supwinid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
         return
@@ -349,13 +354,13 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
 
     " If we're adding the subwin group as hidden, add it only to the model
     if a:hidden
-        call s:Log.INF('WinceAddSubwinGroup hidden ', a:supwinid, ':', a:grouptypename)
-        call WinceModelAddSubwins(a:supwinid, a:grouptypename, [], [])
+        call s:Log.INF('WinceAddSubwinGroup hidden ', supwinid, ':', a:grouptypename)
+        call WinceModelAddSubwins(supwinid, a:grouptypename, [], [])
         call s:RunPostUserOpCallbacks()
         return
     endif
 
-    call s:Log.INF('WinceAddSubwinGroup shown ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinceAddSubwinGroup shown ', supwinid, ':', a:grouptypename)
 
     let grouptype = g:wince_subwingrouptype[a:grouptypename]
     let info = WinceCommonGetCursorPosition()
@@ -364,29 +369,29 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
 
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
-        let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(a:supwinid, a:grouptypename)
-        call s:Log.VRB('Closed higher-priority subwin groups for supwin ', a:supwinid, ': ', highertypes)
+        let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, a:grouptypename)
+        call s:Log.VRB('Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
         try
             try
-                let winids = WinceCommonOpenSubwins(a:supwinid, a:grouptypename)
-                let supwinnr = WinceStateGetWinnrByWinid(a:supwinid)
+                let winids = WinceCommonOpenSubwins(supwinid, a:grouptypename)
+                let supwinnr = WinceStateGetWinnrByWinid(supwinid)
                 let reldims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call s:Log.VRB('Opened subwin group ', a:supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
-                call WinceModelAddSubwins(a:supwinid, a:grouptypename, winids, reldims)
-                call s:Log.VRB('Added subwin group ', a:supwinid, ':', a:grouptypename, ' to model')
+                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
+                call WinceModelAddSubwins(supwinid, a:grouptypename, winids, reldims)
+                call s:Log.VRB('Added subwin group ', supwinid, ':', a:grouptypename, ' to model')
             catch /.*/
                 if !a:suppresserror
-                    call s:Log.WRN('WinceAddSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', a:supwinid, ':')
+                    call s:Log.WRN('WinceAddSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', supwinid, ':')
                     call s:Log.DBG(v:throwpoint)
                     call s:Log.WRN(v:exception)
                 endif
-                call WinceAddSubwinGroup(a:supwinid, a:grouptypename, 1, a:suppresserror)
+                call WinceAddSubwinGroup(supwinid, a:grouptypename, 1, a:suppresserror)
                 return
             endtry
 
         " Reopen the subwins we closed
         finally
-            call WinceCommonReopenSubwins(a:supwinid, highertypes)
+            call WinceCommonReopenSubwins(supwinid, highertypes)
             call s:Log.VRB('Reopened higher-priority subwin groups')
         endtry
 
@@ -399,36 +404,41 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
 endfunction
 
 function! WinceRemoveSubwinGroup(supwinid, grouptypename)
+    if !a:supwinid
+        let supwinid = WinceStateGetCursorWinId()
+    else
+        let supwinid = a:supwinid
+    endif
     try
         let grouptype = WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
-        call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', a:supwinid, ':', a:grouptypename, ': ')
+        call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', supwinid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
         return
     endtry
 
-    call s:Log.INF('WinceRemoveSubwinGroup ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinceRemoveSubwinGroup ', supwinid, ':', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
 
         let removed = 0
-        if !WinceModelSubwinGroupIsHidden(a:supwinid, a:grouptypename)
-            call WinceCommonCloseSubwins(a:supwinid, a:grouptypename)
-            call s:Log.VRB('Closed subwin group ', a:supwinid, ':', a:grouptypename, ' in state')
+        if !WinceModelSubwinGroupIsHidden(supwinid, a:grouptypename)
+            call WinceCommonCloseSubwins(supwinid, a:grouptypename)
+            call s:Log.VRB('Closed subwin group ', supwinid, ':', a:grouptypename, ' in state')
             let removed = 1
         endif
 
-        call WinceModelRemoveSubwins(a:supwinid, a:grouptypename)
-        call s:Log.VRB('Removed subwin group ', a:supwinid, ':', a:grouptypename, ' from model')
+        call WinceModelRemoveSubwins(supwinid, a:grouptypename)
+        call s:Log.VRB('Removed subwin group ', supwinid, ':', a:grouptypename, ' from model')
 
         if removed
             call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
-           \    a:supwinid,
+           \    supwinid,
            \    a:grouptypename
            \)
-            call s:Log.VRB('Closed and reopened all shown subwins of supwin ', a:supwinid, ' with priority higher than ', a:grouptypename)
+            call s:Log.VRB('Closed and reopened all shown subwins of supwin ', supwinid, ' with priority higher than ', a:grouptypename)
         endif
 
     finally
@@ -440,11 +450,16 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
 endfunction
 
 function! WinceHideSubwinGroup(winid, grouptypename)
+    if !a:winid
+        let winid = WinceStateGetCursorWinId()
+    else
+        let winid = a:winid
+    endif
     try
-        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:winid)
+        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(winid)
         call WinceModelAssertSubwinGroupIsNotHidden(supwinid, a:grouptypename)
     catch /.*/
-        call s:Log.DBG('WinceHideSubwinGroup cannot hide subwin group ', a:winid, ':', a:grouptypename, ': ')
+        call s:Log.DBG('WinceHideSubwinGroup cannot hide subwin group ', winid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
         return
@@ -475,14 +490,19 @@ function! WinceHideSubwinGroup(winid, grouptypename)
 endfunction
 
 function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
+    if !a:srcid
+        let srcid = WinceStateGetCursorWinId()
+    else
+        let srcid = a:srcid
+    endif
     try
-        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:srcid)
+        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(srcid)
         call WinceModelAssertSubwinGroupIsHidden(supwinid, a:grouptypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call s:Log.DBG('WinceShowSubwinGroup cannot show subwin group ', a:srcid, ':', a:grouptypename, ': ')
+        call s:Log.DBG('WinceShowSubwinGroup cannot show subwin group ', srcid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
         return
@@ -569,14 +589,10 @@ function! WinceDoCmdWithFlags(cmd,
         let endmode = WinceGotoSupwin(info.win.supwin, 0)
     endif
 
-
     let cmdinfo = WinceCommonGetCursorPosition()
     call s:Log.VRB('Running command from window ', cmdinfo)
 
-    let reselect = 1
-    if a:relyonresolver
-        let reselect = 0
-    endif
+    let reselect = !a:relyonresolver
 
     try
         if a:dowithoutuberwins && a:dowithoutsubwins
@@ -868,20 +884,25 @@ endfunction
 
 " Move the cursor to a given subwin
 function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, suppresserror)
+    if !a:dstwinid
+        let dstwinid = WinceStateGetCursorWinId()
+    else
+        let dstwinid = a:dstwinid
+    endif
     try
-        let dstsupwinid = WinceModelSupwinIdBySupwinOrSubwinId(a:dstwinid)
+        let dstsupwinid = WinceModelSupwinIdBySupwinOrSubwinId(dstwinid)
         call WinceModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
     catch /.*/
         if a:suppresserror
             return
         endif
-        call s:Log.WRN('Cannot go to subwin ', a:dstgrouptypename, ':', a:dsttypename, ' of supwin ', a:dstwinid, ':')
+        call s:Log.WRN('Cannot go to subwin ', a:dstgrouptypename, ':', a:dsttypename, ' of supwin ', dstwinid, ':')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
         return
     endtry
     
-    call s:Log.INF('WinceGotoSubwin ', a:dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename, ' ', a:startmode)
+    call s:Log.INF('WinceGotoSubwin ', dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename, ' ', a:startmode)
 
     if WinceModelSubwinGroupIsHidden(dstsupwinid, a:dstgrouptypename)
         call s:Log.INF('Showing subwin group ', dstsupwinid, ':', a:dstgrouptypename, ' so that the cursor can be moved to its subwin ', a:dsttypename)

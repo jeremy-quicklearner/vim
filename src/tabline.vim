@@ -1,4 +1,5 @@
 " Tabline definition
+let s:Win = jer_win#WinFunctions()
 
 " Convert a global variable to a string based on a map lookup
 " If the variable doesn't exist, return dne
@@ -74,7 +75,7 @@ function! GetTabString(tabnum, tabcols)
     let winnr = tabpagewinnr(a:tabnum)
 
     " Name of file in active window of the tab
-    let wininfo = getwininfo(jer_win#getid(winnr, a:tabnum))
+    let wininfo = getwininfo(s:Win.getid(winnr, a:tabnum))
 
     " Quickfix and location lists are special cases
     if len(wininfo) && wininfo[0]['loclist']

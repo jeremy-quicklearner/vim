@@ -1,5 +1,6 @@
 " Wince Reference Definition for Option uberwin
 let s:Log = jer_log#LogFunctions('wince-option-uberwin')
+let s:Win = jer_win#WinFunctions()
 
 if !exists('g:wince_enable_option') || !g:wince_enable_option
     call s:Log.CFG('Option uberwin disabled')
@@ -41,7 +42,7 @@ function! WinceToOpenOption()
         endif
     endfor
 
-    let prevwinid = jer_win#getid()
+    let prevwinid = s:Win.getid()
 
     " The option window always splits using the 'new' command with no
     " modifiers, so 'vertical options' won't work. Instead, create an
@@ -88,9 +89,9 @@ function! WinceToOpenOption()
     execute 'inoremap <silent> <buffer> <CR> <Esc>:call OptGoPrev()<CR>:call <SNR>' . sid . '_CR()<CR>'
     execute 'noremap <silent> <buffer> <Space> :call OptGoPrev()<CR>:call <SNR>' . sid . '_Space()<CR>'
 
-    let winid = jer_win#getid()
+    let winid = s:Win.getid()
 
-    noautocmd call jer_win#gotoid(prevwinid)
+    noautocmd call s:Win.gotoid(prevwinid)
 
     return [winid]
 endfunction
@@ -100,7 +101,7 @@ function! WinceToCloseOption()
     call s:Log.INF('WinceToCloseOption')
     let optionwinid = 0
     for winid in WinceStateGetWinidsByCurrentTab()
-        if WinceStateGetBufnrByWinid(winid) ==# bufnr('option-window')
+        if WinceStateGetBufnrByWinidOrWinnr(winid) ==# bufnr('option-window')
             let optionwinid = winid
         endif
     endfor
@@ -117,7 +118,7 @@ endfunction
 " window
 function! WinceToIdentifyOption(winid)
     call s:Log.DBG('WinceToIdentifyOption ', a:winid)
-    if WinceStateGetBufnrByWinid(a:winid) ==# bufnr('option-window')
+    if WinceStateGetBufnrByWinidOrWinnr(a:winid) ==# bufnr('option-window')
         return 'option'
     endif
     return ''

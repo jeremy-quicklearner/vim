@@ -21,7 +21,7 @@ function! WinceResolveIdentifyAfterimagedSubwin(winid)
     call s:Log.VRB('WinceResolveIdentifyAfterimagedSubwin ', a:winid)
     let wininfo = WinceModelInfoById(a:winid)
     if wininfo.category ==# 'subwin' && 
-   \   WinceModelSubwinAibufBySubwinId(a:winid) ==# WinceStateGetBufnrByWinid(a:winid)
+   \   WinceModelSubwinAibufBySubwinId(a:winid) ==# WinceStateGetBufnrByWinidOrWinnr(a:winid)
         call s:Log.VRB('Afterimaged subwin identified as ', wininfo)
         return wininfo
     endif

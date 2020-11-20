@@ -1,5 +1,6 @@
 " Wince Reference Definition for Preview uberwin
 let s:Log = jer_log#LogFunctions('wince-preview-uberwin')
+let s:Win = jer_win#WinFunctions()
 
 if !exists('g:wince_enable_preview') || !g:wince_enable_preview
     call s:Log.CFG('Preview uberwin disabled')
@@ -32,12 +33,12 @@ function! WinceToOpenPreview()
     endif
 
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(jer_win#id2win(winid), '&previewwindow', 0)
+        if getwinvar(s:Win.id2win(winid), '&previewwindow', 0)
             throw 'Preview window already open'
         endif
     endfor
 
-    let previouswinid = jer_win#getid()
+    let previouswinid = s:Win.getid()
 
     if g:wince_preview_bottom
         noautocmd botright split
@@ -56,7 +57,7 @@ function! WinceToOpenPreview()
         call s:Log.WRN(v:exception)
     endtry
 
-    let winid = jer_win#getid()
+    let winid = s:Win.getid()
     call WinceStatePostCloseAndReopen(winid, t:j_preview)
     let &previewwindow = 1
     let &winfixheight = 1
@@ -65,7 +66,7 @@ function! WinceToOpenPreview()
     " the syntax option is set
     let &syntax = &syntax
 
-    noautocmd call jer_win#gotoid(previouswinid)
+    noautocmd call s:Win.gotoid(previouswinid)
 
     return [winid]
 endfunction
@@ -75,7 +76,7 @@ function! WinceToClosePreview()
     call s:Log.INF('WinceToClosePreview')
     let previewwinid = 0
     for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(jer_win#id2win(winid), '&previewwindow', 0)
+        if getwinvar(s:Win.id2win(winid), '&previewwindow', 0)
             let previewwinid = winid
         endif
     endfor
@@ -92,7 +93,7 @@ function! WinceToClosePreview()
     endif
 
     let t:j_preview = WinceStatePreCloseAndReopen(previewwinid)
-    let t:j_preview.bufnr = winbufnr(jer_win#id2win(previewwinid))
+    let t:j_preview.bufnr = winbufnr(s:Win.id2win(previewwinid))
 
     pclose
 endfunction
@@ -101,7 +102,7 @@ endfunction
 " window
 function! WinceToIdentifyPreview(winid)
     call s:Log.DBG('WinceToIdentifyPreview ', a:winid)
-    if getwinvar(jer_win#id2win(a:winid), '&previewwindow', 0)
+    if getwinvar(s:Win.id2win(a:winid), '&previewwindow', 0)
         return 'preview'
     endif
     return ''
