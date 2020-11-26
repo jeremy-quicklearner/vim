@@ -549,6 +549,17 @@ function! WinceModelUberwinIdsByGroupTypeName(grouptypename)
     return uberwinids
 endfunction
 
+function! WinceModelSomeUberwinIdByGroupTypeName(grouptypename)
+    call s:Log.DBG('WinceModelSomeUberwinIdByGroupTypeName ', a:grouptypename)
+    if !WinceModelShownUberwinGroupExists(a:grouptypename)
+        call s:Log.DBG('No shown uberwin group ', a:grouptypename)
+        return 0
+    endif
+    for uberwin in values(t:wince_uberwin[a:grouptypename].uberwin)
+        return uberwin.id
+    endfor
+endfunction
+
 " Returns a list containing all uberwin IDs
 function! WinceModelUberwinIds()
     call s:Log.DBG('WinceModelUberwinIds')
@@ -623,6 +634,17 @@ function! WinceModelSubwinIdsByGroupTypeName(supwinid, grouptypename)
     endfor
     call s:Log.DBG('Subwin IDs for group ', a:supwinid, ':', a:grouptypename, ': ', subwinids)
     return subwinids
+endfunction
+
+function! WinceModelSomeSubwinIdByGroupTypeName(supwinid, grouptypename)
+    call s:Log.DBG('WinceModelSomeSubwinIdByGroupTypeName ', a:supwinid, ':', a:grouptypename)
+    if !WinceModelShownSubwinGroupExists(a:supwinid, a:grouptypename)
+        call s:Log.DBG('No shown subwin group ', a:supwinid, ':', a:grouptypename)
+        return 0
+    endif
+    for subwin in values(t:wince_supwin[a:supwinid].subwin[a:grouptypename].subwin)
+        return subwin.id
+    endfor
 endfunction
 
 " Returns which flag to show for a given supwin due to a given subwin group
@@ -712,7 +734,6 @@ function! WinceModelInfoById(winid)
         call s:Log.DBG('ID ', a:winid, ' not found in model')
         return {'category': 'none', 'id': a:winid}
     endif
-        
 
     for [grouptypename, group] in items(t:wince_uberwin)
         for [typename, uberwin] in items(group.uberwin)
@@ -731,7 +752,7 @@ function! WinceModelInfoById(winid)
         endfor
     endfor
 
-    throw 'Control reached the end of WinceModelInfoById'
+    throw 'Control reached the end of WinceModelInfoById for winid ' . a:winid
 endfunction
 
 " Given a supwin id, returns it. Given a subwin ID, returns the ID of the
@@ -950,7 +971,7 @@ function! s:ValidateNewUberwinDimensionsList(grouptypename, dims)
     if empty(a:dims)
         let retlist = []
         for i in rangenumtypenames
-            call add(retlist, s:defaultdims)
+            call add(retlist, copy(s:defaultdims))
         endfor
         call s:Log.DBG('Populated dummy dimensions: ', retlist)
         return retlist
@@ -1022,7 +1043,7 @@ function! s:ValidateNewSubwinDimensionsList(grouptypename, dims)
     if empty(a:dims)
         let retlist = []
         for i in rangenumtypenames
-            call add(retlist, s:defaultreldims)
+            call add(retlist, copy(s:defaultreldims))
         endfor
         call s:Log.DBG('Populated dummy dimensions: ', retlist)
         return retlist
@@ -1153,13 +1174,17 @@ function! WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
     call s:Log.DBG('Type names for uberwin group ', a:grouptypename, ': ', typenames)
     return typenames
 endfunction
-function! WinceModelUberwinDimensions(grouptypename, typename)
-    call s:Log.DBG('WinceModelUberwinDimensions ', a:grouptypename, ':', a:typename)
+function! WinceModelUberwinDimensionsByTypeName(grouptypename, typename)
+    call s:Log.DBG('WinceModelUberwinDimensionsByTypeName ', a:grouptypename, ':', a:typename)
     call WinceModelAssertUberwinGroupIsNotHidden(a:grouptypename)
     call WinceModelAssertUberwinTypeExists(a:grouptypename, a:typename)
     let windict = t:wince_uberwin[a:grouptypename].uberwin[a:typename]
     call s:Log.DBG('Dimensions of uberwin ', a:grouptypename, ':', a:typename, ': ', windict)
     return windict
+endfunction
+function! WinceModelUberwinDimensionsByGroupTypeName(grouptypename)
+    call s:Log.DBG('WinceModelUberwinDimensionsByGroupTypeName ', a:grouptypename)
+    return WinceModelAssertUberwinGroupIsNotHidden(a:grouptypename).uberwin
 endfunction
 
 function! WinceModelAddUberwins(grouptypename, winids, dimensions)
@@ -1448,13 +1473,22 @@ function! WinceModelSubwinTypeNamesByGroupTypeName(grouptypename)
     call s:Log.DBG('Type names for subwin group ', a:grouptypename, ': ', typenames)
     return typenames
 endfunction
-function! WinceModelSubwinDimensions(supwinid, grouptypename, typename)
-    call s:Log.DBG('WinceModelSubwinDimensions ', a:supwinid, ':', a:grouptypename, ':', a:typename)
+function! WinceModelSubwinDimensionsByTypeName(supwinid, grouptypename, typename)
+    call s:Log.DBG('WinceModelSubwinDimensionsByTypeName ', a:supwinid, ':', a:grouptypename, ':', a:typename)
     call WinceModelAssertSubwinTypeExists(a:grouptypename, a:typename)
     let subwinid = WinceModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename).subwin[a:typename].id
     let windict = t:wince_subwin[subwinid]
     let retdict =  {'relnr':windict.relnr,'w':windict.w,'h':windict.h}
     call s:Log.DBG('Dimensions of subwin ', a:supwinid, ':', a:grouptypename, ':', a:typename, ': ', retdict)
+    return retdict
+endfunction
+function! WinceModelSubwinDimensionsByGroupTypeName(supwinid, grouptypename)
+    call s:Log.DBG('WinceModelSubwinDimensionsByGroupTypeName ', a:supwinid, ':', a:grouptypename)
+    let retdict = {}
+    for subwin in values(WinceModelAssertSubwinGroupIsNotHidden(a:supwinid, a:grouptypename).subwin)
+        let id = subwin.id
+        let retdict[id] = t:wince_subwin[id]
+    endfor
     return retdict
 endfunction
 function! WinceModelSubwinAibufBySubwinId(subwinid)
@@ -1512,6 +1546,7 @@ function! WinceModelRemoveSupwin(winid)
 
     let supwindata = t:wince_supwin[a:winid]
     unlet t:wince_supwin[a:winid]
+    unlet t:wince_all[a:winid]
 
     return {'id':a:winid,'supwin':supwindata,'subwin':subwindata}
 endfunction

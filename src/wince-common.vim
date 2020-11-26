@@ -16,35 +16,27 @@ endfunction
 " the state
 function! WinceCommonUberwinGroupExistsInState(grouptypename)
     call s:Log.DBG('WinceCommonUberwinGroupExistsInState ', a:grouptypename)
-    let winids = WinceModelUberwinIdsByGroupTypeName(a:grouptypename)
-    return WinceStateWinExists(winids[0])
+    return WinceStateWinExists(WinceModelSomeUberwinIdByGroupTypeName(a:grouptypename))
 endfunction
 
 " Returns true if winids listed in the model for a subwin group exist in the
 " state
 function! WinceCommonSubwinGroupExistsInState(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonSubwinGroupExistsInState ', a:supwinid, ':', a:grouptypename)
-    let winids = WinceModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
-    return WinceStateWinExists(winids[0])
+    return WinceStateWinExists(WinceModelSomeSubwinIdByGroupTypeName(a:supwinid, a:grouptypename))
 endfunction
 
 " Returns false if the dimensions in the model of any uberwin in a shown group of
 " a given type are dummies or inconsistent with the state. True otherwise.
 function! WinceCommonUberwinGroupDimensionsMatch(grouptypename)
     call s:Log.DBG('WinceCommonUberwinGroupDimensionsMatch ', a:grouptypename)
-    for typename in WinceModelUberwinTypeNamesByGroupTypeName(a:grouptypename)
+    for [typename, mdims] in items(WinceModelUberwinDimensionsByGroupTypeName(a:grouptypename))
         call s:Log.VRB('Check uberwin ', a:grouptypename, ':', typename)
-        let mdims = WinceModelUberwinDimensions(a:grouptypename, typename)
         if mdims.nr ==# -1 || mdims.w ==# -1 || mdims.h ==# -1
             call s:Log.DBG('Uberwin ', a:grouptypename, ':', typename, ' has dummy dimensions')
             return 0
         endif
-        let winid = WinceModelIdByInfo({
-       \    'category':'uberwin',
-       \    'grouptype':a:grouptypename,
-       \    'typename':typename
-       \})
-        let sdims = WinceStateGetWinDimensions(winid)
+        let sdims = WinceStateGetWinDimensions(mdims.id)
         if sdims.nr !=# mdims.nr || sdims.w !=# mdims.w || sdims.h !=# mdims.h
             call s:Log.DBG('Uberwin ', a:grouptypename, ':', typename, ' has inconsistent non-dummy dimensions')
             return 0
@@ -77,23 +69,16 @@ endfunction
 " True otherwise.
 function! WinceCommonSubwinGroupDimensionsMatch(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonSubwinGroupDimensionsMatch ', a:supwinid, ':', a:grouptypename)
-    for typename in WinceModelSubwinTypeNamesByGroupTypeName(a:grouptypename)
-        call s:Log.VRB('Check subwin ', a:supwinid, ':', a:grouptypename, ':', typename)
-        let mdims = WinceModelSubwinDimensions(a:supwinid, a:grouptypename, typename)
+    for [winid, mdims] in items(WinceModelSubwinDimensionsByGroupTypeName(a:supwinid, a:grouptypename))
+        call s:Log.VRB('Check subwin ', winid)
         if mdims.relnr ==# 0 || mdims.w ==# -1 || mdims.h ==# -1
-            call s:Log.DBG('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' has dummy dimensions')
+            call s:Log.DBG('Subwin ', winid, ' has dummy dimensions')
             return 0
         endif
-        let winid = WinceModelIdByInfo({
-       \    'category':'subwin',
-       \    'supwin': a:supwinid,
-       \    'grouptype':a:grouptypename,
-       \    'typename':typename
-       \})
         let sdims = WinceStateGetWinDimensions(winid)
         let snr = WinceStateGetWinnrByWinid(a:supwinid)
         if sdims.nr !=# snr + mdims.relnr || sdims.w !=# mdims.w || sdims.h !=# mdims.h
-            call s:Log.DBG('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' has inconsistent non-dummy dimensions')
+            call s:Log.DBG('Subwin ', winid, ' has inconsistent non-dummy dimensions')
             return 0
         endif
     endfor
@@ -144,14 +129,13 @@ endfunction
 
 " Given a cursor position remembered with WinceCommonGetCursorPosition, return
 " either the same position or an updated one if it doesn't exist anymore
+let s:cases = {'none':0,'uberwin':1,'supwin':2,'subwin':3}
 function! WinceCommonReselectCursorWindow(oldpos)
     call s:Log.DBG('WinceCommonReselectCursorWindow ', a:oldpos)
     let pos = a:oldpos
 
     " If the cursor is in a nonexistent or hidden subwin, try to select its supwin
-    if pos.category ==# 'subwin' && (
-   \   !WinceModelSubwinGroupExists(pos.supwin, pos.grouptype) ||
-   \   WinceModelSubwinGroupIsHidden(pos.supwin, pos.grouptype))
+    if pos.category ==# 'subwin' && !WinceModelShownSubwinGroupExists(pos.supwin, pos.grouptype)
         call s:Log.DBG('Cursor is in nonexistent or hidden subwin. Attempt to select its supwin: ', pos.supwin)
         let pos = {'category':'supwin','id':pos.supwin}
     endif
@@ -164,10 +148,10 @@ function! WinceCommonReselectCursorWindow(oldpos)
 
     " If we still have just a window ID, or if the cursor is in a nonexistent
     " supwin, nonexistent uberwin, or hidden uberwin, try to select the first supwin
-    if pos.category ==# 'none' ||
-   \   (pos.category ==# 'supwin' && !WinceModelSupwinExists(pos.id)) ||
-   \   (pos.category ==# 'uberwin' && !WinceModelUberwinGroupExists(pos.grouptype)) ||
-   \   (pos.category ==# 'uberwin' && WinceModelUberwinGroupIsHidden(pos.grouptype))
+    let catn = get(s:cases, pos.category, -1)
+    if catn ==# 0 ||
+   \   (catn ==# 2 && !WinceModelSupwinExists(pos.id)) ||
+   \   (catn ==# 1 && (!WinceModelShownUberwinGroupExists(pos.grouptype)))
         call s:Log.DBG('Cursor position fallback to first supwin')
         let firstsupwinid = WinceCommonFirstSupwinId()
         if firstsupwinid
@@ -235,10 +219,8 @@ endfunction
 " some exceptions
 function! WinceCommonShieldAllWindows(excludedwinids)
     call s:Log.DBG('WinceCommonShieldAllWindows')
-    let supwinids = copy(WinceModelSupwinIds())
-    let curwin = WinceStateGetCursorWinId()
-
     let preshield = {}
+
     for winid in WinceStateGetWinidsByCurrentTab()
         if index(a:excludedwinids, str2nr(winid)) >=# 0
             continue
@@ -247,8 +229,6 @@ function! WinceCommonShieldAllWindows(excludedwinids)
         let preshield[winid] = WinceStateShieldWindow(winid)
     endfor
 
-    call WinceStateMoveCursorToWinidSilently(curwin)
-    
     call s:Log.VRB('Shielded: ', preshield)
     return preshield
 endfunction
@@ -279,7 +259,7 @@ function! WinceCommonRestoreCursorPosition(info)
     endif
     let winid = WinceModelIdByInfo(newpos)
     call WinceStateMoveCursorToWinid(winid)
-    if WinceModelIdByInfo(a:info.win) ==# WinceModelIdByInfo(newpos)
+    if WinceModelIdByInfo(a:info.win) ==# winid
         call WinceStateRestoreCursorPosition(a:info.cur)
     endif
 endfunction
@@ -299,18 +279,21 @@ function! WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
 
     try
         let grouptype = g:wince_uberwingrouptype[a:grouptypename]
-        let preclosewinids = WinceStateGetWinidsByCurrentTab()
+        let preclosewinids = WinceStateGetWinidsDictByCurrentTab()
         for winid in uberwinids
-            if index(preclosewinids, str2nr(winid)) < 0
+            if !has_key(preclosewinids, winid)
                 throw 'Model uberwin ID ' . winid . ' from group ' . a:grouptypename . ' not present in state'
             endif
         endfor
         call s:Log.DBG('State-closing uberwin group ', a:grouptypename)
         call WinceStateCloseUberwinsByGroupType(grouptype)
-        let postclosewinids = WinceStateGetWinidsByCurrentTab()
-        for winid in preclosewinids
+        let postclosewinids = WinceStateGetWinidsDictByCurrentTab()
+        for winid in keys(preclosewinids)
+            " TODO? All these linear searches add up. Maybe use dicts with
+            "       has_key() instead, but not worth it unless there's a group
+            "       type with lots and lots of types in it
             let isuberwinid = (index(uberwinids, str2nr(winid)) >= 0)
-            let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
+            let ispresent = has_key(postclosewinids, winid)
             if !isuberwinid && !ispresent
                 throw 'toClose callback of uberwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of uberwin group ' . a:grouptypename
             endif
@@ -323,38 +306,17 @@ function! WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
     endtry
 endfunction
 
-" When windows are opened, Vim needs to choose which other windows to shrink
-" to make room. Sometimes Vim makes choices I don't like, such as equalizing
-" windows along the way. This function can be called before opening a window,
-" to remember the dimensions of all the windows that are already open. The
-" remembered dimensions can then be somewhat restored using
-" WinceCommonRestoreDimensions
-function! WinceCommonPreserveDimensions()
-    call s:Log.DBG('WinceCommonPreserveDimensions')
-    let winids = WinceStateGetWinidsByCurrentTab()
-    let dims = WinceStateGetWinDimensionsList(winids)
-    let windims = {}
-    for idx in range(len(winids))
-        let windims[winids[idx]] = dims[idx]
-    endfor
-    call s:Log.VRB('Preserved dimensions: ', windims)
-    return windims
-endfunction
-
 function! s:CompareWinidsByWinnr(winid1, winid2)
-        if !WinceStateWinExists(a:winid1) || !WinceStateWinExists(a:winid2)
-            return 0
-        endif
     let winnr1 = WinceStateGetWinnrByWinid(a:winid1)
     let winnr2 = WinceStateGetWinnrByWinid(a:winid2)
     return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? 1 : -1
 endfunction
-function! s:RestoreDimensionsByWinid(winid, olddims, prefertopleftdividers)
-    call s:Log.VRB('RestoreDimensionsByWinid ', a:winid, ' ', a:olddims, ' ', a:prefertopleftdividers)
+function! s:RestoreDimensionsByWinid(winid, olddims, issupwinid, prefertopleftdividers)
+    call s:Log.VRB('RestoreDimensionsByWinid ', a:winid, ' ', a:olddims, a:issupwinid, ' ', ' ', a:prefertopleftdividers)
     let newdims = WinceStateGetWinDimensions(a:winid)
     " This function gets called only when there are no subwins, so any
     " non-supwin must be an uberwin.
-    let isuberwin = (index(WinceModelSupwinIds(), str2nr(a:winid)) <# 0 )
+    let isuberwin = !a:issupwinid
     let fixed = WinceStateFixednessByWinid(a:winid)
     if (a:olddims.w <# newdims.w ) || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
         call s:Log.DBG('Set width for window ', a:winid, ' to ', a:olddims.w)
@@ -365,23 +327,23 @@ function! s:RestoreDimensionsByWinid(winid, olddims, prefertopleftdividers)
         call WinceStateResizeVertical(a:winid, a:olddims.h, a:prefertopleftdividers)
     endif
 endfunction
-" Restore dimensions remembered with WinceCommonPreserveDimensions
+" Restore dimensions remembered with WinceStateGetAllWinDimensionsByCurrentTab
 function! WinceCommonRestoreDimensions(windims)
     call s:Log.DBG('WinceCommonRestoreDimensions ')
     let sorted = copy(keys(a:windims))
+    call filter(sorted, {idx, val -> WinceStateWinExists(val)})
     call sort(sorted, function('s:CompareWinidsByWinnr'))
-    for winid in sorted
-        if !WinceStateWinExists(winid)
-            call s:Log.VRB('Window ', winid, ' no longer exists')
-            call remove(sorted, index(sorted, winid))
-        endif
+    let supwinids = WinceModelSupwinIds()
+    let supwinidsdict = {}
+    for supwinid in supwinids
+        let supwinidsdict[supwinid] = 1
     endfor
     for winid in sorted
-        call s:RestoreDimensionsByWinid(winid, a:windims[winid], 0)
+        call s:RestoreDimensionsByWinid(winid, a:windims[winid], has_key(supwinidsdict, winid), 0)
     endfor
     call reverse(sorted)
     for winid in sorted
-        call s:RestoreDimensionsByWinid(winid, a:windims[winid], 1)
+        call s:RestoreDimensionsByWinid(winid, a:windims[winid], has_key(supwinidsdict, winid), 1)
     endfor
 endfunction
 
@@ -435,10 +397,15 @@ endfunction
 " and corrects dimensions for existing windows
 function! WinceCommonOpenUberwins(grouptypename)
     call s:Log.DBG('WinceCommonOpenUberwins ', a:grouptypename)
-    let curwin = WinceStateGetCursorWinId()
     let preshield = WinceCommonShieldAllWindows([])
     try
-        let windims = WinceCommonPreserveDimensions()
+        " When windows are opened, Vim needs to choose which other windows to shrink
+        " to make room. Sometimes Vim makes choices I don't like, such as equalizing
+        " windows along the way. This function can be called before opening a window,
+        " to remember the dimensions of all the windows that are already open. The
+        " remembered dimensions can then be somewhat restored using
+        " WinceCommonRestoreDimensions
+        let windims = WinceStateGetAllWinDimensionsByCurrentTab()
         try
             let grouptype = g:wince_uberwingrouptype[a:grouptypename]
             let winids = WinceStateOpenUberwinsByGroupType(grouptype)
@@ -449,10 +416,6 @@ function! WinceCommonOpenUberwins(grouptypename)
 
     finally
         call WinceCommonUnshieldWindows(preshield)
-
-        " The ToOpen callback may have moved the cursor, so move it back
-        " before restoring the scroll position
-        call WinceStateMoveCursorToWinidSilently(curwin)
     endtry
     call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' with winids ', winids)
     return winids
@@ -467,21 +430,21 @@ function! WinceCommonCloseUberwinsWithHigherPriorityThan(grouptypename)
 
     " grouptypenames is reversed so that we close uberwins in descending
     " priority order. See comments in WinceCommonCloseSubwinsWithHigherPriorityThan
-    let reversegrouptypenames = reverse(copy(grouptypenames))
+    call reverse(grouptypenames)
 
     " Apply PreCloseAndReopenUberwins to all uberwins first, then close them
     " all. This is done because sometimes closing an uberwin will cause other
     " lower-priority uberwins' dimensions to change, and we don't want to
     " preserve those changes
-    for grouptypename in reversegrouptypenames
+    for grouptypename in grouptypenames
         call s:Log.VRB('Uberwin group ', grouptypename, ' has higher priority')
         let pre = WinceCommonPreCloseAndReopenUberwins(grouptypename)
-        call add(preserved, {'grouptypename':grouptypename,'pre':pre})
+        call insert(preserved, {'grouptypename':grouptypename,'pre':pre})
     endfor
-    for grouptypename in reversegrouptypenames
+    for grouptypename in grouptypenames
         call WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
     endfor
-    return reverse(copy(preserved))
+    return preserved
 endfunction
 
 " Reopens uberwins that were closed by WinceCommonCloseUberwinsWithHigherPriorityThan
@@ -506,16 +469,17 @@ function! WinceCommonReopenUberwins(preserved)
         endtry
     endfor
     for grouptype in a:preserved
-        if has_key(winids, grouptype.grouptypename)
-            call WinceModelChangeUberwinIds(grouptype.grouptypename, winids[grouptype.grouptypename])
-            call WinceCommonPostCloseAndReopenUberwins(
-           \    grouptype.grouptypename,
-           \    grouptype.pre
-           \)
-
-            let dims = WinceStateGetWinDimensionsList(winids[grouptype.grouptypename])
-            call WinceModelChangeUberwinGroupDimensions(grouptype.grouptypename, dims)
+        if !has_key(winids, grouptype.grouptypename)
+            continue
         endif
+        call WinceModelChangeUberwinIds(grouptype.grouptypename, winids[grouptype.grouptypename])
+        call WinceCommonPostCloseAndReopenUberwins(
+       \    grouptype.grouptypename,
+       \    grouptype.pre
+       \)
+
+        let dims = WinceStateGetWinDimensionsList(winids[grouptype.grouptypename])
+        call WinceModelChangeUberwinGroupDimensions(grouptype.grouptypename, dims)
     endfor
 endfunction
 
@@ -526,7 +490,7 @@ function! WinceCommonCloseSubwins(supwinid, grouptypename)
     let preunfix = WinceStateUnfixDimensions(a:supwinid)
     try
         if WinceModelSubwinGroupIsAfterimaged(a:supwinid, a:grouptypename)
-            call s:Log.DBG('Subwin group ', a:supwinid, ':', a:grouptypename, ' is partially afterimaged. Stomping subwins individually.')
+            call s:Log.DBG('Subwin group ', a:supwinid, ':', a:grouptypename, ' is afterimaged. Stomping subwins individually.')
             for subwinid in WinceModelSubwinIdsByGroupTypeName(
            \    a:supwinid,
            \    a:grouptypename
@@ -541,19 +505,22 @@ function! WinceCommonCloseSubwins(supwinid, grouptypename)
             call WinceModelDeafterimageSubwinsByGroup(a:supwinid, a:grouptypename)
         else
             let grouptype = g:wince_subwingrouptype[a:grouptypename]
-            let preclosewinids = WinceStateGetWinidsByCurrentTab()
+            let preclosewinids = WinceStateGetWinidsDictByCurrentTab()
             let subwinids = WinceModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
             for winid in subwinids
-                if index(preclosewinids, str2nr(winid)) < 0
+                " TODO: All these linear searches add up. Maybe use dicts with
+                "       has_key() instead, but not worth it unless there's a group
+                "       type with lots and lots of types in it
+                if !has_key(preclosewinids, winid)
                     throw 'Model subwin ID ' . winid . ' from group ' . a:supwinid . ':' . a:grouptypename . ' not present in state'
                 endif
             endfor
             call s:Log.DBG('Subwin group ', a:supwinid, ':', a:grouptypename, ' is not afterimaged. Closing via toClose')
             call WinceStateCloseSubwinsByGroupType(a:supwinid, grouptype)
-            let postclosewinids = WinceStateGetWinidsByCurrentTab()
-            for winid in preclosewinids
+            let postclosewinids = WinceStateGetWinidsDictByCurrentTab()
+            for winid in keys(preclosewinids)
                 let issubwinid = (index(subwinids, str2nr(winid)) >= 0)
-                let ispresent = (index(postclosewinids, str2nr(winid)) >= 0)
+                let ispresent = has_key(postclosewinids, winid)
                 if !issubwinid && !ispresent
                     throw 'toClose callback of subwin group type ' . a:grouptypename . ' closed window ' . winid . ' which was not a member of subwin group ' . a:supwinid . ':' . a:grouptypename
                 endif
@@ -610,13 +577,15 @@ function! WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, grouptypename)
     " I don't fully understand why, but relaxing that constraint and allowing
     " subwins to stretch causes strange behaviour with other supwins filling
     " the space left by subwins closing after they have stretched.
-    for grouptypename in reverse(copy(grouptypenames))
+    call reverse(grouptypenames)
+
+    for grouptypename in grouptypenames
         call s:Log.VRB('Subwin group ', grouptypename, ' has higher priority')
         let pre = WinceCommonPreCloseAndReopenSubwins(a:supwinid, grouptypename)
-        call add(preserved, {'grouptypename':grouptypename,'pre':pre})
+        call insert(preserved, {'grouptypename':grouptypename,'pre':pre})
         call WinceCommonCloseSubwins(a:supwinid, grouptypename)
     endfor
-    return reverse(copy(preserved))
+    return preserved
 endfunction
 
 " Reopens subwins that were closed by WinceCommonCloseSubwinsWithHigherPriorityThan
@@ -642,6 +611,7 @@ function! WinceCommonReopenSubwins(supwinid, preserved)
            \    grouptype.grouptypename
            \)
 
+            " TODO: May not be necessary in most cases? Check to make sure
             let supwinnr = WinceStateGetWinnrByWinid(a:supwinid)
             let dims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
             call WinceModelChangeSubwinGroupDimensions(
@@ -662,76 +632,62 @@ function! WinceCommonPreCloseAndReopenUberwins(grouptypename)
     call s:Log.DBG('WinceCommonPreCloseAndReopenUberwins ', a:grouptypename)
     call WinceModelAssertUberwinGroupExists(a:grouptypename)
     let preserved = {}
-    let curwinid = WinceStateGetCursorWinId()
-    try
-        for typename in g:wince_uberwingrouptype[a:grouptypename].typenames
-            let winid = WinceModelIdByInfo({
-           \    'category': 'uberwin',
-           \    'grouptype': a:grouptypename,
-           \    'typename': typename
-           \})
-            let preserved[typename] = WinceStatePreCloseAndReopen(winid)
-            call s:Log.VRB('Preserved uberwin ', a:grouptypename, ':', typename, ' with winid ', winid, ': ', preserved[typename])
-        endfor
-    finally
-        call WinceStateMoveCursorToWinidSilently(curwinid)
-    endtry
+    for typename in g:wince_uberwingrouptype[a:grouptypename].typenames
+        let winid = WinceModelIdByInfo({
+       \    'category': 'uberwin',
+       \    'grouptype': a:grouptypename,
+       \    'typename': typename
+       \})
+        let preserved[typename] = WinceStatePreCloseAndReopen(winid)
+        call s:Log.VRB('Preserved uberwin ', a:grouptypename, ':', typename, ' with winid ', winid, ': ', preserved[typename])
+    endfor
     return preserved
 endfunction
 
 function! WinceCommonPostCloseAndReopenUberwins(grouptypename, preserved)
     call s:Log.DBG('WinceCommonPostCloseAndReopenUberwins ', a:grouptypename)
     call WinceModelAssertUberwinGroupExists(a:grouptypename)
-    let curwinid = WinceStateGetCursorWinId()
-    try
-        for typename in keys(a:preserved)
-            let winid = WinceModelIdByInfo({
-           \    'category': 'uberwin',
-           \    'grouptype': a:grouptypename,
-           \    'typename': typename
-           \})
-            call s:Log.VRB('Restore uberwin ', a:grouptypename, ':', typename, ' with winid ', winid, ': ', a:preserved[typename])
-            call WinceStatePostCloseAndReopen(winid, a:preserved[typename])
-        endfor
-    finally
-        call WinceStateMoveCursorToWinidSilently(curwinid)
-    endtry
+    for typename in keys(a:preserved)
+        let winid = WinceModelIdByInfo({
+       \    'category': 'uberwin',
+       \    'grouptype': a:grouptypename,
+       \    'typename': typename
+       \})
+        call s:Log.VRB('Restore uberwin ', a:grouptypename, ':', typename, ' with winid ', winid, ': ', a:preserved[typename])
+        call WinceStatePostCloseAndReopen(winid, a:preserved[typename])
+    endfor
 endfunction
 
 function! WinceCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonPreCloseAndReopenSubwins ', a:supwinid, ':', a:grouptypename)
     call WinceModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
     let preserved = {}
-    let curwinid = WinceStateGetCursorWinId()
-        for typename in g:wince_subwingrouptype[a:grouptypename].typenames
-            let winid = WinceModelIdByInfo({
-           \    'category': 'subwin',
-           \    'supwin': a:supwinid,
-           \    'grouptype': a:grouptypename,
-           \    'typename': typename
-           \})
-            let preserved[typename] = WinceStatePreCloseAndReopen(winid)
-            call s:Log.VRB('Preserved subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' with winid ', winid, ': ', preserved[typename])
-        endfor
-    call WinceStateMoveCursorToWinidSilently(curwinid)
+    for typename in g:wince_subwingrouptype[a:grouptypename].typenames
+        let winid = WinceModelIdByInfo({
+       \    'category': 'subwin',
+       \    'supwin': a:supwinid,
+       \    'grouptype': a:grouptypename,
+       \    'typename': typename
+       \})
+        let preserved[typename] = WinceStatePreCloseAndReopen(winid)
+        call s:Log.VRB('Preserved subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' with winid ', winid, ': ', preserved[typename])
+    endfor
     return preserved
 endfunction
 
 function! WinceCommonPostCloseAndReopenSubwins(supwinid, grouptypename, preserved)
     call s:Log.DBG('WinceCommonPostCloseAndReopenSubwins ', a:supwinid, ':', a:grouptypename)
     call WinceModelAssertSubwinGroupExists(a:supwinid, a:grouptypename)
-    let curwinid = WinceStateGetCursorWinId()
-        for typename in keys(a:preserved)
-            let winid = WinceModelIdByInfo({
-           \    'category': 'subwin',
-           \    'supwin': a:supwinid,
-           \    'grouptype': a:grouptypename,
-           \    'typename': typename
-           \})
-            call s:Log.VRB('Restore subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' with winid ', winid, ': ', a:preserved[typename])
-            call WinceStatePostCloseAndReopen(winid, a:preserved[typename])
-        endfor
-    call WinceStateMoveCursorToWinidSilently(curwinid)
+    for typename in keys(a:preserved)
+        let winid = WinceModelIdByInfo({
+       \    'category': 'subwin',
+       \    'supwin': a:supwinid,
+       \    'grouptype': a:grouptypename,
+       \    'typename': typename
+       \})
+        call s:Log.VRB('Restore subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' with winid ', winid, ': ', a:preserved[typename])
+        call WinceStatePostCloseAndReopen(winid, a:preserved[typename])
+    endfor
 endfunction
 
 " Closes and reopens all shown subwins of a given supwin with priority higher
@@ -747,29 +703,13 @@ function! WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(supwinid, g
     call WinceModelChangeSupwinDimensions(a:supwinid, dims.nr, dims.w, dims.h)
 endfunction
 
-" Closes and reopens all shown subwins of a given supwin
-function! WinceCommonCloseAndReopenAllShownSubwinsBySupwin(supwinid)
-    call s:Log.DBG('WinceCommonCloseAndReopenAllShownSubwinsBySupwin ', a:supwinid)
-    call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(a:supwinid, '')
-endfunction
-
 " Afterimages all afterimaging non-afterimaged subwins of a non-hidden subwin group
 function! WinceCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
     call s:Log.DBG('WinceCommonAfterimageSubwinsByInfo ', a:supwinid, ':', a:grouptypename)
-    " Don't bother even moving to the supwin if all the afterimaging subwins in
-    " the group are already afterimaged
-    let afterimagingneeded = 0
-    for typeidx in range(len(g:wince_subwingrouptype[a:grouptypename].typenames))
-        let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
-        if has_key(g:wince_subwingrouptype[a:grouptypename].afterimaging, typename) &&
-       \   !WinceModelSubwinGroupIsAfterimaged(a:supwinid, a:grouptypename)
-            call s:Log.DBG('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' needs afterimaging')
-            let afterimagingneeded = 1
-            break
-        endif
-        call s:Log.VRB('Subwin ', a:supwinid, ':', a:grouptypename, ':', typename, ' is already afterimaged')
-    endfor
-    if !afterimagingneeded
+    " Don't bother doing anything if the group is already afterimaged or has
+    " no afterimaging types
+    if empty(g:wince_subwingrouptype[a:grouptypename].afterimaging) ||
+   \   WinceModelSubwinGroupIsAfterimaged(a:supwinid, a:grouptypename)
         call s:Log.DBG('Subwin group ', a:supwinid, ':', a:grouptypename, ' requires no aftermimaging')
         return
     endif
@@ -777,17 +717,10 @@ function! WinceCommonAfterimageSubwinsByInfo(supwinid, grouptypename)
     " To make sure the subwins are in a good state, start from their supwin
     call WinceStateMoveCursorToWinid(a:supwinid)
 
-    " Each subwin type can be individually afterimaging, so deal with them one
-    " by one
+    " Afterimage each afterimaging subwin in the group
     let aibufs = {}
-    for typeidx in range(len(g:wince_subwingrouptype[a:grouptypename].typenames))
-        " Don't afterimage non-afterimaging subwins
-        let typename = g:wince_subwingrouptype[a:grouptypename].typenames[typeidx]
-        if !has_key(g:wince_subwingrouptype[a:grouptypename].afterimaging, typename)
-            call s:Log.VRB('Subwin type ', a:grouptypename, ':', g:wince_subwingrouptype[a:grouptypename].typenames[typeidx], ' does not afterimage')
-            continue
-        endif
-
+    let afterimaging = g:wince_subwingrouptype[a:grouptypename].afterimaging
+    for typename in keys(afterimaging)
         " Get the subwin ID
         let subwinid = WinceModelIdByInfo({
        \    'category': 'subwin',
@@ -814,7 +747,7 @@ function! WinceCommonAfterimageSubwinsBySupwin(supwinid)
     endfor
 endfunction
 
-" Afterimages all afterimaging non-afterimaged shown subwins of a subwin
+" Afterimages all afterimaging non-afterimaged shown subwins of a supwin
 " unless they belong to a given group
 function! WinceCommonAfterimageSubwinsBySupwinExceptOne(supwinid, excludedgrouptypename)
     call s:Log.DBG('WinceCommonAfterimageSubwinsBySupwinExceptOne ', a:supwinid, ':', a:excludedgrouptypename)
@@ -825,8 +758,8 @@ function! WinceCommonAfterimageSubwinsBySupwinExceptOne(supwinid, excludedgroupt
     endfor
 endfunction
 
-" Closes all subwin groups of a supwin that contain afterimaged subwins and reopens
-" them as non-afterimaged
+" Closes all afterimaged subwin groups of a supwin (as well as any other
+" groups with higher priority) and reopend them as non-afterimaged
 function! WinceCommonDeafterimageSubwinsBySupwin(supwinid)
     call s:Log.DBG('WinceCommonDeafterimageSubwinsBySupwin ', a:supwinid)
     let prevgrouptypename = ''
@@ -849,11 +782,13 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     call s:Log.DBG('WinceCommonUpdateAfterimagingByCursorWindow ', a:curwin)
     " If the given cursor is in a window that doesn't exist, place it in a
     " window that does exist
+    " TODO: Probably a waste to do this here
     let finalpos = WinceCommonReselectCursorWindow(a:curwin)
+    let catn = s:cases[finalpos.category]
 
-    " If the cursor's position is in an uberwin (or still in a window that
-    " doesn't exist), afterimage all shown afterimaging subwins of all supwins
-    if finalpos.category ==# 'uberwin' || finalpos.category ==# 'none'
+    " If the cursor's position is in an uberwin (or in a window that doesn't exist),
+    " afterimage all shown afterimaging subwins of all supwins
+    if catn ==# 1 || catn ==# 0
         call s:Log.DBG('Cursor position is uberwin. Afterimaging all subwins of all supwins.')
         for supwinid in WinceModelSupwinIds()
             call WinceCommonAfterimageSubwinsBySupwin(supwinid)
@@ -863,7 +798,7 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     " shown afterimaging subwins of all supwins except the one with
     " the cursor. Deafterimage all shown afterimaging subwins of the
     " supwin with the cursor.
-    elseif finalpos.category ==# 'supwin'
+    elseif catn ==# 2
         call s:Log.DBG('Cursor position is supwin ', finalpos.id, '. Afterimaging all subwins of all other supwins')
         for supwinid in WinceModelSupwinIds()
             if supwinid !=# finalpos.id
@@ -881,7 +816,7 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     " the cursor. If the cursor is in a group with an afterimaging
     " subwin, Deafterimage that group. I had fun writing this
     " comment.
-    elseif finalpos.category ==# 'subwin'
+    elseif catn ==# 3
         call s:Log.DBG('Cursor position is subwin ', finalpos.supwin, ':', finalpos.grouptype, ':', finalpos.typename, '. Afterimaging all subwins of all other supwins.')
         for supwinid in WinceModelSupwinIds()
             if supwinid !=# finalpos.supwin
@@ -900,6 +835,7 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     endif
 endfunction
 
+" Sorry
 function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
     call s:Log.DBG('DoWithout ', a:curwin, ', ', a:callback, ', ', a:args, ', [', a:nouberwins, ',', a:nosubwins, ',', a:reselect, ']')
     let supwinids = WinceModelSupwinIds()
@@ -910,17 +846,18 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
 
     let info = WinceCommonGetCursorPosition()
     call s:Log.DBG('Cursor position before removals is ', info)
-
+    
     if a:nosubwins && !empty(supwinids)
         let startwith = supwinids[0]
+        let catn = s:cases[a:curwin.category]
 
         " If the cursor is in a supwin, start with it
-        if a:curwin.category ==# 'supwin'
+        if catn ==# 2
             call s:Log.VRB('Cursor is in supwin ', a:curwin.id, '. Its subwins will be closed first')
             let startwith = str2nr(a:curwin.id)
 
         " If the cursor is in a subwin, start with its supwin
-        elseif a:curwin.category ==# 'subwin'
+        elseif catn ==# 3
             call s:Log.VRB('Cursor is in subwin ', a:curwin.supwin, ':', a:curwin.grouptype, ':', a:curwin.typename, '. Subwins of supwin ', a:curwin.supwin, ' will be closed first')
             let startwith = str2nr(a:curwin.supwin)
         endif
@@ -988,9 +925,9 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
                     " This command changes the winid of the window being
                     " moved (even with legacy winids, because it wipes out
                     " window-local variables). So after moving the supwin
-                    " record to the new tab's model, change its winid
+                    " record to the new tab's model, change its winid.
                     " Immediately after wincmd T, the only window in the tab
-                    " is the one that was moved
+                    " is the one that was moved and so the cursor is in it
                     let newsupwinid = WinceStateGetCursorWinId()
                     call WinceModelReplaceWinid(supwinid, newsupwinid)
                     let gotopretabnr = 1

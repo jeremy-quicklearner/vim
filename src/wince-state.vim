@@ -36,6 +36,14 @@ function! WinceStateGetWinidsByCurrentTab()
     call s:Log.DBG('Winids: ', winids)
     return winids
 endfunction
+function! WinceStateGetWinidsDictByCurrentTab()
+    call s:Log.DBG('WinceStateGetWinidsDictByCurrentTab')
+    let retdict = {}
+    for winnr in range(1, winnr('$'))
+        let retdict[s:Win.getid(winnr)] = 1
+    endfor
+    return retdict
+endfunction
 
 function! WinceStateWinExists(winid)
     call s:Log.DBG('WinceStateWinExists ', a:winid)
@@ -115,6 +123,19 @@ function! WinceStateGetWinDimensionsList(winids)
         call add(dim, WinceStateGetWinDimensions(winid))
     endfor
     call s:Log.DBG('Dimensions of windows ', a:winids, ': ', dim)
+    return dim
+endfunction
+
+function! WinceStateGetAllWinDimensionsByCurrentTab()
+    call s:Log.DBG('WinceStateGetAllWinDimensionsByCurrentTab')
+    let dim = {}
+    for winnr in range(1, winnr('$'))
+        let dim[s:Win.getid(winnr)] = {
+       \    'nr': winnr,
+       \    'w': s:Win.width(winnr),
+       \    'h': s:Win.height(winnr)
+       \}
+    endfor
     return dim
 endfunction
 

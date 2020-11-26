@@ -1,6 +1,7 @@
 " Wince Reference Definition for Help uberwin
 let s:Log = jer_log#LogFunctions('wince-help-uberwin')
 let s:Win = jer_win#WinFunctions()
+" TODO: Figure out why lhelpgrep sometimes resizes a bunch of windows
 
 if !exists('g:wince_enable_help') || !g:wince_enable_help
     call s:Log.CFG('Help uberwin disabled')

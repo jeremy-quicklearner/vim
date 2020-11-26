@@ -366,7 +366,6 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-
         " Each subwin must be, at the time it is opened, the one with the
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, a:grouptypename)
@@ -1184,14 +1183,14 @@ function! s:ResizeGivenNoSubwins(width, height)
 
     let winid = WinceModelIdByInfo(WinceCommonGetCursorPosition().win)
 
-    let preclosedim = WinceCommonPreserveDimensions()
+    let preclosedim = WinceStateGetAllWinDimensionsByCurrentTab()
 
     call s:Log.DBG('Closing all uberwins')
     let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriorityThan('')
     try
         call WinceStateMoveCursorToWinid(winid)
 
-        let postclosedim = WinceCommonPreserveDimensions()
+        let postclosedim = WinceStateGetAllWinDimensionsByCurrentTab()
         let deltaw = postclosedim[winid].w - preclosedim[winid].w
         let deltah = postclosedim[winid].h - preclosedim[winid].h
         let finalw = a:width + deltaw
@@ -1222,7 +1221,7 @@ function! s:ResizeGivenNoSubwins(width, height)
             call WinceStateWincmd(finalh, '_', 0)
         endif
 
-        let postresizedim = WinceCommonPreserveDimensions()
+        let postresizedim = WinceStateGetAllWinDimensionsByCurrentTab()
         for otherwinid in keys(postclosedim)
             if postresizedim[otherwinid].w !=# postclosedim[otherwinid].w ||
            \   postresizedim[otherwinid].h !=# postclosedim[otherwinid].h
