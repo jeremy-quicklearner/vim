@@ -105,13 +105,15 @@ endfunction
 call WinceCmdDefineSpecialCmd('WinceExchange','WinceExchange')
 
 " Going to the previous window requires special accounting in the user
-" operations because window engine code is always moving the cursor all over
-" the place and Vim's internal 'previous window' means nothing to the user
+" operations because wince is always moving the cursor all over the place
+" and Vim's internal 'previous window' means nothing to the user
 call WinceCmdDefineSpecialCmd('WinceGotoPrevious','WinceGotoPrevious')
 
 " WinceOnly is special because if it isn't, its counted version can land in a
 " subwin and close all other windows (including the subwin's supwin) leaving
-" the subwin dangling, which will cause the resolver to exit the tab
+" the subwin dangling, which will cause the resolver to exit the tab.
+" We can't just close subwins and uberwins during execution without
+" normalizing the count to account for their absence
 call WinceCmdDefineSpecialCmd('WinceOnly', 'WinceOnly')
 
 " If WinceResizeHorizontal and WinceResizeVertical ran run wincmd _ and wincmd | with
@@ -258,6 +260,7 @@ let s:cmdsWithoutUberwins = [
 \   'WinceMoveToLeftEdge',
 \   'WinceMoveToRightEdge',
 \   'WinceMoveToTopEdge',
+\   'WinceMoveToNewTab',
 \   'WinceReverseGoNext',
 \   'WinceReverseRotate',
 \   'WinceRotate'

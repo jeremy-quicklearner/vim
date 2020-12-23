@@ -876,7 +876,6 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
     let posttabnr = pretabnr
     try
         let closeduberwingroups = []
-        let supdims = {}
         if a:nouberwins
             call s:Log.DBG('Closing all uberwins')
             let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriorityThan('')
@@ -958,7 +957,12 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
             call WinceCommonRestoreCursorPosition(info)
             call WinceCommonUpdateAfterimagingByCursorWindow(info.win)
         else
-            call WinceStateMoveCursorToWinid(info.win.id)
+            let infowin = info.win
+            if has_key(infowin, 'id')
+                call WinceStateMoveCursorToWinid(infowin.id)
+            else
+                call WinceStateMoveCursorToWinid(WinceModelIdByInfo(infowin))
+            endif
         endif
     endtry
     return retval

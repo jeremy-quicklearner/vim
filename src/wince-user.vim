@@ -2,7 +2,6 @@
 " See wince.vim
 let s:Log = jer_log#LogFunctions('wince-user')
 
-
 " Resolver callback registration
 
 " Register a callback to run at the beginning of the resolver, when the
@@ -128,6 +127,40 @@ function! WinceUberwinFlagsStr()
     endtry
 endfunction
 
+function! s:AddUberwinGroupGivenNoSubwins(grouptypename, suppresserror)
+    call s:Log.DBG('AddUberwinGroupGivenNoSubwins ', a:grouptypename, ' ', a:suppresserror)
+    " Each uberwin must be, at the time it is opened, the one with the
+    " highest priority. So close all uberwins with higher priority.
+    let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(a:grouptypename)
+    call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
+    try
+        try
+            let winids = WinceCommonOpenUberwins(a:grouptypename)
+            call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids)
+            " Initially add to model with dummy dimensions since reopening
+            " higher-priority uberwins may change nr anyway. Dimensions
+            " will be properly recorded by WinceCommonRecordAllDimensions
+            call WinceModelAddUberwins(a:grouptypename, winids, [])
+            call s:Log.VRB('Added uberwin group ', a:grouptypename, ' to model')
+        catch /.*/
+            if !a:suppresserror
+                call s:Log.WRN('WinceAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+                call s:Log.DBG(v:throwpoint)
+                call s:Log.WRN(v:exception)
+            endif
+
+            " Failed to add as shown, so add as hidden
+            call WinceModelAddUberwins(a:grouptypename, [], [])
+
+            return
+        endtry
+
+    " Reopen the uberwins we closed
+    finally
+        call WinceCommonReopenUberwins(highertypes)
+        call s:Log.VRB('Reopened higher-priority uberwins groups')
+    endtry
+endfunction
 function! WinceAddUberwinGroup(grouptypename, hidden, suppresserror)
     try
         call WinceModelAssertUberwinGroupDoesntExist(a:grouptypename)
@@ -154,70 +187,44 @@ function! WinceAddUberwinGroup(grouptypename, hidden, suppresserror)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let grouptype = g:wince_uberwingrouptype[a:grouptypename]
-        let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(grouptype.name)
-        call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
-        try
-            try
-                let winids = WinceCommonDoWithoutSubwins(info.win, function('WinceCommonOpenUberwins'), [a:grouptypename], 1)
-                let dims = WinceStateGetWinDimensionsList(winids)
-                call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
-                call WinceModelAddUberwins(a:grouptypename, winids, dims)
-                call s:Log.VRB('Added uberwin group ', a:grouptypename, ' to model')
-
-            catch /.*/
-                if !a:suppresserror
-                    call s:Log.WRN('WinceAddUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                    call s:Log.DBG(v:throwpoint)
-                    call s:Log.WRN(v:exception)
-                endif
-                call WinceAddUberwinGroup(a:grouptypename, 1, a:suppresserror)
-                return
-            endtry
-
-        " Reopen the uberwins we closed
-        finally
-            call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonReopenUberwins'), [highertypes], 1)
-            call s:Log.VRB('Reopened higher-priority uberwins groups')
-        endtry
+        call WinceCommonDoWithoutSubwins(info.win, function('s:AddUberwinGroupGivenNoSubwins'), [a:grouptypename, a:suppresserror], 0)
+        call WinceCommonRecordAllDimensions()
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinceRemoveUberwinGroup(grouptypename)
+    try
+        call WinceModelAssertUberwinGroupExists(a:grouptypename)
+    catch /.*/
+        call s:Log.DBG('WinceRemoveUberwinGroup cannot remove uberwin group ', a:grouptypename, ':')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+        return
+    endtry
+
     call s:Log.INF('WinceRemoveUberwinGroup ', a:grouptypename)
+
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-        let removed = 0
         if !WinceModelUberwinGroupIsHidden(a:grouptypename)
-            call WinceCommonCloseUberwinsByGroupTypeName(a:grouptypename)
+            call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonCloseUberwinsByGroupTypeName'), [a:grouptypename], 0)
             call s:Log.VRB('Closed uberwin group ', a:grouptypename, ' in state')
-            let removed = 1
         endif
 
         call WinceModelRemoveUberwins(a:grouptypename)
         call s:Log.VRB('Removed uberwin group ', a:grouptypename, ' from model')
-
-        if removed
-            " Closing an uberwin changes how much space is available to supwins
-            " and their subwins. Close and reopen all subwins.
-            call WinceCommonCloseAndReopenAllShownSubwins(info.win)
-            call s:Log.VRB('Closed and reopened all shown subwins')
-        endif
+        call WinceCommonRecordAllDimensions()
 
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinceHideUberwinGroup(grouptypename)
@@ -232,29 +239,53 @@ function! WinceHideUberwinGroup(grouptypename)
 
     call s:Log.INF('WinceHideUberwinGroup ', a:grouptypename)
 
-    let grouptype = g:wince_uberwingrouptype[a:grouptypename]
-
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-        call WinceCommonCloseUberwinsByGroupTypeName(a:grouptypename)
+        call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonCloseUberwinsByGroupTypeName'), [a:grouptypename], 0)
         call s:Log.VRB('Closed uberwin group ', a:grouptypename, ' in state')
         call WinceModelHideUberwins(a:grouptypename)
         call s:Log.VRB('Hid uberwin group ', a:grouptypename, ' in model')
-
-        " Closing an uberwin changes how much space is available to supwins
-        " and their subwins. Close and reopen all subwins.
-        call WinceCommonCloseAndReopenAllShownSubwins(info.win)
-        call s:Log.VRB('Closed and reopened all shown subwins')
+        call WinceCommonRecordAllDimensions()
 
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
+function! s:ShowUberwinGroupGivenNoSubwins(grouptypename, suppresserror)
+    call s:Log.DBG('ShowUberwinGroupGivenNoSubwins ', a:grouptypename, ' ', a:suppresserror)
+    " Each uberwin must be, at the time it is opened, the one with the
+    " highest priority. So close all uberwins with higher priority.
+    let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(a:grouptypename)
+    call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
+    try
+        try
+            let winids = WinceCommonOpenUberwins(a:grouptypename)
+            call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids)
+            " Initially add to model with dummy dimensions since reopening
+            " higher-priority uberwins may change nr anyway. Dimensions
+            " will be properly recorded by WinceCommonRecordAllDimensions
+            call WinceModelShowUberwins(a:grouptypename, winids, [])
+            call s:Log.VRB('Showed uberwin group ', a:grouptypename, ' in model')
+
+        catch /.*/
+            if a:suppresserror
+                return
+            endif
+            call s:Log.WRN('WinceShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
+            call s:Log.DBG(v:throwpoint)
+            call s:Log.WRN(v:exception)
+            return
+        endtry
+    " Reopen the uberwins we closed
+    finally
+        call WinceCommonReopenUberwins(highertypes)
+        call s:Log.VRB('Reopened higher-priority uberwins groups')
+    endtry
+endfunction
 function! WinceShowUberwinGroup(grouptypename, suppresserror)
     try
         call WinceModelAssertUberwinGroupIsHidden(a:grouptypename)
@@ -270,43 +301,16 @@ function! WinceShowUberwinGroup(grouptypename, suppresserror)
 
     call s:Log.INF('WinceShowUberwinGroup ', a:grouptypename)
 
-    let grouptype = g:wince_uberwingrouptype[a:grouptypename]
-
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-        " Each uberwin must be, at the time it is opened, the one with the
-        " highest priority. So close all uberwins with higher priority.
-        let highertypes = WinceCommonCloseUberwinsWithHigherPriorityThan(grouptype.name)
-        call s:Log.VRB('Closed higher-priority uberwin groups ', highertypes)
-        try
-            try
-                let winids = WinceCommonDoWithoutSubwins(info.win, function('WinceCommonOpenUberwins'), [a:grouptypename], 1)
-                let dims = WinceStateGetWinDimensionsList(winids)
-                call s:Log.VRB('Opened uberwin group ', a:grouptypename, ' in state with winids ', winids, ' and dimensions ', dims)
-                call WinceModelShowUberwins(a:grouptypename, winids, dims)
-                call s:Log.VRB('Showed uberwin group ', a:grouptypename, ' in model')
-
-            catch /.*/
-                if a:suppresserror
-                    return
-                endif
-                call s:Log.WRN('WinceShowUberwinGroup failed to open ', a:grouptypename, ' uberwin group:')
-                call s:Log.DBG(v:throwpoint)
-                call s:Log.WRN(v:exception)
-                return
-            endtry
-        " Reopen the uberwins we closed
-        finally
-            call WinceCommonDoWithoutSubwins(info.win, function('WinceCommonReopenUberwins'), [highertypes], 1)
-            call s:Log.VRB('Reopened higher-priority uberwins groups')
-        endtry
+        call WinceCommonDoWithoutSubwins(info.win, function('s:ShowUberwinGroupGivenNoSubwins'), [a:grouptypename, a:suppresserror], 0)
+        call WinceCommonRecordAllDimensions()
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Subwins
@@ -361,8 +365,6 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
     endif
 
     call s:Log.INF('WinceAddSubwinGroup shown ', supwinid, ':', a:grouptypename)
-
-    let grouptype = g:wince_subwingrouptype[a:grouptypename]
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
@@ -370,36 +372,41 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, a:grouptypename)
         call s:Log.VRB('Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
+        let opened = -1
         try
             try
                 let winids = WinceCommonOpenSubwins(supwinid, a:grouptypename)
-                let supwinnr = WinceStateGetWinnrByWinid(supwinid)
-                let reldims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
-                call WinceModelAddSubwins(supwinid, a:grouptypename, winids, reldims)
+                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids)
+                " Initially add to model with dummy dimensions since reopening
+                " higher-priority subwins may change relnr anyway. Dimensions
+                " will be properly recorded by WinceCommonRecordAllDimensions
+                call WinceModelAddSubwins(supwinid, a:grouptypename, winids, [])
                 call s:Log.VRB('Added subwin group ', supwinid, ':', a:grouptypename, ' to model')
+                let opened = 1
             catch /.*/
                 if !a:suppresserror
                     call s:Log.WRN('WinceAddSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', supwinid, ':')
                     call s:Log.DBG(v:throwpoint)
                     call s:Log.WRN(v:exception)
                 endif
-                call WinceAddSubwinGroup(supwinid, a:grouptypename, 1, a:suppresserror)
-                return
+                call WinceModelAddSubwins(supwinid, a:grouptypename, [], [])
+                let opened = 0
             endtry
 
         " Reopen the subwins we closed
         finally
             call WinceCommonReopenSubwins(supwinid, highertypes)
             call s:Log.VRB('Reopened higher-priority subwin groups')
+            if opened
+                call WinceCommonRecordAllDimensions()
+            endif
         endtry
 
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinceRemoveSubwinGroup(supwinid, grouptypename)
@@ -409,7 +416,7 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
         let supwinid = a:supwinid
     endif
     try
-        let grouptype = WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
+        call WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
     catch /.*/
         call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', supwinid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
@@ -422,17 +429,17 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
     call s:Log.VRB('Preserved cursor position ', info)
     try
 
-        let removed = 0
+        let closed = 0
         if !WinceModelSubwinGroupIsHidden(supwinid, a:grouptypename)
             call WinceCommonCloseSubwins(supwinid, a:grouptypename)
             call s:Log.VRB('Closed subwin group ', supwinid, ':', a:grouptypename, ' in state')
-            let removed = 1
+            let closed = 1
         endif
 
         call WinceModelRemoveSubwins(supwinid, a:grouptypename)
         call s:Log.VRB('Removed subwin group ', supwinid, ':', a:grouptypename, ' from model')
 
-        if removed
+        if closed
             call WinceCommonCloseAndReopenSubwinsWithHigherPriorityBySupwin(
            \    supwinid,
            \    a:grouptypename
@@ -441,13 +448,14 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
         endif
 
     finally
+        call WinceCommonRecordAllDimensions()
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
+" TODO: go back and reselect for all subwin ops
 function! WinceHideSubwinGroup(winid, grouptypename)
     if !a:winid
         let winid = WinceStateGetCursorWinId()
@@ -468,8 +476,6 @@ function! WinceHideSubwinGroup(winid, grouptypename)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
     try
-        let grouptype = g:wince_subwingrouptype[a:grouptypename]
-
         call WinceCommonCloseSubwins(supwinid, a:grouptypename)
         call s:Log.VRB('Closed subwin group ', supwinid, ':', a:grouptypename, ' in state')
         call WinceModelHideSubwins(supwinid, a:grouptypename)
@@ -481,11 +487,11 @@ function! WinceHideSubwinGroup(winid, grouptypename)
         call s:Log.VRB('Closed and reopened all shown subwins of supwin ', supwinid, ' with priority higher than ', a:grouptypename)
 
     finally
+        call WinceCommonRecordAllDimensions()
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
@@ -507,8 +513,6 @@ function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
         return
     endtry
 
-    let grouptype = g:wince_subwingrouptype[a:grouptypename]
-
     call s:Log.INF('WinceShowSubwinGroup ', supwinid, ':', a:grouptypename)
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
@@ -517,15 +521,17 @@ function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
         " highest priority for its supwin. So close all supwins with higher priority.
         let highertypes = WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, a:grouptypename)
         call s:Log.VRB('Closed higher-priority subwin groups for supwin ', supwinid, ': ', highertypes)
+        let opened = -1
         try
             try
                 let winids = WinceCommonOpenSubwins(supwinid, a:grouptypename)
-                let supwinnr = WinceStateGetWinnrByWinid(supwinid)
-                let reldims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids, ' and relative dimensions ', reldims)
-                call WinceModelShowSubwins(supwinid, a:grouptypename, winids, reldims)
+                call s:Log.VRB('Opened subwin group ', supwinid, ':', a:grouptypename, ' in state with winids ', winids)
+                " Initially add to model with dummy dimensions since reopening
+                " higher-priority subwins may change relnr anyway. Dimensions
+                " will be properly recorded by WinceCommonRecordAllDimensions
+                call WinceModelShowSubwins(supwinid, a:grouptypename, winids, [])
                 call s:Log.VRB('Showed subwin group ', supwinid, ':', a:grouptypename, ' in model')
-
+                let opened = 1
             catch /.*/
                 if a:suppresserror
                     return
@@ -533,22 +539,23 @@ function! WinceShowSubwinGroup(srcid, grouptypename, suppresserror)
                 call s:Log.WRN('WinceShowSubwinGroup failed to open ', a:grouptypename, ' subwin group for supwin ', supwinid, ':')
                 call s:Log.DBG(v:throwpoint)
                 call s:Log.WRN(v:exception)
-                return
+                let opened = 0
             endtry
 
         " Reopen the subwins we closed
         finally
             call WinceCommonReopenSubwins(supwinid, highertypes)
             call s:Log.VRB('Reopened higher-priority subwin groups')
+            if opened
+                call WinceCommonRecordAllDimensions()
+            endif
         endtry
 
     finally
         call WinceCommonRestoreCursorPosition(info)
         call s:Log.VRB('Restored cursor position')
+        call s:RunPostUserOpCallbacks()
     endtry
-
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
 endfunction
 
 " Retrieve subwins and supwins' statuslines from the model
@@ -575,13 +582,13 @@ function! WinceDoCmdWithFlags(cmd,
     let info = WinceCommonGetCursorPosition()
     call s:Log.VRB('Preserved cursor position ', info)
 
-    if info.win.category ==# 'uberwin' && a:ifuberwindonothing
+    if a:ifuberwindonothing && info.win.category ==# 'uberwin'
         call s:Log.WRN('Cannot run wincmd ', a:cmd, ' in uberwin')
         return a:startmode
     endif
 
     let endmode = a:startmode
-    if info.win.category ==# 'subwin' && a:ifsubwingotosupwin
+    if a:ifsubwingotosupwin && info.win.category ==# 'subwin'
         call s:Log.DBG('Going from subwin to supwin')
         " Drop the mode. It'll be restored from a:startmode if we restore the
         " cursor position
@@ -615,7 +622,9 @@ function! WinceDoCmdWithFlags(cmd,
     finally
         if a:relyonresolver
             " This call to the resolver from the user operations is
-            " unfortunate, but necessary
+            " an unfortunate architectural violation, but it doesn't
+            " introduce any dependency issues. The user operations
+            " just depend on the resolver.
             call WinceResolve()
             let endmode = {'mode':'n'}
         else
@@ -630,8 +639,8 @@ function! WinceDoCmdWithFlags(cmd,
             call WinceModelSetPreviousWinInfo(info.win)
             call WinceModelSetCurrentWinInfo(endinfo.win)
         endif
+        call s:RunPostUserOpCallbacks()
     endtry
-    call s:RunPostUserOpCallbacks()
     return endmode
 endfunction
 
@@ -792,12 +801,12 @@ function! WinceGotoUberwin(dstgrouptype, dsttypename, startmode, suppresserror)
         call WinceModelAssertUberwinGroupExists(a:dstgrouptype)
     catch /.*/
         if a:suppresserror
-            return
+            return a:startmode
         endif
         call s:Log.WRN('Cannot go to uberwin ', a:dstgrouptype, ':', a:dsttypename, ':')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
-        return
+        return a:startmode
     endtry
 
     call s:Log.INF('WinceGotoUberwin ', a:dstgrouptype, ':', a:dsttypename, ' ', a:startmode)
@@ -808,6 +817,15 @@ function! WinceGotoUberwin(dstgrouptype, dsttypename, startmode, suppresserror)
     endif
 
     let cur = WinceCommonGetCursorPosition()
+    if WinceModelIdByInfo({
+   \    'category': 'uberwin',
+   \    'grouptype': a:dstgrouptype,
+   \    'typename': a:dsttypename
+   \}) == WinceStateGetCursorWinId()
+        call s:RunPostUserOpCallbacks()
+        return a:startmode
+    endif
+
     call WinceModelSetPreviousWinInfo(cur.win)
     call s:Log.VRB('Previous window set to ', cur.win)
     let endmode = a:startmode
@@ -850,6 +868,14 @@ function! WinceGotoSupwin(dstwinid, startmode)
     call s:Log.INF('WinceGotoSupwin ', a:dstwinid, ' ', a:startmode)
 
     let cur = WinceCommonGetCursorPosition()
+    if WinceModelIdByInfo({
+   \    'category': 'supwin',
+   \    'id': a:dstwinid
+   \}) == WinceStateGetCursorWinId()
+        call s:RunPostUserOpCallbacks()
+        return a:startmode
+    endif
+
     call s:Log.VRB('Previous window set to ', cur.win)
     call WinceModelSetPreviousWinInfo(cur.win)
 
@@ -893,12 +919,12 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, su
         call WinceModelAssertSubwinGroupExists(dstsupwinid, a:dstgrouptypename)
     catch /.*/
         if a:suppresserror
-            return
+            return a:startmode
         endif
         call s:Log.WRN('Cannot go to subwin ', a:dstgrouptypename, ':', a:dsttypename, ' of supwin ', dstwinid, ':')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
-        return
+        return a:startmode
     endtry
     
     call s:Log.INF('WinceGotoSubwin ', dstwinid, ':', a:dstgrouptypename, ':', a:dsttypename, ' ', a:startmode)
@@ -909,6 +935,16 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, su
     endif
 
     let cur = WinceCommonGetCursorPosition()
+    if WinceModelIdByInfo({
+   \    'category': 'subwin',
+   \    'supwin': dstsupwinid,
+   \    'grouptype': a:dstgrouptypename,
+   \    'typename': a:dsttypename
+   \}) == WinceStateGetCursorWinId()
+        call s:RunPostUserOpCallbacks()
+        return a:startmode
+    endif
+
     call WinceModelSetPreviousWinInfo(cur.win)
     call s:Log.VRB('Previous window set to ', cur.win)
 
@@ -916,7 +952,7 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, su
 
     if cur.win.category ==# 'subwin'
         if cur.win.supwin ==# dstsupwinid && cur.win.grouptype ==# a:dstgrouptypename
-           let endmode =  s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename, endmode, a:suppresserror)
+            let endmode =  s:GoSubwinToSubwin(cur.win.supwin, cur.win.grouptype, a:dsttypename, endmode, a:suppresserror)
             call WinceModelSetCurrentWinInfo(WinceCommonGetCursorPosition().win)
             call s:RunPostUserOpCallbacks()
             return endmode
@@ -949,7 +985,7 @@ function! WinceGotoSubwin(dstwinid, dstgrouptypename, dsttypename, startmode, su
 endfunction
 
 function! WinceAddOrShowUberwinGroup(grouptypename)
-    call s:Log.INF('WinAddOrShowUberwin ', a:grouptypename)
+    call s:Log.INF('WinAddOrShowUberwinGroup ', a:grouptypename)
     if !WinceModelUberwinGroupExists(a:grouptypename)
         call WinceAddUberwinGroup(a:grouptypename, 0, 1)
     else
@@ -958,7 +994,7 @@ function! WinceAddOrShowUberwinGroup(grouptypename)
 endfunction
 
 function! WinceAddOrShowSubwinGroup(supwinid, grouptypename)
-    call s:Log.INF('WinAddOrShowSubwin ', a:supwinid, ':', a:grouptypename)
+    call s:Log.INF('WinAddOrShowSubwinGroup ', a:supwinid, ':', a:grouptypename)
     if !WinceModelSubwinGroupExists(a:supwinid, a:grouptypename)
         call WinceAddSubwinGroup(a:supwinid, a:grouptypename, 0, 1)
     else
@@ -1028,6 +1064,7 @@ function! s:GoInDirection(count, direction, startmode)
         let thecount = a:count
     endif
     let endmode = a:startmode
+    let mainsrcwininfo = WinceModelInfoById(WinceStateGetCursorWinId())
     for iter in range(thecount)
         call s:Log.DBG('Iteration ', iter)
         let srcwinid = WinceStateGetCursorWinId()
@@ -1074,6 +1111,7 @@ function! s:GoInDirection(count, direction, startmode)
             let endmode = WinceGotoSupwin(dstwinid, endmode)
         endif
     endfor
+    call WinceModelSetPreviousWinInfo(mainsrcwininfo)
     return endmode
 endfunction
 
@@ -1109,30 +1147,43 @@ function! WinceOnly(count, startmode)
     call s:Log.INF('WinceOnly ', a:count, ' ', a:startmode)
     if type(a:count) ==# v:t_string && empty(a:count)
         let winid = WinceStateGetCursorWinId()
-        let thecount = WinceStateGetWinnrByWinid(winid)
-        call s:Log.DBG('Defaulting to current winnr ', thecount)
     else
         let thecount = a:count
+        let winid = WinceStateGetWinidByWinnr(thecount)
     endif
 
-    let winid = WinceStateGetWinidByWinnr(thecount)
     let info = WinceModelInfoById(winid)
 
     if info.category ==# 'uberwin'
         throw 'Cannot invoke WinceOnly from uberwin'
-        return
+        return a:startmode
     endif
     if info.category ==# 'subwin'
         call s:Log.DBG('shifting target to supwin')
-        let info = WinceModelInfoById(info.supwin)
+        let winid = info.supwin
     endif
 
-    call s:Log.VRB('target window ', info)
+    " Afterimaged subwins contain modified buffers which <c-w>o refuses to
+    " close if the global 'hidden' option is false, so we need to close those
+    " subwins. While we're here, we may as well close *all* subwins since
+    " <c-w>o will close them anyway and it would be better to use the toClose
+    " callbacks than stomp them with <c-w>o. Same goes for uberwins.
+    for supwinid in WinceModelSupwinIds()
+       call WinceCommonCloseSubwinsWithHigherPriorityThan(supwinid, '')
+    endfor
+    call WinceCommonCloseUberwinsWithHigherPriorityThan('')
 
-    call s:GotoByInfo(info)
+    call s:Log.VRB('target supwin ', winid)
 
-    let endmode = WinceStateWincmd('', 'o', 1)
-    call WinceCommonRecordAllDimensions()
+    let endmode = WinceStateMoveCursorToWinidAndUpdateMode(winid, a:startmode)
+    let endmode = WinceStateWincmd('', 'o', endmode)
+
+    " This call to the resolver from the user operations is
+    " an unfortunate architectural violation, but it doesn't
+    " introduce any dependency issues. The user operations
+    " just depend on the resolver.
+    call WinceResolve()
+
     call s:RunPostUserOpCallbacks()
     return endmode
 endfunction
@@ -1152,52 +1203,69 @@ function! WinceExchange(count, startmode)
 
     if info.win.category ==# 'subwin'
         call s:Log.DBG('Moving to supwin first')
-        " Don't change the mode
+        " Don't change the mode. It'll be dropped later anyway
         call WinceGotoSupwin(info.win.supwin, 0)
     endif
 
     let cmdinfo = WinceCommonGetCursorPosition()
     call s:Log.VRB('Running command from window ', cmdinfo)
 
+    let endmode = a:startmode
     try
-        let endmode =  WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, 'x', a:startmode], 0)
-        if info.win.category ==# 'subwin'
-            call s:Log.VRB('Returning to subwin ', info.win)
-            " Drop the mode
-            let endmode = {'mode':'n'}
-            call WinceGotoSubwin(WinceStateGetCursorWinId(), info.win.grouptype, info.win.typename, 0, 0)
-        endif
+        let endmode = WinceCommonDoWithoutUberwinsOrSubwins(cmdinfo.win, function('WinceStateWincmd'), [a:count, 'x', a:startmode], 0)
     catch /.*/
         call s:Log.DBG('WinceExchange failed: ')
         call s:Log.DBG(v:throwpoint)
         call s:Log.WRN(v:exception)
-        return
+    finally
+        if info.win.category ==# 'subwin'
+            call s:Log.VRB('Returning to subwin ', info.win)
+            " Drop the mode
+            let endmode = {'mode':'n'}
+            call WinceGotoSubwin(0, info.win.grouptype, info.win.typename, 0, 1)
+        endif
+        call WinceCommonRecordAllDimensions()
+        call s:RunPostUserOpCallbacks()
+        return endmode
     endtry
-    call WinceCommonRecordAllDimensions()
-    call s:RunPostUserOpCallbacks()
-    return endmode
 endfunction
 
-function! s:ResizeGivenNoSubwins(width, height)
-    call s:Log.DBG('ResizeGivenNoSubwins ', ', [', a:width, ',', a:height, ']')
+function! s:ResizeGivenNoSubwins(width, height, preclosedim)
+    call s:Log.DBG('ResizeGivenNoSubwins ', ', [', a:width, ',', a:height, '], ', a:preclosedim)
 
     let winid = WinceModelIdByInfo(WinceCommonGetCursorPosition().win)
 
-    let preclosedim = WinceStateGetAllWinDimensionsByCurrentTab()
+    let precloseuberdim = WinceStateGetAllWinDimensionsByCurrentTab()
 
     call s:Log.DBG('Closing all uberwins')
     let closeduberwingroups = WinceCommonCloseUberwinsWithHigherPriorityThan('')
     try
         call WinceStateMoveCursorToWinid(winid)
 
-        let postclosedim = WinceStateGetAllWinDimensionsByCurrentTab()
-        let deltaw = postclosedim[winid].w - preclosedim[winid].w
-        let deltah = postclosedim[winid].h - preclosedim[winid].h
-        let finalw = a:width + deltaw
-        let finalh = a:height + deltah
+        " Counts inputted by the user wouldn't account for uberwins and
+        " subwins being closed at the time the state command is invoked, so
+        " increase the counts by the same amount that the target window grows
+        " by
+        let postcloseuberdim = WinceStateGetAllWinDimensionsByCurrentTab()
+
+        " Uberwin delta - how much bigger the target window got when we closed
+        " uberwins
+        let uberdeltaw = postcloseuberdim[winid].w - precloseuberdim[winid].w
+        let uberdeltah = postcloseuberdim[winid].h - precloseuberdim[winid].h
+
+        " Subwin delta - how much bigger the target window got when we closed
+        " subwins. The proclosedim parameter was created further up the stack
+        " in WinceResizeCurrentSupwin, before subwins were closed
+        let subdeltaw = precloseuberdim[winid].w - a:preclosedim.w
+        let subdeltah = precloseuberdim[winid].h - a:preclosedim.h
+
+        " Both deltas matter
+        let finalw = a:width + uberdeltaw + subdeltaw
+        let finalh = a:height + uberdeltah + subdeltah
+
         let dow = 1
         let doh = 1
-        call s:Log.DBG('Deltas: dw=', deltaw, ' dh=', deltah)
+        call s:Log.DBG('Deltas: dw=', uberdeltaw, ' dh=', uberdeltah)
 
         if a:width ==# ''
             let finalw = ''
@@ -1222,16 +1290,16 @@ function! s:ResizeGivenNoSubwins(width, height)
         endif
 
         let postresizedim = WinceStateGetAllWinDimensionsByCurrentTab()
-        for otherwinid in keys(postclosedim)
-            if postresizedim[otherwinid].w !=# postclosedim[otherwinid].w ||
-           \   postresizedim[otherwinid].h !=# postclosedim[otherwinid].h
-               call remove(preclosedim, otherwinid)
+        for otherwinid in keys(postcloseuberdim)
+            if postresizedim[otherwinid].w !=# postcloseuberdim[otherwinid].w ||
+           \   postresizedim[otherwinid].h !=# postcloseuberdim[otherwinid].h
+               call remove(precloseuberdim, otherwinid)
             endif
         endfor
     finally
         call s:Log.DBG('Reopening all uberwins')
         call WinceCommonReopenUberwins(closeduberwingroups)
-        call WinceCommonRestoreDimensions(preclosedim)
+        call WinceCommonRestoreDimensions(precloseuberdim)
     endtry
 endfunction
 
@@ -1254,8 +1322,10 @@ function! WinceResizeCurrentSupwin(width, height, startmode)
     let cmdinfo = WinceCommonGetCursorPosition()
     call s:Log.VRB('Running command from window ', cmdinfo)
 
+    let preclosedim = WinceStateGetWinDimensions(cmdinfo.win.id)
+
     try
-        call WinceCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height], 1)
+        call WinceCommonDoWithoutSubwins(cmdinfo.win, function('s:ResizeGivenNoSubwins'), [a:width, a:height, preclosedim], 1)
     finally
         call WinceCommonRestoreCursorPosition(info)
     endtry

@@ -1004,7 +1004,7 @@ endfunction
 
 " Validate dimensions of a subwin to be added to the model someplace
 function! s:ValidateNewSubwinDimensions(grouptypename, typename, relnr, w, h)
-    call s:Log.DBG('ValidateNewSubwinDimensionsList ', a:grouptypename, ':', a:typename, ' [', a:relnr, ',', a:w, ',', a:h, ']')
+    call s:Log.DBG('ValidateNewSubwinDimensions ', a:grouptypename, ':', a:typename, ' [', a:relnr, ',', a:w, ',', a:h, ']')
     if type(a:relnr) !=# v:t_number
         throw "relnr must be a number"
     endif
@@ -1797,7 +1797,9 @@ endfunction
 function! WinceModelReplaceWinid(oldwinid, newwinid)
     call s:Log.INF('WinceModelReplaceWinid ', a:oldwinid, a:newwinid)
     let info = WinceModelInfoById(a:oldwinid)
-    call s:AssertWinDoesntExist(a:newwinid)
+    if has_key(t:wince_all, a:newwinid)
+        throw 'Winid ' . a:newwinid . ' already present'
+    endif
 
     let category = s:cases[info.category]
 
@@ -1808,6 +1810,8 @@ function! WinceModelReplaceWinid(oldwinid, newwinid)
         for [grouptypename, group] in items(supwin.subwin)
             for [typename, subwin] in items(group.subwin)
                 let t:wince_subwin[subwin.id].supwin = a:newwinid
+            endfor
+        endfor
 
     elseif category ==# 3
         let t:wince_supwin[info.supwin].subwin[info.grouptype].subwin[info.typename].id = a:newwinid
