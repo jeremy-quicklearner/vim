@@ -2,12 +2,10 @@
 " See wince.vim
 let s:Log = jer_log#LogFunctions('wince-resolve')
 
-
-" The cursor's final position is used in multiple places
-let s:curpos = {}
-
 " Internal variables - used by different helpers to communicate with each other
+let s:curpos = {}
 let s:relistedcond = 0
+let s:nonsupwincache = {}
 
 " Input conditions - flags that influence the resolver's behaviour, set before
 " it runs
@@ -21,18 +19,72 @@ function! WinceResolveIdentifyAfterimagedSubwin(winid)
     call s:Log.VRB('WinceResolveIdentifyAfterimagedSubwin ', a:winid)
     let wininfo = WinceModelInfoById(a:winid)
     if wininfo.category ==# 'subwin' && 
-   \   WinceModelSubwinAibufBySubwinId(a:winid) ==# WinceStateGetBufnrByWinidOrWinnr(a:winid)
+   \   WinceModelSubwinAibufBySubwinId(a:winid) ==#
+   \   WinceStateGetBufnrByWinidOrWinnr(a:winid)
         call s:Log.VRB('Afterimaged subwin identified as ', wininfo)
         return wininfo
     endif
-    call s:Log.VRB('Afterimaged subwin not identifiable')
+    call s:Log.VRB('Window ', a:winid, 'not identifiable as afterimaged subwin')
     return {'category':'none','id':a:winid}
 endfunction
 
+
 " Run all the toIdentify callbacks against a window until one of
 " them succeeds. Return the model info obtained.
-function! WinceResolveIdentifyWindow(winid)
-    call s:Log.DBG('WinceResolveIdentifyWindow ', a:winid)
+function! s:IdentifyWindow(winid)
+    call s:Log.DBG('IdentifyWindow ', a:winid)
+
+    " While validating info for a subwin, we need to make sure that its listed
+    " supwin really is a supwin. This operation needs to consider every non-supwin
+    " winid in the model, and it's done lots of time, so it's worth doing some
+    " caching. This dict contains every non-supwin model winid in its keys, and
+    " should be invalidated with every model write.
+    if empty(s:nonsupwincache)
+        let uberwinids = WinceModelUberwinIds()
+        let subwinids = WinceModelSubwinIds()
+        for uberwinid in uberwinids
+            let s:nonsupwincache[uberwinid] = 1
+        endfor
+        for subwinid in subwinids
+            let s:nonsupwincache[subwinid] = 1
+        endfor
+    endif
+
+    " If the state and model for this window are consistent, we can save lots
+    " of time by just confirming that the model info is accurate to the state.
+    " Unfortunately this can't be done with supwins because a supwin is only
+    " identifiable by confirming that it doesn't satisfy ANY uberwin or subwin
+    " conditions
+    if WinceModelWinExists(a:winid)
+        let modelinfo = WinceModelInfoById(a:winid)
+        if modelinfo.category ==# 'uberwin'
+            if s:toIdentifyUberwins[modelinfo.grouptype](a:winid) ==# modelinfo.typename
+                call s:Log.DBG('Model info for window ', a:winid, ' confirmed in state as uberwin ', modelinfo.grouptype, ':', modelinfo.typename)
+                let modelinfo.id = a:winid
+                return modelinfo
+            endif
+        elseif modelinfo.category ==# 'subwin'
+            let stateinfo = s:toIdentifySubwins[modelinfo.grouptype](a:winid)
+            let modelsupwinid = modelinfo.supwin
+            if !empty(stateinfo) &&
+           \   stateinfo.typename ==# modelinfo.typename &&
+           \   stateinfo.supwin ==# modelsupwinid &&
+           \   modelsupwinid !=# -1 &&
+           \   !has_key(s:nonsupwincache, modelsupwinid)
+                call s:Log.DBG('Model info for window ', a:winid, ' confirmed in state as subwin ', modelsupwinid, ':', modelinfo.grouptype, ':', modelinfo.typename)
+                let modelinfo.id = a:winid
+                return modelinfo
+            endif
+            if WinceModelSubwinAibufBySubwinId(a:winid) ==#
+           \   WinceStateGetBufnrByWinidOrWinnr(a:winid)
+                call s:Log.VRB('Model info for window ', a:winid, ' confirmed in state as afterimaged subwin ', modelinfo.supwin, ':', modelinfo.grouptype, ':', modelinfo.typename)
+                let modelinfo.id = a:winid
+                return modelinfo
+            endif
+        endif
+    endif
+    
+    " Check if the window is an uberwin
     for uberwingrouptypename in WinceModelAllUberwinGroupTypeNamesByPriority()
         call s:Log.VRB('Invoking toIdentify from ', uberwingrouptypename, ' uberwin group type')
         let uberwintypename = s:toIdentifyUberwins[uberwingrouptypename](a:winid)
@@ -46,8 +98,8 @@ function! WinceResolveIdentifyWindow(winid)
            \}
         endif
     endfor
-    let uberwinids = WinceModelUberwinIds()
-    let subwinids = WinceModelSubwinIds()
+
+    " Check if the window is a subwin
     for subwingrouptypename in WinceModelAllSubwinGroupTypeNamesByPriority()
         call s:Log.VRB('Invoking toIdentify from ', subwingrouptypename, ' subwin group type')
         let subwindict = s:toIdentifySubwins[subwingrouptypename](a:winid)
@@ -55,9 +107,7 @@ function! WinceResolveIdentifyWindow(winid)
             call s:Log.DBG('Window ', a:winid, ' identified as ', subwindict.supwin, ':', subwingrouptypename, ':', subwindict.typename)
             " If there is no supwin, or if the identified 'supwin' isn't a
             " supwin, the window we are identifying has no place in the model
-            if subwindict.supwin ==# -1 ||
-           \   index(uberwinids, str2nr(subwindict.supwin)) >=# 0 ||
-           \   index(subwinids, str2nr(subwindict.supwin)) >=# 0
+            if subwindict.supwin ==# -1 || has_key(s:nonsupwincache, subwindict.supwin)
                 call s:Log.DBG('Identified subwin gives non-supwin ', subwindict.supwin, ' as its supwin. Identification failed.')
                 return {'category':'none','id':a:winid}
             endif
@@ -70,25 +120,17 @@ function! WinceResolveIdentifyWindow(winid)
            \}
         endif
     endfor
-    call s:Log.VRB('Window still not identified. Checking if it is an afterimaged subwin.')
-    let aiinfo = WinceResolveIdentifyAfterimagedSubwin(a:winid)
-    if aiinfo.category !=# 'none'
-        " No need to sanity check the 'supwin' field like above because this
-        " information already comes from the model
-        return aiinfo
-    endif
+
     call s:Log.DBG('Window ', a:winid, ' identified as supwin')
-    return {
-   \    'category': 'supwin',
-   \    'id': a:winid
-   \}
+    return {'category':'supwin', 'id':a:winid}
 endfunction
 
 " Convert a list of window info dicts (as returned by
-" WinceResolveIdentifyWindow) and group them by category, supwin id, group
-" type, and type. Any incomplete groups are dropped.
-function! WinceResolveGroupInfo(wininfos)
-    call s:Log.VRB('WinceResolveGroupInfo ', a:wininfos)
+" s:IdentifyWindow) and group them by category, supwin id, group
+" type, and type. Any incomplete groups are dropped. Any duplicates
+" are dropped. The choice of which duplicate to drop is arbitrary.
+function! s:GroupInfo(wininfos)
+    call s:Log.VRB('s:GroupInfo ', a:wininfos)
     let uberwingroupinfo = {}
     let subwingroupinfo = {}
     let supwininfo = []
@@ -106,14 +148,13 @@ function! WinceResolveGroupInfo(wininfos)
             if !has_key(subwingroupinfo, wininfo.supwin)
                 let subwingroupinfo[wininfo.supwin] = {}
             endif
-            if !has_key(subwingroupinfo[wininfo.supwin], wininfo.grouptype)
-                let subwingroupinfo[wininfo.supwin][wininfo.grouptype] = {}
+            let supwindict = subwingroupinfo[wininfo.supwin]
+            if !has_key(supwindict, wininfo.grouptype)
+                let supwindict[wininfo.grouptype] = {}
             endif
             " If there are two subwins of the same type for the same supwin,
             " whichever one this loop sees last will survive
-            let subwingroupinfo[wininfo.supwin]
-                              \[wininfo.grouptype]
-                              \[wininfo.typename] = wininfo.id
+            let supwindict[wininfo.grouptype][wininfo.typename] = wininfo.id
         elseif wininfo.category ==# 'supwin'
             call add(supwininfo, wininfo.id)
         endif
@@ -125,37 +166,35 @@ function! WinceResolveGroupInfo(wininfos)
 
     " Validate groups. Prune any incomplete groups. Convert typename-keyed
     " winid dicts to lists
-    for grouptypename in keys(uberwingroupinfo)
+    for [grouptypename,group] in items(uberwingroupinfo)
         call s:Log.VRB('Validating uberwin group ', grouptypename)
-        for typename in keys(uberwingroupinfo[grouptypename])
+        for typename in keys(group)
             call WinceModelAssertUberwinTypeExists(grouptypename, typename)
         endfor
-        let uberwingroupinfo[grouptypename].winids = []
+        let group.winids = []
         for typename in WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
-            if !has_key(uberwingroupinfo[grouptypename], typename)
-                call s:Log.VRB('Uberwin with type ', typename, ' missing. Expunging group.')
+            if !has_key(group, typename)
+                call s:Log.VRB('Uberwin with type ', typename, ' missing. Dropping group.')
                 unlet uberwingroupinfo[grouptypename]
                 break
             endif
-            call add(uberwingroupinfo[grouptypename].winids,
-                    \uberwingroupinfo[grouptypename][typename])
+            call add(group.winids,group[typename])
         endfor
     endfor
-    for supwinid in keys(subwingroupinfo)
-        for grouptypename in keys(subwingroupinfo[supwinid])
+    for [supwinid,supwin] in items(subwingroupinfo)
+        for [grouptypename,group] in items(supwin)
             call s:Log.VRB('Validating subwin group ', supwinid, ':', grouptypename)
-            for typename in keys(subwingroupinfo[supwinid][grouptypename])
+            for typename in keys(group)
                 call WinceModelAssertSubwinTypeExists(grouptypename, typename)
             endfor
-            let subwingroupinfo[supwinid][grouptypename].winids = []
+            let group.winids = []
             for typename in WinceModelSubwinTypeNamesByGroupTypeName(grouptypename)
-                if !has_key(subwingroupinfo[supwinid][grouptypename], typename)
-                    call s:Log.VRB('Subwin with type ', typename, ' missing. Expunging group.')
-                    unlet subwingroupinfo[supwinid][grouptypename]
+                if !has_key(group, typename)
+                    call s:Log.VRB('Subwin with type ', typename, ' missing. Dropping group.')
+                    unlet supwin[grouptypename]
                     break
                 endif
-                call add(subwingroupinfo[supwinid][grouptypename].winids,
-                        \subwingroupinfo[supwinid][grouptypename][typename])
+                call add(group.winids, group[typename])
             endfor
         endfor
     endfor
@@ -168,144 +207,160 @@ endfunction
 " Resolver steps
 
 " STEP 1 - Adjust the model so it accounts for recent changes to the state
-function! s:WinceResolveStateToModel()
-    " STEP 1.1: Terminal windows get special handling because the CursorHold event
-    "           doesn't execute when the cursor is inside them
-    " If any terminal window is listed in the model as an uberwin, mark that
-    " uberwin group hidden in the model and relist the window as a supwin
-    " If there are multiple uberwins in this group and only one of them is a
-    " terminal window, then this change renders that uberwin group incomplete
-    " and the non-terminal windows will be ignored in STEP 1.4, then stomped
-    " in STEP 2.1
+function! s:WinceResolveStateToModel(statewinids)
+    " STEP 1.1: If any window in the model isn't in the state, remove it from
+    "           the model. Also make sure all terminal windows are supwins.
     call s:Log.VRB('Step 1.1')
-    for grouptypename in WinceModelShownUberwinGroupTypeNames()
-        for typename in WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
-            call s:Log.VRB('Check if model uberwin ', grouptypename, ':', typename, ' is a terminal window in the state')
-            let winid = WinceModelIdByInfo({
-           \    'category': 'uberwin',
-           \    'grouptype': grouptypename,
-           \    'typename': typename
-           \})
-            if winid && WinceStateWinIsTerminal(winid)
-                call s:Log.INF('Step 1.1 relisting terminal window ', winid, ' from uberwin ', grouptypename, ':', typename, 'to supwin')
-                call WinceModelHideUberwins(grouptypename)
-                call WinceModelAddSupwin(winid, -1, -1, -1)
-                break
-            endif
-        endfor
-    endfor
-    
-    " If any terminal window is listed in the model as a subwin, mark that
-    " subwin group hidden in the model and relist the window as a supwin
-    " If there are multiple subwins in this group and only one of them is a
-    " terminal window, then this change renders that subwin group incomplete
-    " and the non-terminal windows will be ignored in STEP 1.4, then stomped
-    " in STEP 2.1
-    for supwinid in WinceModelSupwinIds()
-        for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-            for typename in WinceModelSubwinTypeNamesByGroupTypeName(grouptypename)
-                call s:Log.VRB('Check if model subwin ', supwinid, ':', grouptypename, ':', typename, ' is a terminal window in the state')
-                let winid = WinceModelIdByInfo({
-               \    'category': 'subwin',
-               \    'supwin': supwinid,
-               \    'grouptype': grouptypename,
-               \    'typename': typename
-               \})
-                if winid && WinceStateWinIsTerminal(winid)
-                    call s:Log.INF('Step 1.1 relisting terminal window ', winid, ' from subwin ' supwinid, ':', grouptypename, ':', typename, 'to supwin')
-                    call WinceModelHideSubwins(supwinid, grouptypename)
-                    call WinceModelAddSupwin(winid, -1, -1, -1)
-                    break
-                endif
-            endfor
-        endfor
-    endfor
-    
-    " STEP 1.2: If any window in the model isn't in the state, remove it from
-    "           the model
+    let s:relistedcond = 0
+
     " If any uberwin group in the model isn't fully represented in the state,
     " mark it hidden in the model
-    call s:Log.VRB('Step 1.2')
-    let modeluberwinids = WinceModelUberwinIds()
-    " Using a dict so no keys will be duplicated
+    " If any terminal window is listed in the model as an uberwin, mark that
+    " uberwin group hidden in the model and relist the window as a supwin
+    " If there are multiple uberwins in this group and only one of them has
+    " become a terminal window or been closed, then this change renders that
+    " uberwin group incomplete in the state and the non-state-terminal windows
+    " in the model group will be ignored in STEP 1.3, then stomped in STEP 2.1
     let uberwingrouptypestohide = {}
-    for modeluberwinid in modeluberwinids
-        call s:Log.VRB('Checking if model uberwin ', modeluberwinid, ' still exists in state')
-        if !WinceStateWinExists(modeluberwinid)
-           call s:Log.VRB('Model uberwin ', modeluberwinid, ' does not exist in state')
-           let tohide = WinceModelInfoById(modeluberwinid)
-           if tohide.category != 'uberwin'
-               throw 'Inconsistency in model. ID ' . modeluberwinid . ' is both' .
-              \      ' uberwin and ' . tohide.category       
-           endif
-           let uberwingrouptypestohide[tohide.grouptype] = ''
+    for modeluberwinid in WinceModelUberwinIds()
+        call s:Log.VRB('Checking if model uberwin ', modeluberwinid, ' is a non-terminal window in the state')
+        let dohidegroup = 1
+        let dorelistwin = 0
+        if WinceStateWinExists(modeluberwinid)
+            if WinceStateWinIsTerminal(modeluberwinid)
+                call s:Log.VRB('Model uberwin ', modeluberwinid, ' is a terminal window in the state')
+                let dorelistwin = 1
+            else
+                let dohidegroup = 0
+            endif
+        else
+            call s:Log.VRB('Model uberwin ', modeluberwinid, ' does not exist in state')
+        endif
+
+        if dohidegroup
+            let modelinfo = WinceModelInfoById(modeluberwinid)
+            if modelinfo.category !=# 'uberwin'
+                throw 'Inconsistency in model. winid ' . modeluberwinid . ' is both' .
+                      ' uberwin and ' . modelinfo.category
+            endif
+            if !has_key(uberwingrouptypestohide, modelinfo.grouptype)
+                let uberwingrouptypestohide[modelinfo.grouptype] = []
+            endif
+            if dorelistwin
+                call add(uberwingrouptypestohide[modelinfo.grouptype], modeluberwinid)
+            endif
         endif
     endfor
-    for tohide in keys(uberwingrouptypestohide)
-         call s:Log.DBG('Step 1.2 hiding non-state-complete uberwin group ', tohide, ' in model')
-         call WinceModelHideUberwins(tohide)
+    for [grouptypename,terminalwinids] in items(uberwingrouptypestohide)
+       call s:Log.INF('Step 1.1 hiding non-state-complete uberwin group ', grouptypename)
+       call WinceModelHideUberwins(grouptypename)
+       for terminalwinid in terminalwinids
+           call s:Log.INF('Step 1.1 relisting terminal window ', terminalwinid, ' from uberwin of group ', grouptypename, ' to supwin')
+           call WinceModelAddSupwin(terminalwinid, -1, -1, -1)
+           let s:relistedcond = 1
+       endfor
+       let s:nonsupwincache = {}
     endfor
 
     " If any supwin in the model isn't in the state, remove it and its subwins
     " from the model
-    let modelsupwinids = WinceModelSupwinIds()
-    for modelsupwinid in modelsupwinids
+    for modelsupwinid in WinceModelSupwinIds()
         call s:Log.VRB('Checking if model supwin ', modelsupwinid, ' still exists in state')
         if !WinceStateWinExists(modelsupwinid)
-            call s:Log.DBG('Step 1.2 removing state-missing supwin ', modelsupwinid, ' from model')
+            call s:Log.INF('Step 1.1 removing state-missing supwin ', modelsupwinid, ' from model')
+            let s:nonsupwincache = {}
             call WinceModelRemoveSupwin(modelsupwinid)
         endif
     endfor
 
     " If any subwin group in the model isn't fully represented in the state,
     " mark it hidden in the model
-    let modelsupwinids = WinceModelSupwinIds()
-    let modelsubwinids = WinceModelSubwinIds()
-    " Using a dict for each supwin so no keys will be duplicated
+    " If any terminal window is listed in the model as a subwin, mark that
+    " subwin group hidden in the model and relist the window as a supwin
+    " If there are multiple subwins in this group and only one of them has
+    " become a terminal window or been closed, then this change renders that
+    " subwin group incomplete and the non-state-terminal windows in the model
+    " group will be ignored in STEP 1.3, then stomped in STEP 2.1
     let subwingrouptypestohidebysupwin = {}
-    for modelsupwinid in modelsupwinids
-        let subwingrouptypestohidebysupwin[modelsupwinid] = {}
-    endfor
-    for modelsubwinid in modelsubwinids
-        call s:Log.VRB('Checking if model subwin ', modelsubwinid, ' still exists in state')
-        if !WinceStateWinExists(modelsubwinid)
-           call s:Log.VRB('Model subwin ', modelsubwinid, ' does not exist in state')
-            let tohide = WinceModelInfoById(modelsubwinid)
-            if tohide.category != 'subwin'
-                throw 'Inconsistency in model. ID ' . modelsubwinid . ' is both' .
-               \      ' subwin and ' . tohide.category
+    for modelsubwinid in WinceModelSubwinIds()
+        call s:Log.VRB('Checking if model subwin ', modelsubwinid, ' is a non-terminal window in the state')
+        let dohidegroup = 1
+        let dorelistwin = 0
+        if WinceStateWinExists(modelsubwinid)
+            if WinceStateWinIsTerminal(modelsubwinid)
+                call s:Log.VRB('Model subwin ', modelsubwinid, ' is a terminal window in the state')
+                let dorelistwin = 1
+            else
+                let dohidegroup = 0
             endif
-            let subwingrouptypestohidebysupwin[tohide.supwin][tohide.grouptype] = ''
+        else
+            call s:Log.VRB('Model subwin ', modelsubwinid, ' does not exist in state')
+        endif
+
+        if dohidegroup
+            let modelinfo = WinceModelInfoById(modelsubwinid)
+            if modelinfo.category !=# 'subwin'
+                throw 'Inconsistency in model. winid ' . modelsubwinid .
+                      ' is both subwin and ' . modelinfo.category
+            endif
+            if !has_key(subwingrouptypestohidebysupwin, modelinfo.supwin)
+                let subwingrouptypestohidebysupwin[modelinfo.supwin] = {}
+            endif
+            if !has_key(subwingrouptypestohidebysupwin[modelinfo.supwin], modelinfo.grouptype)
+                let subwingrouptypestohidebysupwin[modelinfo.supwin][modelinfo.grouptype] = []
+            endif
+            if dorelistwin
+                call add(subwingrouptypestohidebysupwin[modelinfo.supwin][modelinfo.grouptype], modelsubwinid)
+            endif
         endif
     endfor
-    for supwinid in keys(subwingrouptypestohidebysupwin)
-        for subwingrouptypetohide in keys(subwingrouptypestohidebysupwin[supwinid])
-            call s:Log.DBG('Step 1.2 hiding non-state-complete subwin group ', supwinid, ':', subwingrouptypetohide, ' in model')
-            call WinceModelHideSubwins(supwinid, subwingrouptypetohide)
+    for [supwinid, subwingrouptypestohide] in items(subwingrouptypestohidebysupwin)
+        for [grouptypename, terminalwinids] in items(subwingrouptypestohide)
+            call s:Log.INF('Step 1.1 hiding non-state-complete subwin group ', supwinid, ':', grouptypename)
+            call WinceModelHideSubwins(supwinid, grouptypename)
+            for terminalwinid in terminalwinids
+                call s:Log.INF('Step 1.1 relisting terminal window ', terminalwinid, ' from subwin of group ', supwinid, ':', grouptypename, ' to supwin')
+                call WinceModelAddSupwin(terminalwinid, -1, -1, -1)
+                let s:relistedcond = 1
+            endfor
+            let s:nonsupwincache = {}
         endfor
     endfor
+    
+    " STEP 1.2: If any window in the state doesn't look the way the model
+    "           says it should, relist it in the model. This is a separate
+    "           step from STEP 1.1 because it iterates over groups/types
+    "           instead of over winids
+    call s:Log.VRB('Step 1.2')
 
-    " STEP 1.3: If any window in the state doesn't look the way the model
-    "           says it should, relist it in the model
     " If any window is listed in the model as an uberwin but doesn't
     " satisfy its type's constraints, mark the uberwin group hidden
     " in the model and relist the window as a supwin.
-    call s:Log.VRB('Step 1.3')
-    let s:relistedcond = 0
     for grouptypename in WinceModelShownUberwinGroupTypeNames()
+        " There are two loops here because if there was only one loop, we'd
+        " potentially hide an uberwin and then not be able to check the rest
+        " of the group due to winids being absent from the model. So
+        " pre-retrieve all the winids and then check them.
+        let typenamewinids = []
         for typename in WinceModelUberwinTypeNamesByGroupTypeName(grouptypename)
-            call s:Log.VRB('Checking model uberwin ', grouptypename, ':', typename, ' for toIdentify compliance')
-            let winid = WinceModelIdByInfo({
+            call add(typenamewinids, [typename, WinceModelIdByInfo({
            \    'category': 'uberwin',
            \    'grouptype': grouptypename,
            \    'typename': typename
-           \})
+           \})])
+        endfor
+        let hidgroup = 0
+        for [typename, winid] in typenamewinids
+            call s:Log.VRB('Checking model uberwin ', grouptypename, ':', typename, ' for toIdentify compliance')
             if s:toIdentifyUberwins[grouptypename](winid) !=# typename
-                call s:Log.INF('Step 1.3 relisting non-compliant window ', winid, ' from uberwin ', grouptypename, ':', typename, ' to supwin')
-                call WinceModelHideUberwins(grouptypename)
+                call s:Log.INF('Step 1.2 relisting non-compliant uberwin ', winid, ' from ', grouptypename, ':', typename, ' to supwin and hiding group')
+                let s:nonsupwincache = {}
+                if !hidgroup
+                    call WinceModelHideUberwins(grouptypename)
+                    let hidgroup = 1
+                endif
                 call WinceModelAddSupwin(winid, -1, -1, -1)
                 let s:relistedcond = 1
-                break
             endif
         endfor
     endfor
@@ -315,16 +370,26 @@ function! s:WinceResolveStateToModel()
     " in the model and relist the window as a supwin.
     for supwinid in WinceModelSupwinIds()
         for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+            " There are two loops here because if there was only one loop, we'd
+            " potentially hide a subwin and then not be able to check the rest
+            " of the group due to winids being absent from the model. So
+            " pre-retrieve all the winids and then check them.
+            let typenamewinids = []
             for typename in WinceModelSubwinTypeNamesByGroupTypeName(grouptypename)
-                let winid = WinceModelIdByInfo({
+                call add(typenamewinids, [typename, WinceModelIdByInfo({
                \    'category': 'subwin',
                \    'supwin': supwinid,
                \    'grouptype': grouptypename,
                \    'typename': typename
-               \})
+               \})])
+            endfor
+            let hidgroup = 0
+            let groupisafterimaged = WinceModelSubwinGroupIsAfterimaged(supwinid, grouptypename)
+            let afterimagingtypes = g:wince_subwingrouptype[grouptypename].afterimaging
+            for [typename, winid] in typenamewinids
                 " toIdentify consistency isn't required if the subwin is
                 " afterimaged
-                if WinceModelSubwinGroupIsAfterimaged(supwinid, grouptypename) && has_key(g:wince_subwingrouptype[grouptypename].afterimaging, typename)
+                if groupisafterimaged && has_key(afterimagingtypes, typename)
                     call s:Log.VRB('Afterimaged subwin ', supwinid, ':', grouptypename, ':', typename, ' is exempt from toIdentify compliance')
                     continue
                 endif
@@ -333,11 +398,14 @@ function! s:WinceResolveStateToModel()
                 if empty(identified) ||
                   \identified.supwin !=# supwinid ||
                   \identified.typename !=# typename
-                    call s:Log.INF('Step 1.3 relisting non-compliant window ', winid, ' from subwin ', supwinid, ':', grouptypename, ':', typename, ' to supwin')
-                    call WinceModelHideSubwins(supwinid, grouptypename)
+                    call s:Log.INF('Step 1.2 relisting non-compliant subwin ', winid, ' from ', supwinid, ':', grouptypename, ':', typename, ' to supwin and hiding group')
+                    let s:nonsupwincache = {}
+                    if !hidgroup
+                        call WinceModelHideSubwins(supwinid, grouptypename)
+                        let hidgroup = 1
+                    endif
                     call WinceModelAddSupwin(winid, -1, -1, -1)
                     let s:relistedcond = 1
-                    break
                 endif
             endfor
         endfor
@@ -345,23 +413,24 @@ function! s:WinceResolveStateToModel()
 
     " If any window is listed in the model as a supwin but it satisfies the
     " constraints of an uberwin or subwin, remove it and its subwins from the model.
-    " STEP 1.4 will pick it up and add it as the appropriate uberwin/subwin type.
+    " STEP 1.3 will pick it up and add it as the appropriate uberwin/subwin type.
     for supwinid in WinceModelSupwinIds()
-        call s:Log.VRB('Checking that model supwin ', supwinid, ' is still a supwin in the state')
-        let wininfo = WinceResolveIdentifyWindow(supwinid)
+        call s:Log.VRB('Checking that model supwin ', supwinid, ' is a supwin in the state')
+        let wininfo = s:IdentifyWindow(supwinid)
         if wininfo.category !=# 'supwin'
-            call s:Log.INF('Winid ', supwinid, ' is listed as a supwin in the model but is identified in the state as ', wininfo.grouptype, ':', wininfo.typename, '. Removing from the model.')
+           call s:Log.INF('Step 1.2 found winid ', supwinid, ' listed as a supwin in the model but identified in the state as ', wininfo.category, ' ', wininfo.grouptype, ':', wininfo.typename, '. Removing from the model.')
+            let s:nonsupwincache = {}
             call WinceModelRemoveSupwin(supwinid)
         endif
     endfor
 
-    " STEP 1.4: If any window in the state isn't in the model, add it to the model
+    " STEP 1.3: If any window in the state isn't in the model, add it to the model
     " All winids in the state
-    call s:Log.VRB('Step 1.4')
-    let statewinids = WinceStateGetWinidsByCurrentTab()
+    call s:Log.VRB('Step 1.3')
+
     " Winids in the state that aren't in the model
     let missingwinids = []
-    for statewinid in statewinids
+    for statewinid in a:statewinids
         call s:Log.VRB('Checking state winid ', statewinid, ' for model presence')
         if !WinceModelWinExists(statewinid)
             call s:Log.VRB('State winid ', statewinid, ' not present in model')
@@ -372,7 +441,7 @@ function! s:WinceResolveStateToModel()
     let missingwininfos = []
     for missingwinid in missingwinids
         call s:Log.VRB('Identify model-missing window ', missingwinid)
-        let missingwininfo = WinceResolveIdentifyWindow(missingwinid)
+        let missingwininfo = s:IdentifyWindow(missingwinid)
         if len(missingwininfo)
             call add(missingwininfos, missingwininfo)
         endif
@@ -380,83 +449,81 @@ function! s:WinceResolveStateToModel()
     " Model info for those winids, grouped by category, supwin id, group type,
     " and type
     call s:Log.VRB('Group info for model-missing windows')
-    let groupedmissingwininfo = WinceResolveGroupInfo(missingwininfos)
-    call s:Log.VRB('Add model-missing uberwins to model')
-    for uberwingrouptypename in keys(groupedmissingwininfo.uberwin)
-        let winids = groupedmissingwininfo.uberwin[uberwingrouptypename].winids
-        call s:Log.INF('Step 1.4 adding uberwin group ', uberwingrouptypename, ' to model with winids ', winids)
+    let groupedmissingwininfo = s:GroupInfo(missingwininfos)
+    call s:Log.VRB('Add model-missing uberwins to model: ', groupedmissingwininfo.uberwin)
+    for [grouptypename, group] in items(groupedmissingwininfo.uberwin)
+        call s:Log.INF('Step 1.3 adding uberwin group ', grouptypename, ' to model with winids ', group.winids)
         try
-            call WinceModelAddOrShowUberwins(
-           \    uberwingrouptypename,
-           \    winids,
-           \    []
-           \)
+            let s:nonsupwincache = {}
+            call WinceModelAddOrShowUberwins(grouptypename, group.winids, [])
         catch /.*/
-            call s:Log.WRN('Step 1.4 failed to add uberwin group ', uberwingrouptypename, ' to model:')
+            call s:Log.WRN('Step 1.3 failed to add uberwin group ', grouptypename, ' to model:')
             call s:Log.DBG(v:throwpoint)
             call s:Log.WRN(v:exception)
         endtry
     endfor
-    call s:Log.VRB('Add model-missing supwins to model')
+    call s:Log.VRB('Add model-missing supwins to model: ', groupedmissingwininfo.supwin)
     for supwinid in groupedmissingwininfo.supwin
-        call s:Log.INF('Step 1.4 adding window ', supwinid, ' to model as supwin')
+        call s:Log.INF('Step 1.3 adding window ', supwinid, ' to model as supwin')
         call WinceModelAddSupwin(supwinid, -1, -1, -1)
     endfor
-    call s:Log.VRB('Add model-missing subwins to model')
-    for supwinid in keys(groupedmissingwininfo.subwin)
+    call s:Log.VRB('Add model-missing subwins to model: ', groupedmissingwininfo.subwin)
+    for [supwinid, supwin] in items(groupedmissingwininfo.subwin)
         call s:Log.VRB('Subwins of supwin ', supwinid)
         if !WinceModelSupwinExists(supwinid)
             call s:Log.VRB('Supwin ', supwinid, ' does not exist')
             continue
         endif
-        for subwingrouptypename in keys(groupedmissingwininfo.subwin[supwinid])
-            let winids = groupedmissingwininfo.subwin[supwinid][subwingrouptypename].winids
-            call s:Log.INF('Step 1.4 adding subwin group ', supwinid, ':', subwingrouptypename, ' to model with winids ', winids)
+        for [grouptypename, group] in keys(supwin)
+            call s:Log.INF('Step 1.3 adding subwin group ', supwinid, ':', grouptypename, ' to model with winids ', group.winids)
             try
+                let s:nonsupwincache = {}
                 call WinceModelAddOrShowSubwins(
                \    supwinid,
-               \    subwingrouptypename,
-               \    winids,
+               \    grouptypename,
+               \    group.winids,
                \    []
                \)
             catch /.*/
-                call s:Log.WRN('Step 1.4 failed to add subwin group ', subwingrouptypename, ' to model:')
+                call s:Log.WRN('Step 1.3 failed to add subwin group ', grouptypename, ' to model:')
                 call s:Log.DBG(v:throwpoint)
                 call s:Log.WRN(v:exception)
-                endtry
+            endtry
         endfor
     endfor
 
-    " STEP 1.5: Supwins that have become terminal windows need to have their
-    "      subwins hidden, but this must be done after STEP 1.4 which would add the
+    " STEP 1.4: Supwins that have become terminal windows need to have their
+    "      subwins hidden, but this must be done after STEP 1.3 which would add the
     "      subwins back
+    call s:Log.VRB('Step 1.4')
+
     " If any supwin is a terminal window with shown subwins, mark them as
     " hidden in the model
-    call s:Log.VRB('Step 1.5')
     for supwinid in WinceModelSupwinIds()
         call s:Log.VRB('Checking if supwin ', supwinid, ' is a terminal window in the state')
         if WinceStateWinIsTerminal(supwinid)
             call s:Log.VRB('Supwin ', supwinid, ' is a terminal window in the state')
             for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
-                call s:Log.DBG('Step 1.5 hiding subwin group ', grouptypename, ' of terminal supwin ', supwinid, ' in model')
+                call s:Log.DBG('Step 1.4 hiding subwin group ', grouptypename, ' of terminal supwin ', supwinid, ' in model')
+                let s:nonsupwincache = {}
                 call WinceModelHideSubwins(supwinid, grouptypename)
             endfor
         endif
     endfor
-
 endfunction
 
 " STEP 2: Adjust the state so that it matches the model
-function! s:WinceResolveModelToState()
+function! s:WinceResolveModelToState(statewinids)
     " STEP 2.1: Purge the state of windows that aren't in the model
+    call s:Log.VRB('Step 2.1')
+
     " TODO? Do something more civilized than stomping each window
     "       individually. So far it's ok but some other group type
     "       may require it in the future. This would require a new
     "       parameter for WinceAdd(Uber|Sub)winGroupType - a list of
     "       callbacks which close individual windows and not whole
     "       groups
-    call s:Log.VRB('Step 2.1')
-    for winid in WinceStateGetWinidsByCurrentTab()
+    for winid in a:statewinids
         " WinStateCloseWindow used to close windows without noautocmd. If a
         " window triggered autocommands when closed, and those autocommands
         " closed other windows that were later in the list, this check would
@@ -466,7 +533,7 @@ function! s:WinceResolveModelToState()
             continue
         endif
 
-        let wininfo = WinceResolveIdentifyWindow(winid)
+        let wininfo = s:IdentifyWindow(winid)
         call s:Log.DBG('Identified state window ', winid, ' as ', wininfo)
 
         " If any window in the state isn't categorizable, remove it from the
@@ -488,8 +555,7 @@ function! s:WinceResolveModelToState()
         " If any uberwin in the state isn't shown in the model or has a
         " different winid than the model lists, remove it from the state
         if wininfo.category ==# 'uberwin' && (
-       \    !WinceModelUberwinGroupExists(wininfo.grouptype) ||
-       \    WinceModelUberwinGroupIsHidden(wininfo.grouptype) ||
+       \    !WinceModelShownUberwinGroupExists(wininfo.grouptype) ||
        \    WinceModelIdByInfo(wininfo) !=# winid
        \)
             call s:Log.INF("Step 2.1 removing non-model-shown or mis-model-winid'd uberwin ", wininfo.grouptype, ':', wininfo.typename, ' with winid ', winid, ' from state')
@@ -500,9 +566,7 @@ function! s:WinceResolveModelToState()
         " If any subwin in the state isn't shown in the model or has a
         " different winid than the model lists, remove it from the state
         if wininfo.category ==# 'subwin' && (
-       \    !WinceModelSupwinExists(wininfo.supwin) ||
-       \    !WinceModelSubwinGroupExists(wininfo.supwin, wininfo.grouptype) ||
-       \    WinceModelSubwinGroupIsHidden(wininfo.supwin, wininfo.grouptype) ||
+       \    !WinceModelShownSubwinGroupExists(wininfo.supwin, wininfo.grouptype) ||
        \    WinceModelIdByInfo(wininfo) !=# winid
        \)
            call s:Log.INF("Step 2.1 removing non-model-shown or mis-model-winid'd subwin ", wininfo.supwin, ':', wininfo.grouptype, ':', wininfo.typename, ' with winid ', winid, ' from state')
@@ -528,7 +592,8 @@ function! s:WinceResolveModelToState()
     "           since windows can be relisted as supwins (which we have no way
     "           of closing and reopening robustly), we can't just close and
     "           reopen them. Instead, if any window was relisted, just close
-    "           all uberwins and subwins.
+    "           *all* uberwins and subwins. This is a bit of a sledgehammer,
+    "           but relisting isn't expected to be a common use case.
     "           If there is an inconsistency, then the window has been touched by
     "           something else after the user operation or resolver last
     "           touched it. That touch may have put it in the wrong place.
@@ -539,6 +604,10 @@ function! s:WinceResolveModelToState()
     "           they've been checked already. So if we close a window, we need
     "           to make another pass.
     call s:Log.VRB('Step 2.2')
+
+    " For the rest of STEP 2, supwin IDs in the model don't change - so cache
+    " them
+    let supwinids = WinceModelSupwinIds()
     let preserveduberwins = {}
     let preservedsubwins = {}
     let passneeded = 1
@@ -557,6 +626,7 @@ function! s:WinceResolveModelToState()
                    \    WinceCommonPreCloseAndReopenUberwins(grouptypename)
                     call s:Log.VRB('Preserved info from uberwin group ', grouptypename, ': ', preserveduberwins[grouptypename])
                     call s:Log.INF('Step 2.2 removing uberwin group ', grouptypename, ' from state')
+                    " TODO? Wrap in try-catch? Never seen it fail
                     call WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
                     let uberwinsremoved = 1
                     let passneeded = 1
@@ -565,7 +635,7 @@ function! s:WinceResolveModelToState()
         endfor
 
         let toremove = {}
-        for supwinid in WinceModelSupwinIds()
+        for supwinid in supwinids
             call s:Log.VRB('Check subwins of supwin ', supwinid)
             let toremove[supwinid] = []
             " If we removed uberwins, flag all shown subwins for removal
@@ -615,6 +685,7 @@ function! s:WinceResolveModelToState()
                    \    WinceCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
                     call s:Log.VRB('Preserved info from subwin group ', supwinid, ':', grouptypename, ': ', preservedsubwins[supwinid][grouptypename])
                     call s:Log.INF('Step 2.2 removing subwin group ', supwinid, ':', grouptypename, ' from state')
+                    " TODO? Wrap in try-catch? Never seen it fail
                     call WinceCommonCloseSubwins(supwinid, grouptypename)
                     let passneeded = 1
                 endif
@@ -624,9 +695,10 @@ function! s:WinceResolveModelToState()
 
     " STEP 2.3: Add any missing windows to the state, including those that
     "           were temporarily removed, in the correct places
+    call s:Log.VRB('Step 2.3')
+
     " If any shown uberwin in the model isn't in the state,
     " add it to the state
-    call s:Log.VRB('Step 2.3')
     for grouptypename in WinceModelShownUberwinGroupTypeNames()
         call s:Log.VRB('Checking model uberwin group ', grouptypename)
         if !WinceCommonUberwinGroupExistsInState(grouptypename)
@@ -635,6 +707,7 @@ function! s:WinceResolveModelToState()
                 let winids = WinceCommonOpenUberwins(grouptypename)
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
+                let s:nonsupwincache = {}
                 call WinceModelChangeUberwinIds(grouptypename, winids)
                 if has_key(preserveduberwins, grouptypename)
                     call s:Log.DBG('Uberwin group ', grouptypename, ' was closed in Step 2.2. Restoring.')
@@ -647,6 +720,7 @@ function! s:WinceResolveModelToState()
                 call s:Log.WRN('Step 2.3 failed to add ', grouptypename, ' uberwin group to state:')
                 call s:Log.DBG(v:throwpoint)
                 call s:Log.WRN(v:exception)
+                let s:nonsupwincache = {}
                 call WinceModelHideUberwins(grouptypename)
             endtry
         endif
@@ -654,7 +728,7 @@ function! s:WinceResolveModelToState()
 
     " If any shown subwin in the model isn't in the state,
     " add it to the state
-    for supwinid in WinceModelSupwinIds()
+    for supwinid in supwinids
         for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
             call s:Log.VRB('Checking model subwin group ', supwinid, ':', grouptypename)
             if !WinceCommonSubwinGroupExistsInState(supwinid, grouptypename)
@@ -664,15 +738,12 @@ function! s:WinceResolveModelToState()
                     " Afterimaging subwins may be state-open in at most one supwin
                     " at a time. So if we're opening an afterimaging subwin, it
                     " must first be afterimaged everywhere else.
-                    for othersupwinid in WinceModelSupwinIds()
+                    for othersupwinid in supwinids
                         if othersupwinid ==# supwinid
                             continue
                         endif
                         call s:Log.VRB('Checking supwin ', othersupwinid, ' for subwins of group type ', grouptypename)
-                        if WinceModelSubwinGroupExists(
-                       \    othersupwinid,
-                       \    grouptypename
-                       \) && !WinceModelSubwinGroupIsHidden(
+                        if WinceModelShownSubwinGroupExists(
                        \    othersupwinid,
                        \    grouptypename
                        \) && !WinceModelSubwinGroupIsAfterimaged(
@@ -695,6 +766,7 @@ function! s:WinceResolveModelToState()
                     let winids = WinceCommonOpenSubwins(supwinid, grouptypename)
                     " This Model write in ResolveModelToState is unfortunate, but I
                     " see no sensible way to put it anywhere else
+                    let s:nonsupwincache = {}
                     call WinceModelChangeSubwinIds(supwinid, grouptypename, winids)
                     if has_key(preservedsubwins, supwinid) &&
                    \   has_key(preservedsubwins[supwinid], grouptypename)
@@ -709,6 +781,7 @@ function! s:WinceResolveModelToState()
                     call s:Log.WRN('Step 2.3 failed to add ', grouptypename, ' subwin group to supwin ', supwinid, ':')
                     call s:Log.DBG(v:throwpoint)
                     call s:Log.WRN(v:exception)
+                    let s:nonsupwincache = {}
                     call WinceModelHideSubwins(supwinid, grouptypename)
                 endtry
             endif
@@ -733,12 +806,13 @@ function! s:WinceResolveCursor()
     call s:Log.VRB('Step 3.2')
     let modelcurrentwininfo = WinceModelCurrentWinInfo()
     let modelcurrentwinid = WinceModelIdByInfo(modelcurrentwininfo)
+    let resolvecurrentwinid = WinceModelIdByInfo(s:curpos.win)
     if WinceModelIdByInfo(WinceModelPreviousWinInfo()) && modelcurrentwinid &&
-   \   WinceModelIdByInfo(s:curpos.win) !=# modelcurrentwinid
+   \   resolvecurrentwinid !=# modelcurrentwinid
         " If the current window doesn't exist in the state, then this resolver
         " run must have closed it. Set the current window to the previous
         " window.
-        if !WinceStateWinExists(WinceModelIdByInfo(s:curpos.win))
+        if !WinceStateWinExists(resolvecurrentwinid)
             call WinceModelSetCurrentWinInfo(WinceModelPreviousWinInfo())
         else
             call WinceModelSetPreviousWinInfo(modelcurrentwininfo)
@@ -747,16 +821,8 @@ function! s:WinceResolveCursor()
     endif
 endfunction
 
-" Resolver
-let s:resolveIsRunning = 0
-function! WinceResolve()
-    if s:resolveIsRunning
-        call s:Log.DBG('Resolver reentrance detected')
-        return
-    endif
-    let s:resolveIsRunning = 1
-    call s:Log.DBG('Resolver start')
-
+" Resolver implementation
+function! s:ResolveInner()
     " Retrieve the toIdentify functions
     call s:Log.VRB('Retrieve toIdentify functions')
     let s:toIdentifyUberwins = WinceModelToIdentifyUberwins()
@@ -773,9 +839,13 @@ function! WinceResolve()
         let t:wince_resolvetabenteredcond = 0
     endif
 
+    " A list of winids in the state is used in both STEP 1.3 and STEP 2.1,
+    " without changing inbetween. So retrieve it only once
+    let statewinids = WinceStateGetWinidsByCurrentTab()
+
     " STEP 1: The state may have changed since the last WinceResolve() call. Adapt the
     "         model to fit it.
-    call s:WinceResolveStateToModel()
+    call s:WinceResolveStateToModel(statewinids)
 
     " Save the cursor position to be restored at the end of the resolver. This
     " is done here because the position is stored in terms of model keys which
@@ -787,7 +857,7 @@ function! WinceResolve()
     let tabcount = WinceStateGetTabCount()
 
     " STEP 2: Now the model is the way it should be, so adjust the state to fit it.
-    call s:WinceResolveModelToState()
+    call s:WinceResolveModelToState(statewinids)
 
     " It is possible that STEP 2 closed the tab, and we are now in a
     " different tab. If that is the case, end the resolver run
@@ -816,12 +886,34 @@ function! WinceResolve()
     call s:Log.VRB('Restore cursor position')
     call WinceCommonRestoreCursorPosition(s:curpos)
     let s:curpos = {}
-
-    call s:Log.DBG('Resolver end')
-    let s:resolveIsRunning = 0
 endfunction
 
-" Since the resolve function runs as a CursorHold callback, autocmd events
+" Resolver entry point
+let s:resolveIsRunning = 0
+function! WinceResolve()
+    if s:resolveIsRunning
+        call s:Log.DBG('Resolver reentrance detected')
+        return
+    endif
+
+    let s:resolveIsRunning = 1
+    call s:Log.DBG('Resolver start')
+
+    let s:nonsupwincache = {}
+
+    try
+        call s:ResolveInner()
+        call s:Log.DBG('Resolver end')
+    catch /.*/
+        call s:Log.ERR('Resolver abort:')
+        call s:Log.DBG(v:throwpoint)
+        call s:Log.WRN(v:exception)
+    finally
+        let s:resolveIsRunning = 0
+    endtry
+endfunction
+
+" Since the resolver runs as a CursorHold callback, autocmd events
 " need to be explicitly signalled to it
 augroup WinceResolve
     autocmd!

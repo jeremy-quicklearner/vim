@@ -102,6 +102,11 @@ endfunction
 " window
 function! WinceToIdentifyPreview(winid)
     call s:Log.DBG('WinceToIdentifyPreview ', a:winid)
+
+    if getwinvar(s:Win.id2win(a:winid), '&buftype') ==# 'terminal'
+        return ''
+    endif
+
     if getwinvar(s:Win.id2win(a:winid), '&previewwindow', 0)
         return 'preview'
     endif
@@ -149,6 +154,9 @@ call WinceAddUberwinGroupType('preview', ['preview'],
                            \function('WinceToOpenPreview'),
                            \function('WinceToClosePreview'),
                            \function('WinceToIdentifyPreview'))
+
+" TODO: Autocmd that makes sure &previewwindow isn't ever set in a terminal
+"       window
 
 " Mappings
 if exists('g:wince_disable_preview_mappings') && g:wince_disable_preview_mappings
