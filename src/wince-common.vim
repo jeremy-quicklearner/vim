@@ -508,7 +508,7 @@ function! WinceCommonCloseSubwins(supwinid, grouptypename)
             let preclosewinids = WinceStateGetWinidsDictByCurrentTab()
             let subwinids = WinceModelSubwinIdsByGroupTypeName(a:supwinid, a:grouptypename)
             for winid in subwinids
-                " TODO: All these linear searches add up. Maybe use dicts with
+                " TODO? All these linear searches add up. Maybe use dicts with
                 "       has_key() instead, but not worth it unless there's a group
                 "       type with lots and lots of types in it
                 if !has_key(preclosewinids, winid)

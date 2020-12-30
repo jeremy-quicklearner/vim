@@ -191,6 +191,9 @@
 "       fixed?
 " TODO? Think of a way to avoid creating a new buffer every time a subwin is
 "       afterimaged
+"       - Only real reason to do this is to avoid buffer numbers getting
+"         really big, since the buffers themselves are freed when they leave
+"         windows
 "       - This would mean reusing buffers and completely cleaning them between
 "         uses
 "       - Buffer numbers need to be 'freed' every time an afterimaged subwin is
@@ -200,6 +203,7 @@
 "         afterimage buffers may be in use in other tabs, and it needs to go in
 "         the model because everything in the core is stateless except for the
 "         state (duh) and model and t:wince_resolvetabenteredcond which is bad
+"         but pretty unavoidable
 " TODO? Figure out why terminal windows keep breaking the resolver and
 "       statuslines
 "       - It's got to do with an internal bug in Vim. Maybe it can be

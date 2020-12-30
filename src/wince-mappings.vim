@@ -18,10 +18,15 @@ endif
 " mappings for adding, removing, showing, hiding, and jumping to their groups
 function! WinceMappingMapUserOp(lhs, rhs)
     call s:Log.CFG('Map ', a:lhs, ' to ', a:rhs)
-    execute 'nnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
-    execute 'xnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
-    execute 'snoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("s")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
-    execute 'tnoremap <silent> ' . a:lhs . ' <c-w>:<c-u>call jer_mode#Detect("t")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>' . a:rhs . '<cr><c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr><c-w>:<c-u>call jer_mode#Restore()<cr>'
+    for [mapchr, modechr] in [['n', 'n'], ['x', 'v'], ['s', 's'], ['t', 't']]
+        let mapcmd = mapchr .  'noremap <silent> ' .  a:lhs . ' ' .
+       \    '<c-w>:<c-u>call jer_mode#Detect("' . modechr .'")<cr>' .
+       \    '<c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr>' .
+       \    '<c-w>:<c-u>' . a:rhs . '<cr>' .
+       \    '<c-w>:<c-u>call jer_mode#ForcePreserve(g:wince_map_mode)<cr>' .
+       \    '<c-w>:<c-u>call jer_mode#Restore()<cr>'
+        execute mapcmd
+    endfor
 endfunction
 
 " Process v:count and v:count1 into a single count
@@ -51,18 +56,20 @@ endif
 " Map a command of the form <c-w><cmd> to run an Ex command with a count
 function! s:DefineMappings(cmd, exCmd, allow0, mapinnormalmode, mapinvisualmode, mapinselectmode, mapinterminalmode)
     call s:Log.DBG('DefineMappings ', a:cmd, ', ', a:exCmd, ', [', a:allow0, ',', a:mapinnormalmode, ',', a:mapinvisualmode, ',', a:mapinselectmode, ',', a:mapinterminalmode, ']')
-    if a:mapinnormalmode
-        execute 'nnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' n"<cr>'
-    endif
-    if a:mapinvisualmode
-        execute 'xnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' v"<cr>'
-    endif
-    if a:mapinselectmode
-        execute 'snoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' s"<cr>'
-    endif
-    if a:mapinterminalmode
-        execute 'tnoremap <silent> ' . a:cmd . ' <c-w>:<c-u>execute WinceMappingProcessCounts(' . a:allow0 . ') . "' . a:exCmd . ' t"<cr>'
-    endif
+    for [domap, mapchr, modechr] in [
+   \    [a:mapinnormalmode,   'n', 'n'],
+   \    [a:mapinvisualmode,   'x', 'v'],
+   \    [a:mapinselectmode,   's', 's'],
+   \    [a:mapinterminalmode, 't', 't']
+   \]
+        if domap
+            let mapcmd =  mapchr . 'noremap <silent> ' . a:cmd . ' ' .
+           \    '<c-w>:<c-u>execute WinceMappingProcessCounts(' .
+           \        a:allow0 .
+           \    ') . "' . a:exCmd . ' ' . modechr . '"<cr>'
+            execute mapcmd
+        endif
+    endfor
 endfunction
 
 " Create an Ex command and mappings that run a Ctrl-W command with flags
@@ -84,13 +91,21 @@ endfunction
 " already a nop
 " When we start reading characters, we preserve/retrieve the current mode.
 for idx in range(1,9)
-    execute 'nnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
-    execute 'xnoremap <silent> <c-w>' . idx . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanW(' . idx . ')<cr>'
     " There is no snoremap for <c-w> because no <c-w> commands can be run from
     " select mode
-    execute 'nnoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("n")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
-    execute 'xnoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("v")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
-    execute 'snoremap <silent> z' . idx . ' <c-w>:<c-u>call jer_mode#Detect("s")<cr><c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr><c-w>:<c-u>call WinceMappingScanZ(' . idx . ')<cr>'
+    for [mapchr, lhs, modechr, whichscan] in [
+   \    ['n', '<c-w>', 'n', 'W'],
+   \    ['x', '<c-w>', 'v', 'W'],
+   \    ['n', 'z',     'n', 'Z'],
+   \    ['x', 'z',     'v', 'Z'],
+   \    ['s', 'z',     's', 'Z']
+   \]
+        let mapcmd = mapchr . 'noremap <silent> ' . lhs . idx . ' ' .
+       \    '<c-w>:<c-u>call jer_mode#Detect("' . modechr . '")<cr>' .
+       \    '<c-w>:<c-u>let g:wince_map_mode=jer_mode#Retrieve()<cr>' .
+       \    '<c-w>:<c-u>call WinceMappingScan' . whichscan .'(' . idx . ')<cr>'
+        execute mapcmd
+    endfor
 endfor
 
 " Tracks the characters typed so far

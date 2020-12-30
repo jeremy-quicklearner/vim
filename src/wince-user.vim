@@ -338,13 +338,14 @@ function! WinceSubwinFlagsForGlobalStatusline()
     return flagsstr
 endfunction
 
-function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
-    if !a:supwinid
-        let supwinid = WinceStateGetCursorWinId()
+function! WinceAddSubwinGroup(winid, grouptypename, hidden, suppresserror)
+    if !a:winid
+        let winid = WinceStateGetCursorWinId()
     else
-        let supwinid = a:supwinid
+        let winid = a:winid
     endif
     try
+        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(winid)
         call WinceModelAssertSubwinGroupDoesntExist(supwinid, a:grouptypename)
     catch /.*/
         if a:suppresserror
@@ -409,14 +410,15 @@ function! WinceAddSubwinGroup(supwinid, grouptypename, hidden, suppresserror)
     endtry
 endfunction
 
-function! WinceRemoveSubwinGroup(supwinid, grouptypename)
-    if !a:supwinid
-        let supwinid = WinceStateGetCursorWinId()
+function! WinceRemoveSubwinGroup(winid, grouptypename)
+    if !a:winid
+        let winid = WinceStateGetCursorWinId()
     else
-        let supwinid = a:supwinid
+        let winid = a:supwinid
     endif
     try
-        call WinceModelAssertSubwinGroupTypeExists(a:grouptypename)
+        let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(winid)
+        call WinceModelAssertSubwinGroupExists(supwinid, a:grouptypename)
     catch /.*/
         call s:Log.DBG('WinceRemoveSubwinGroup cannot remove subwin group ', supwinid, ':', a:grouptypename, ': ')
         call s:Log.DBG(v:throwpoint)
@@ -455,7 +457,6 @@ function! WinceRemoveSubwinGroup(supwinid, grouptypename)
     endtry
 endfunction
 
-" TODO: go back and reselect for all subwin ops
 function! WinceHideSubwinGroup(winid, grouptypename)
     if !a:winid
         let winid = WinceStateGetCursorWinId()

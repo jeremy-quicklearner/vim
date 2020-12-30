@@ -5,7 +5,6 @@
 " TODO: Thoroughly test every command
 let s:Log = jer_log#LogFunctions('wince-commands')
 
-
 function! s:SanitizeRange(cmdname, range, count, defaultcount)
     call s:Log.DBG('SanitizeRange ', a:cmdname, ', [', a:range, ',', a:count, ',', a:defaultcount, ']')
     if a:range ==# 0
@@ -42,12 +41,12 @@ function! WinceCmdRunCmd(cmdname, wincmd, range, count, startmode,
     endtry
 
     return WinceDoCmdWithFlags(a:wincmd, opcount, a:startmode,
-                           \ a:preservecursor,
-                           \ a:ifuberwindonothing,
-                           \ a:ifsubwingotosupwin,
-                           \ a:dowithoutuberwins,
-                           \ a:dowithoutsubwins,
-                           \ a:relyonresolver)
+                             \ a:preservecursor,
+                             \ a:ifuberwindonothing,
+                             \ a:ifsubwingotosupwin,
+                             \ a:dowithoutuberwins,
+                             \ a:dowithoutsubwins,
+                             \ a:relyonresolver)
 endfunction
 
 function! WinceCmdRunSpecialCmd(cmdname, range, count, startmode, handler)
