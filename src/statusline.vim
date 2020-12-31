@@ -94,9 +94,9 @@ function! GetCmdwinStatusLine()
 endfunction
 
 
-" The window engine dictates that some windows have non-default status lines.
-" It defers to the default by returning an empty string that won't supersede
-" the global default statusline
+" Wince dictates that some windows have non-default status lines. It defers to
+" the default by returning an empty string that won't supersede the global
+" default statusline
 function! SetSpecificStatusLine()
     execute 'let &l:statusline = "' . WinceNonDefaultStatusLine() . '"'
 endfunction

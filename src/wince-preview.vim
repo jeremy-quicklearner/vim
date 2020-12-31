@@ -67,7 +67,7 @@ function! WinceToClosePreview()
     let previewwinid = 0
     for winnr in range(1, winnr('$'))
         if getwinvar(winnr, '&previewwindow', 0)
-            let previewwinid = s:Win.getid(winnr))
+            let previewwinid = s:Win.getid(winnr)
         endif
     endfor
 

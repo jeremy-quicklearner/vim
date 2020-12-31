@@ -217,7 +217,6 @@
 " TODO: Audit the common code for functions that are not common to the
 "       resolver and user operations
 " TODO: Audit all the asserts for redundancy
-" TODO: Audit the undotree reference definition for performance improvements
 " TODO: Comment out every logging statement that gets skipped by the default
 "       levels. Write some kind of awk or sed script that uncomments and
 "       recomments them
@@ -229,6 +228,7 @@
 " TODO: Audit all files for 'endfunction!'
 " TODO: Move the whole thing to a plugin
 " TODO: Autoload where appropriate
+" TODO: Audit the undotree reference definition for performance improvements
 " TODO: Move undotree subwin to its own plugin so that the window engine
 "       doesn't depend on mbbill/undotree
 " TODO? Rewrite as much as possible using vim9script
