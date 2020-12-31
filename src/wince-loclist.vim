@@ -114,7 +114,7 @@ endfunction
 " window
 function! WinceToIdentifyLoclist(winid)
     call s:Log.DBG('WinceToIdentifyLoclist ', a:winid)
-    locwinnr = win_id2win(a:winid)
+    let locwinnr = win_id2win(a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
             if winnr != locwinnr &&
