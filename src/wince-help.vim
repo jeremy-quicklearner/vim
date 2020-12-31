@@ -12,7 +12,7 @@ endif
 " winid key. So Vim-native winids are required. I see no other way to
 " implement WinceToIdentifyLocHelp.
 if s:Win.legacy
-    call s:Log.ERR('The lochelp uberwin group is not supported with legacy winids')
+    call s:Log.CFG('No Lochelp uberwin group with legacy winids')
 endif
 
 if !exists('g:wince_help_left')
@@ -34,15 +34,16 @@ endif
 " Callback that opens the help window without a location list
 function! WinceToOpenHelp()
     call s:Log.INF('WinceToOpenHelp')
-    for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(s:Win.id2win(winid), '&ft', '') ==? 'help'
+    for winnr in range(1, winnr('$'))
+        if getwinvar(winnr, '&ft', '') ==? 'help'
             throw 'Help window already open'
         endif
     endfor
 
     let prevwinid = s:Win.getid()
 
-    if !exists('t:j_help')
+    let helpexists = exists('t:j_help')
+    if !helpexists
         call s:Log.DBG('Help window has not been closed yet')
         " noautocmd is intentionally left out here so that syntax highlighting
         " is applied
@@ -65,7 +66,7 @@ function! WinceToOpenHelp()
     execute 'noautocmd vertical resize ' . g:wince_help_width
     let winid = s:Win.getid()
 
-    if exists('t:j_help')
+    if helpexists
         silent execute 'buffer ' . t:j_help.bufnr
         call WinceStatePostCloseAndReopen(winid, t:j_help)
     endif
@@ -103,9 +104,11 @@ endif
 function! WinceToCloseHelp()
     call s:Log.INF('WinceToCloseHelp')
     let helpwinid = 0
-    for winid in WinceStateGetWinidsByCurrentTab()
-        if getwinvar(s:Win.id2win(winid), '&ft', '') ==? 'help'
-            let helpwinid = winid
+    let helpwinnr = 0
+    for winnr in range(1, winnr('$'))
+        if getwinvar(winnr, '&ft', '') ==? 'help'
+            let helpwinid = s:Win.getid(winnr)
+            let helpwinnr = winnr
         endif
     endfor
 
@@ -114,7 +117,7 @@ function! WinceToCloseHelp()
     endif
 
     let t:j_help = WinceStatePreCloseAndReopen(helpwinid)
-    let t:j_help.bufnr = winbufnr(s:Win.id2win(helpwinid))
+    let t:j_help.bufnr = winbufnr(helpwinnr)
 
     " helpclose fails if the help window is the last window, so use :quit
     " instead
@@ -131,9 +134,9 @@ if !s:Win.legacy
     function! WinceToCloseLocHelp()
         call s:Log.INF('WinceToCloseLocHelp')
         let helpwinid = 0
-        for winid in WinceStateGetWinidsByCurrentTab()
-            if getwinvar(s:Win.id2win(winid), '&ft', '') ==? 'help'
-                let helpwinid = winid
+        for winnr in range(1, winnr('$'))
+            if getwinvar(winnr, '&ft', '') ==? 'help'
+                let helpwinid = s:Win.getid(winnr)
             endif
         endfor
         if !helpwinid
@@ -144,7 +147,8 @@ if !s:Win.legacy
             throw 'Help window has no location list'
         endif
 
-        let loclist = {'list':getloclist(helpwinid)}
+        let loclist = {}
+        let loclist.list = getloclist(helpwinid)
         let loclist.what = getloclist(helpwinid, {'changedtick':0,'context':0,'efm':'','idx':0,'title':''})
 
         let curwinid = s:Win.getid()
@@ -178,10 +182,11 @@ if !s:Win.legacy
        \   get(getloclist(a:winid, {'size':0}), 'size', 0) != 0
            return 'help'
         elseif getwininfo(a:winid)[0]['loclist']
-            for winnr in range(1,winnr('$'))
-                if winnr != win_id2win(a:winid) &&
-               \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid &&
-               \   getwinvar(winnr, '&ft', '') ==? 'help'
+            let thiswinnr = win_id2win(a:winid)
+            for winnr in range(1, winnr('$'))
+                if winnr != thiswinnr &&
+               \   getwinvar(winnr, '&ft', '') ==? 'help' &&
+               \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid
                     return 'loclist'
                 endif
             endfor
@@ -226,10 +231,10 @@ function! WinceHelpLocStatusLine()
     let statusline .= '%<'
 
     " Location list number
-    let statusline .= '%1*[%{LoclistFieldForStatusline("title")}]'
+    let statusline .= '%1*[%{WinceLoclistFieldForStatusline("title")}]'
 
     " Location list title (from the command that generated the list)
-    let statusline .= '%1*[%{LoclistFieldForStatusline("nr")}]'
+    let statusline .= '%1*[%{WinceLoclistFieldForStatusline("nr")}]'
 
     " Right-justify from now on
     let statusline .= '%=%<'
@@ -274,13 +279,16 @@ if !s:Win.legacy
     " Also, when the resolver stomps 
     function! ResolveLocHelpWindows()
         call s:Log.INF('ResolveLocHelpWindows')
+        " Don't try to optimize by iterating over winnrs. The loop body may
+        " open or close windows, shifting the winnrs
         for winid in WinceStateGetWinidsByCurrentTab()
             if getwinvar(winid, '&ft', '') !=? 'help'
                 continue
             endif
 
-            let haslist = get(getloclist(winid, {'size':0}), 'size', 0) != 0
-            let haswin = get(getloclist(winid, {'winid':-1}), 'winid', -1) != 0
+            let getloc = getloclist(winid, {'size':0, 'winid':-1})
+            let haslist = get(getloc, 'size', 0) != 0
+            let haswin = get(getloc, 'winid', -1) != 0
 
             if haslist && !haswin
                 let curwinid = s:Win.getid()

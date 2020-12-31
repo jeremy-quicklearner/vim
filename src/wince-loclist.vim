@@ -4,8 +4,8 @@ let s:Win = jer_win#WinFunctions()
 " TODO: Figure out why sometimes the syntax highlighting doesn't get applied
 
 " This helper is used in the help uberwin
-function! LoclistFieldForStatusline(fieldname)
-    call s:Log.DBG('LoclistFieldForStatusline')
+function! WinceLoclistFieldForStatusline(fieldname)
+    call s:Log.DBG('WinceLoclistFieldForStatusline')
     return jer_util#SanitizeForStatusLine('', getloclist(win_getid(),{a:fieldname:0})[a:fieldname])
 endfunction
 
@@ -46,9 +46,9 @@ function! WinceToOpenLoclist()
     endif
 
     " Before opening the location window, make sure there's enough room. We
-    " need at least 12 rows - 10 for the loclist content, one for the supwin
-    " statusline, and one for the supwin.
-    if winheight(0) <# 12
+    " need at least H + 2 rows - H for the loclist content, one for the supwin
+    " statusline, and one for the supwin content
+    if winheight(0) <# g:wince_loclist_height + 2
         throw 'Not enough room'
     endif
 
@@ -114,9 +114,10 @@ endfunction
 " window
 function! WinceToIdentifyLoclist(winid)
     call s:Log.DBG('WinceToIdentifyLoclist ', a:winid)
+    locwinnr = win_id2win(a:winid)
     if getwininfo(a:winid)[0]['loclist']
         for winnr in range(1,winnr('$'))
-            if winnr != win_id2win(a:winid) &&
+            if winnr != locwinnr &&
            \   get(getloclist(winnr, {'winid':0}), 'winid', -1) == a:winid &&
            \   getwinvar(winnr, '&ft', '') !=? 'help'
                 return {'typename':'loclist','supwin':win_getid(winnr)}
@@ -139,10 +140,10 @@ function! WinceLoclistStatusLine()
     let statusline .= '%<'
 
     " Location list number
-    let statusline .= '%1*[%{LoclistFieldForStatusline("title")}]'
+    let statusline .= '%1*[%{WinceLoclistFieldForStatusline("title")}]'
 
     " Location list title (from the command that generated the list)
-    let statusline .= '%1*[%{LoclistFieldForStatusline("nr")}]'
+    let statusline .= '%1*[%{WinceLoclistFieldForStatusline("nr")}]'
 
     " Right-justify from now on
     let statusline .= '%=%<'
@@ -169,7 +170,7 @@ function! UpdateLoclistSubwins()
     call s:Log.DBG('UpdateLoclistSubwins')
     for supwinid in WinceModelSupwinIds()
         let locwinexists = WinceModelSubwinGroupExists(supwinid, 'loclist')
-        let loclistexists = len(getloclist(supwinid))
+        let loclistexists = !empty(getloclist(supwinid))
 
         if locwinexists && !loclistexists
             call s:Log.INF('Remove loclist subwin from supwin ', supwinid, ' because it has no location list')

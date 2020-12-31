@@ -217,7 +217,7 @@
 " TODO: Audit the common code for functions that are not common to the
 "       resolver and user operations
 " TODO: Audit all the asserts for redundancy
-" TODO: Audit all of the code for performance improvements
+" TODO: Audit the undotree reference definition for performance improvements
 " TODO: Comment out every logging statement that gets skipped by the default
 "       levels. Write some kind of awk or sed script that uncomments and
 "       recomments them

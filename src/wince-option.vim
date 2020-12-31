@@ -26,21 +26,21 @@ if !exists('g:wince_option_statusline')
 endif
 
 " Helper that silently jumps to t:prevwin and back
-function! OptGoPrev()
+function! WinceOptionGoPrev()
     let prev = WinceModelPreviousWinInfo()
     let previd = WinceModelIdByInfo(prev)
-    call WinceStateMoveCursorToWinid(previd)
+    call WinceStateMoveCursorToWinidSilently(previd)
     noautocmd silent wincmd p
 endfunction
+
+let s:sid = -1
 
 " Callback that opens the option window
 function! WinceToOpenOption()
     call s:Log.INF('WinceToOpenOption')
-    for winid in WinceStateGetWinidsByCurrentTab()
-        if bufwinnr('option-window') >=# 0
-            throw 'Option window already open'
-        endif
-    endfor
+    if bufwinnr('option-window') >=# 0
+        throw 'Option window already open'
+    endif
 
     let prevwinid = s:Win.getid()
 
@@ -73,21 +73,25 @@ function! WinceToOpenOption()
     " Wince stores a more meaningful previous window in the model under
     " t:prevwin, but optwin.vim is part of Vim's runtime and therefore cannot
     " be changed to use t:prevwin instead of wincmd p.
-    " My workaround is to replace the mappings created in optwin.vim with new
+    " A workaround is used - replace the mappings created in optwin.vim with new
     " mappings that silently move the cursor to t:prevwin and back, thus setting
-    " the previous window for wincmd p, right before doing what the original
+    " wincmd p's 'previous window', right before doing what the original
     " mappings do.
     " Since <SID> evaluates to a script-unique value, that value must be
-    " retrieved from the mapping.
+    " extracted from optwin.vim's mappings (which we can read using mapcheck())
+    " and re-injected into the replacement mappings
     " The noremap commands in optwin.vim run every time the 'options' command is
     " invoked, so the new mappings need to be created on every WinceToOpenOption
     " call.
-    let spacemap = mapcheck("<cr>")
-    let sid = substitute(spacemap, '<C-\\><C-N>:call <SNR>\(\d\+\)_CR()<CR>', '\1', '')
+    if s:sid <# 0
+        let crmap = mapcheck("<cr>")
+        let snr = substitute(crmap, '<C-\\><C-N>:call <SNR>\(\d\+\)_CR()<CR>', '\1', '')
+        let s:sid = '<SNR>_' . snr
+    endif
 
-    execute 'noremap <silent> <buffer> <CR> <C-\><C-N>:call OptGoPrev()<CR>:call <SNR>' . sid . '_CR()<CR>'
-    execute 'inoremap <silent> <buffer> <CR> <Esc>:call OptGoPrev()<CR>:call <SNR>' . sid . '_CR()<CR>'
-    execute 'noremap <silent> <buffer> <Space> :call OptGoPrev()<CR>:call <SNR>' . sid . '_Space()<CR>'
+    execute 'noremap <silent> <buffer> <CR> <C-\><C-N>:call WinceOptionGoPrev()<CR>:call ' . s:sid . 'CR()<CR>'
+    execute 'inoremap <silent> <buffer> <CR> <Esc>:call WinceOptionGoPrev()<CR>:call ' . s:sid . 'CR()<CR>'
+    execute 'noremap <silent> <buffer> <Space> :call WinceOptionGoPrev()<CR>:call ' . s:sid . 'Space()<CR>'
 
     let winid = s:Win.getid()
 
@@ -100,9 +104,9 @@ endfunction
 function! WinceToCloseOption()
     call s:Log.INF('WinceToCloseOption')
     let optionwinid = 0
-    for winid in WinceStateGetWinidsByCurrentTab()
-        if WinceStateGetBufnrByWinidOrWinnr(winid) ==# bufnr('option-window')
-            let optionwinid = winid
+    for winnr in range(1, winnr('$'))
+        if WinceStateGetBufnrByWinidOrWinnr(winnr) ==# bufnr('option-window')
+            let optionwinid = s:Win.getid(winnr)
         endif
     endfor
 

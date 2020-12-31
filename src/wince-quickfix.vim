@@ -2,15 +2,13 @@
 let s:Log = jer_log#LogFunctions('wince-quickfix-uberwin')
 let s:Win = jer_win#WinFunctions()
 
-
 if !exists('g:wince_enable_quickfix') || !g:wince_enable_quickfix
     call s:Log.CFG('Quickfix uberwin disabled')
     finish
 endif
 
-
 " WinceToIdentifyQuickfix relies on getqflist with the winid key. So Vim-native winids
-" are required.. I see no other way to implement WinceToIdentifyQuickfix.
+" are required. I see no other way to implement WinceToIdentifyQuickfix.
 if s:Win.legacy
     call s:Log.ERR('The quickfix uberwin group is not supported with legacy winids')
     finish
@@ -56,7 +54,7 @@ function! WinceToCloseQuickfix()
     " Fail if the quickfix window is already closed
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     if !qfwinid
-        throw 'Cannot close quickfix window that is not open'
+        throw 'Quickfix window is already closed'
     endif
 
     " cclose fails if the quickfix window is the last window, so use :quit
@@ -115,20 +113,20 @@ endfunction
 
 " The quickfix window is an uberwin
 call WinceAddUberwinGroupType('quickfix', ['quickfix'],
-                           \[g:wince_quickfix_statusline],
-                           \'Q', 'q', 2,
-                           \50, [0],
-                           \[-1], [g:wince_quickfix_height],
-                           \function('WinceToOpenQuickfix'),
-                           \function('WinceToCloseQuickfix'),
-                           \function('WinceToIdentifyQuickfix'))
+                             \[g:wince_quickfix_statusline],
+                             \'Q', 'q', 2,
+                             \50, [0],
+                             \[-1], [g:wince_quickfix_height],
+                             \function('WinceToOpenQuickfix'),
+                             \function('WinceToCloseQuickfix'),
+                             \function('WinceToIdentifyQuickfix'))
 
 " Make sure the quickfix uberwin exists if and only if there is a quickfix
 " list
 function! UpdateQuickfixUberwin(hide)
     call s:Log.DBG('UpdateQuickfixUberwin ', a:hide)
     let qfwinexists = WinceModelUberwinGroupExists('quickfix')
-    let qflistexists = len(getqflist())
+    let qflistexists = !empty(getqflist())
     
     if qfwinexists && !qflistexists
         call s:Log.INF('Remove quickfix uberwin because there is no quickfix list')
@@ -153,6 +151,7 @@ endfunction
 " If the uberwin needs to be added, make it hidden
 call WinceAddTabEnterPreResolveCallback(function('UpdateQuickfixUberwinHide'))
 
+" See comment on SessionLoadPost autocmd below
 function! CloseDanglingQuickfixWindows()
     let qfwinid = get(getqflist({'winid':0}), 'winid', -1)
     while qfwinid

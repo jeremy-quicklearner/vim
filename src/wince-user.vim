@@ -414,7 +414,7 @@ function! WinceRemoveSubwinGroup(winid, grouptypename)
     if !a:winid
         let winid = WinceStateGetCursorWinId()
     else
-        let winid = a:supwinid
+        let winid = a:winid
     endif
     try
         let supwinid = WinceModelSupwinIdBySupwinOrSubwinId(winid)

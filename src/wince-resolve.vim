@@ -474,7 +474,7 @@ function! s:WinceResolveStateToModel(statewinids)
             call s:Log.VRB('Supwin ', supwinid, ' does not exist')
             continue
         endif
-        for [grouptypename, group] in keys(supwin)
+        for [grouptypename, group] in items(supwin)
             call s:Log.INF('Step 1.3 adding subwin group ', supwinid, ':', grouptypename, ' to model with winids ', group.winids)
             try
                 let s:nonsupwincache = {}
