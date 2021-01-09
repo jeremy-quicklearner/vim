@@ -1,3 +1,8 @@
+" TODO
+function WinceToIdentifyQuickfix(winid)
+endfunction
+function WinceToIdentifyLoclist(winid)
+endfunction
 " Cosmetic adjustments
 let s:Win = jer_win#WinFunctions()
 
@@ -16,7 +21,7 @@ let s:Win = jer_win#WinFunctions()
 " lines. I don't know any solution for this
 if !exists('&cursorlineopt')
     function! IndicateActiveWindow(cmdwin)
-        let winids = WinceStateGetWinidsByCurrentTab()
+        let winids = wince_state#GetWinidsByCurrentTab()
         for winid in winids
             " Every window gets relativenumber off. This will be undone later
             " for the active window
@@ -44,9 +49,9 @@ if !exists('&cursorlineopt')
     
             if idxline > -1
                 let curwinid = s:Win.getid()
-                call WinceStateMoveCursorToWinidSilently(winid)
+                call wince_state#MoveCursorToWinidSilently(winid)
                 let locline = line('.')
-                call WinceStateMoveCursorToWinidSilently(curwinid)
+                call wince_state#MoveCursorToWinidSilently(curwinid)
                 " If this is a location or quickfix window and the cursor is
                 " on top of the selected line, do not highlight
                 if idxline ==# locline
@@ -63,14 +68,14 @@ if !exists('&cursorlineopt')
     
         " The current window gets relativenumber on and cursorline off. In Vim
         " <8.2, relativenumber causes the line number to get highlighted
-        let winid = WinceStateGetCursorWinId()
+        let winid = wince_state#GetCursorWinId()
         call setwinvar(s:Win.id2win(winid), '&relativenumber', 1)
         call setwinvar(s:Win.id2win(winid), '&cursorline', 0)
     endfunction
 else
     " This is the code for Vim >=8.2
     function! IndicateActiveWindow(cmdwin)
-        let winids = WinceStateGetWinidsByCurrentTab()
+        let winids = wince_state#GetWinidsByCurrentTab()
         " Every window gets relativenumber off and cursorline on
         for winid in winids
             call setwinvar(s:Win.id2win(winid), '&relativenumber', 0)
@@ -78,7 +83,7 @@ else
         endfor
     
         " Except the current window, which gets relativenumber on
-        let winid = WinceStateGetCursorWinId()
+        let winid = wince_state#GetCursorWinId()
         call setwinvar(s:Win.id2win(winid), '&relativenumber', 1)
     endfunction
 
@@ -92,7 +97,7 @@ endfunction
 if !exists('g:jeremyactivewin_chc')
     let g:jeremyactivewin_chc = 1
     call jer_chc#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
-    call WinceAddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
+    call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
 endif
 " Do one call here on startup so that we don't have to wait until the first
 " CursorHold event

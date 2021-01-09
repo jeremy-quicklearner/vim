@@ -272,7 +272,7 @@ function! GetTabLine()
     let vimVersionString = GetVimVersionString()
     let argcString = GetArgcString()
     let regListString = GetRegListString()
-    let uberwinFlagsString = WinceUberwinFlagsStr()
+    let uberwinFlagsString = wince_user#UberwinFlagsStr()
 
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()

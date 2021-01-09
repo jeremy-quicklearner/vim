@@ -232,7 +232,7 @@ endfunction
 " The undotree and diffpanel are a subwin group. If g:undotree_DiffAutoOpen is
 " falsey, don't expect the diffpanel
 if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
-    call WinceAddSubwinGroupType('undotree', ['tree', 'diff'],
+    call wince_user#AddSubwinGroupType('undotree', ['tree', 'diff'],
                               \[
                               \    g:wince_undotree_subwin_statusline,
                               \    g:wince_undodiff_subwin_statusline
@@ -244,7 +244,7 @@ if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
                               \function('WinceToCloseUndotree'),
                               \function('WinceToIdentifyUndotree'))
 else
-    call WinceAddSubwinGroupType('undotree', ['tree'],
+    call wince_user#AddSubwinGroupType('undotree', ['tree'],
                               \[g:wince_undotree_subwin_statusline],
                               \'U', 'u', 5,
                               \40, [1], [0], g:wince_undotree_right,
@@ -266,35 +266,35 @@ function! UpdateUndotreeSubwins()
     let &l:scrollbind = 0
     let &l:cursorbind = 0
 
-    let info = WinceCommonGetCursorPosition()
+    let info = wince_common#GetCursorPosition()
     try
-        for supwinid in WinceModelSupwinIds()
-            let undotreewinsexist = WinceModelSubwinGroupExists(supwinid, 'undotree')
+        for supwinid in wince_model#SupwinIds()
+            let undotreewinsexist = wince_model#SubwinGroupExists(supwinid, 'undotree')
 
             " Special case: Terminal windows never have undotrees
-            if undotreewinsexist && WinceStateWinIsTerminal(supwinid)
+            if undotreewinsexist && wince_state#WinIsTerminal(supwinid)
                 call s:Log.INF('Removing undotree subwin group from terminal supwin ', supwinid)
-                call WinceRemoveSubwinGroup(supwinid, 'undotree')
+                call wince_user#RemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
-            noautocmd silent call WinceStateMoveCursorToWinid(supwinid)
+            noautocmd silent call wince_state#MoveCursorToWinid(supwinid)
             let undotreeexists = len(undotree().entries)
 
             if undotreewinsexist && !undotreeexists
                 call s:Log.INF('Removing undotree subwin group from supwin ', supwinid, ' because its buffer has no undotree')
-                call WinceRemoveSubwinGroup(supwinid, 'undotree')
+                call wince_user#RemoveSubwinGroup(supwinid, 'undotree')
                 continue
             endif
 
             if !undotreewinsexist && undotreeexists
                 call s:Log.INF('Adding undotree subwin group to supwin ', supwinid, ' because its buffer has an undotree')
-                call WinceAddSubwinGroup(supwinid, 'undotree', 1, 0)
+                call wince_user#AddSubwinGroup(supwinid, 'undotree', 1, 0)
                 continue
             endif
         endfor
     finally
-        call WinceCommonRestoreCursorPosition(info)
+        call wince_common#RestoreCursorPosition(info)
         let &l:scrollbind = opts.s
         let &l:cursorbind = opts.c
     endtry
@@ -305,15 +305,15 @@ endfunction
 if !exists('g:wince_undotree_chc')
     let g:wince_undotree_chc = 1
     call jer_chc#Register(function('UpdateUndotreeSubwins'), [], 0, 10, 1, 0, 1)
-    call WinceAddPostUserOperationCallback(function('UpdateUndotreeSubwins'))
+    call wince_user#AddPostUserOperationCallback(function('UpdateUndotreeSubwins'))
 endif
 
 function! CloseDanglingUndotreeWindows()
-    for winid in WinceStateGetWinidsByCurrentTab()
+    for winid in wince_state#GetWinidsByCurrentTab()
         let statusline = getwinvar(s:Win.id2win(winid), '&statusline', '')
         if statusline ==# g:wince_undotree_subwin_statusline || statusline ==# g:wince_undodiff_subwin_statusline
             call s:Log.INF('Closing dangling window ', winid)
-            call WinceStateCloseWindow(winid, g:wince_undotree_right)
+            call wince_state#CloseWindow(winid, g:wince_undotree_right)
         endif
     endfor
 endfunction
@@ -338,10 +338,10 @@ augroup END
 if exists('g:wince_undotree_disable_mappings') && g:wince_undotree_disable_mappings
     call s:Log.CFG('Undotree uberwin mappings disabled')
 else
-    call WinceMappingMapUserOp('<leader>us', 'call WinceShowSubwinGroup(0, "undotree", 1)')
-    call WinceMappingMapUserOp('<leader>uh', 'call WinceHideSubwinGroup(0, "undotree")')
-    call WinceMappingMapUserOp('<leader>uu', 'let g:wince_map_mode = WinceGotoSubwin(0, "undotree", "tree", g:wince_map_mode, 1)')
+    call wince_map#MapUserOp('<leader>us', 'call wince_user#ShowSubwinGroup(0, "undotree", 1)')
+    call wince_map#MapUserOp('<leader>uh', 'call wince_user#HideSubwinGroup(0, "undotree")')
+    call wince_map#MapUserOp('<leader>uu', 'let g:wince_map_mode = wince_user#GotoSubwin(0, "undotree", "tree", g:wince_map_mode, 1)')
     if !exists('g:undotree_DiffAutoOpen') || g:undotree_DiffAutoOpen == 1
-        call WinceMappingMapUserOp('<leader>ud', 'let g:wince_map_mode = WinceGotoSubwin(0, "undotree", "diff", g:wince_map_mode, 1)')
+        call wince_map#MapUserOp('<leader>ud', 'let g:wince_map_mode = wince_user#GotoSubwin(0, "undotree", "diff", g:wince_map_mode, 1)')
     endif
 endif

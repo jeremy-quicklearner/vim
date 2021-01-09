@@ -15,22 +15,22 @@ noremap <c-w><up> <nop>
 noremap <c-w><right> <nop>
 
 " Use Ctrl-h|j|k|l for window movement from normal mode
-nnoremap <silent> <c-h> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoLeft'<cr>
-nnoremap <silent> <c-j> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoDown'<cr>
-nnoremap <silent> <c-k> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoUp'<cr>
-nnoremap <silent> <c-l> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceGoRight'<cr>
+nnoremap <silent> <c-h> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoLeft'<cr>
+nnoremap <silent> <c-j> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoDown'<cr>
+nnoremap <silent> <c-k> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoUp'<cr>
+nnoremap <silent> <c-l> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoRight'<cr>
 
 " Use Ctrl-W z to set dimensions both vertically and horizontally
 function! WinZoom(count)
-    call WinceResizeCurrentSupwin(a:count, a:count, 0)
+    call wince_user#ResizeCurrentSupwin(a:count, a:count, 0)
 endfunction
-nmap <silent> <c-w>z :<c-u>call WinZoom(WinceMappingProcessCounts(1))<cr>
-vmap <silent> <c-w>z :<c-u>call WinZoom(WinceMappingProcessCounts(1))<cr>
+nmap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
+vmap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
 
 " Wince matches Vim's default behaviour by treating z<cr> differently
 " from <c-w>_, but I'd rather z<cr> act the same way as <c-w>_
-nnoremap <silent> z<cr> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceResizeHorizontal'<cr>
-vnoremap <silent> z<cr> :<c-u>execute WinceMappingProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+nnoremap <silent> z<cr> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+vnoremap <silent> z<cr> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceResizeHorizontal'<cr>
 
 " Jersuite log commands
 nnoremap <leader>jl :<c-u>JerLog<cr>

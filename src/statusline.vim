@@ -58,7 +58,7 @@ function! GetDefaultStatusLine()
     let statusline .= '%=%<'
 
     " Subwin flags
-    let statusline .= WinceSubwinFlagsForGlobalStatusline()
+    let statusline .= wince_user#SubwinFlagsForGlobalStatusline()
 
     " Diff flag
     let statusline .= '%6*' . DiffFlag()
@@ -98,7 +98,7 @@ endfunction
 " the default by returning an empty string that won't supersede the global
 " default statusline
 function! SetSpecificStatusLine()
-    execute 'let &l:statusline = "' . WinceNonDefaultStatusLine() . '"'
+    execute 'let &l:statusline = "' . wince_user#NonDefaultStatusLine() . '"'
 endfunction
 
 function! CorrectAllStatusLines()
@@ -117,15 +117,15 @@ augroup StatusLine
     " Quickfix and Terminal windows have different statuslines that Vim sets
     " when they open or buffers enter them, so overwrite all non-default
     " statuslines after that happens
-    " TODO? Haven't seen this happen in a while. Remove?
-    " autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
+    " TODO: Move to Wince
+    autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
 
     " Apply the command-line window's statusline on entering
     autocmd CmdWinEnter * let &l:statusline = '%!GetCmdwinStatusLine()'
 
     " Netrw windows also have local statuslines that get set by some autocmd
     " someplace. Overwrite them as well.
-    " autocmd FileType netrw call RegisterCorrectStatusLines()
+    autocmd FileType netrw call RegisterCorrectStatusLines()
 augroup END
 
 " Always show the status line

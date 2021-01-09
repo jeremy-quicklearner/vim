@@ -25,6 +25,7 @@ Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami', {'on': 'AutoOrigamiFoldColumn'}
 Plug 'mbbill/undotree', {'on': 'UndotreeShow'}
 Plug 'jeremy-quicklearner/vim-jersuite-core'
+Plug 'jeremy-quicklearner/vim-wince'
 Plug 'jeremy-quicklearner/vim-sign-utils'
 call plug#end()
 
@@ -76,8 +77,7 @@ let g:wince_enable_quickfix = 1
 let g:wince_enable_option = 1
 let g:wince_enable_loclist = 1
 let g:wince_disable_mappings = 0
-source <sfile>:p:h/wince.vim
 
-" Wince-undotree
+" Wince-undotree stuff
 source <sfile>:p:h/undotree.vim
 
