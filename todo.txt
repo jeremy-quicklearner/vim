@@ -1,3 +1,8 @@
+High-priority
+- Build an automated testing scheme for the Jersuite
+- Audit the undotree group type for performance improvements
+- Move undotree group type to its own plugin
+
 Easy
 - Look at every tpope plugin and decide which ones I want
 - Allow specifying extra plugins in .vimrc
@@ -27,3 +32,7 @@ I don't know how
 - See if there's a way to draw columns to the left of indented blocks
 - Write a custom foldtext
 - Figure out a way to highlight matching angle brackets - tricky because the characters < and > aren't always used as angle brackets
+- Write a plugin that persists the the location lists outside the session, and restores them after this happens
+- Write a plugin that persists the the quickfix list outside the session, and restores it after this happens
+- Investigate whether the undotree can be persisted outside the session and restored after this happens
+- Come up with a plan for vim9script adoption in jersuite - may not be worth the headache

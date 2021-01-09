@@ -1,8 +1,3 @@
-" TODO
-function WinceToIdentifyQuickfix(winid)
-endfunction
-function WinceToIdentifyLoclist(winid)
-endfunction
 " Cosmetic adjustments
 let s:Win = jer_win#WinFunctions()
 
@@ -40,9 +35,9 @@ if !exists('&cursorlineopt')
             " selected
             let idxline = -1
             if !s:Win.legacy
-                if !empty(WinceToIdentifyLoclist(winid))
+                if !empty(wince_loclist#ToIdentify(winid))
                     let idxline = get(getloclist(s:Win.id2win(winid),{'idx':0}),'idx',-1)
-                elseif !empty(WinceToIdentifyQuickfix(winid))
+                elseif !empty(wince_quickfix#ToIdentify(winid))
                     let idxline = get(getqflist({'idx':0}),'idx',-1)
                 endif
             endif

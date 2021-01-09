@@ -93,39 +93,10 @@ function! GetCmdwinStatusLine()
     return statusline
 endfunction
 
-
-" Wince dictates that some windows have non-default status lines. It defers to
-" the default by returning an empty string that won't supersede the global
-" default statusline
-function! SetSpecificStatusLine()
-    execute 'let &l:statusline = "' . wince_user#NonDefaultStatusLine() . '"'
-endfunction
-
-function! CorrectAllStatusLines()
-    let currwin=winnr()
-    windo call SetSpecificStatusLine()
-    execute currwin . 'wincmd w'
-endfunction
-
-" Register the above function to be called on the next CursorHold event
-function! RegisterCorrectStatusLines()
-    call jer_chc#Register(function('CorrectAllStatusLines'), [], 0, 1, 0, 0, 0)
-endfunction
-
 augroup StatusLine
     autocmd!
-    " Quickfix and Terminal windows have different statuslines that Vim sets
-    " when they open or buffers enter them, so overwrite all non-default
-    " statuslines after that happens
-    " TODO: Move to Wince
-    autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
-
     " Apply the command-line window's statusline on entering
     autocmd CmdWinEnter * let &l:statusline = '%!GetCmdwinStatusLine()'
-
-    " Netrw windows also have local statuslines that get set by some autocmd
-    " someplace. Overwrite them as well.
-    autocmd FileType netrw call RegisterCorrectStatusLines()
 augroup END
 
 " Always show the status line
