@@ -1,4 +1,5 @@
 " Cosmetic adjustments
+" TODO: Fix in plugin-loading case
 let s:Win = jer_win#WinFunctions()
 
 " This mess controls indication of the active window and cursor line by only setting 

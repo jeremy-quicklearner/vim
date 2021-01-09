@@ -57,8 +57,10 @@ function! GetDefaultStatusLine()
     " Right-justify from now on
     let statusline .= '%=%<'
 
-    " Subwin flags
-    let statusline .= wince_user#SubwinFlagsForGlobalStatusline()
+    " Subwin flags. Skip if wince isn't installed (yet)
+    if exists('g:wince_version')
+        let statusline .= wince_user#SubwinFlagsForGlobalStatusline()
+    endif
 
     " Diff flag
     let statusline .= '%6*' . DiffFlag()

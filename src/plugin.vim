@@ -15,17 +15,18 @@ endif
 " Install any missing plugins
 " https://github.com/junegunn/vim-plug/wiki/extra#automatically-install-missing-plugins-on-startup
 autocmd VimEnter *
-            \  if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+            \  if !empty(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
             \|     PlugInstall --sync
             \| endif
 
 " Load plugins
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
-Plug 'benknoble/vim-auto-origami', {'on': 'AutoOrigamiFoldColumn'}
-Plug 'mbbill/undotree', {'on': 'UndotreeShow'}
+Plug 'benknoble/vim-auto-origami'
+Plug 'mbbill/undotree'
 Plug 'jeremy-quicklearner/vim-jersuite-core'
 Plug 'jeremy-quicklearner/vim-wince'
+Plug 'jeremy-quicklearner/vim-wince-undotree'
 Plug 'jeremy-quicklearner/vim-sign-utils'
 call plug#end()
 
@@ -43,7 +44,7 @@ let g:auto_origami_foldcolumn=1
 augroup AutoOrigami
     autocmd!
     autocmd CursorHold,BufWinEnter,WinEnter *
-                \  if &buftype !=# 'terminal'
+                \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
                 \|     execute('AutoOrigamiFoldColumn')
                 \| endif
 augroup END
@@ -78,6 +79,10 @@ let g:wince_enable_option = 1
 let g:wince_enable_loclist = 1
 let g:wince_disable_mappings = 0
 
-" Wince-undotree stuff
-source <sfile>:p:h/undotree.vim
+" Undotree stuff
+" TODO: Figure out why opening the undotree with UndotreeOpen doesn't set
+" &number
+let g:undotree_ShortIndicators = 1
+let g:undotree_HelpLine = 0
+let g:undotree_TreeNodeShape = 'O'
 

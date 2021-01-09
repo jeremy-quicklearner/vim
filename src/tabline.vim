@@ -1,5 +1,4 @@
 " Tabline definition
-let s:Win = jer_win#WinFunctions()
 
 " Convert a global variable to a string based on a map lookup
 " If the variable doesn't exist, return dne
@@ -61,14 +60,15 @@ function! GetTabString(tabnum, tabcols)
     let buflist = tabpagebuflist(a:tabnum)
     let winnr = tabpagewinnr(a:tabnum)
 
-    " Name of file in active window of the tab
-    let wininfo = getwininfo(s:Win.getid(winnr, a:tabnum))
-
-    " Quickfix and location lists are special cases
-    if len(wininfo) && wininfo[0]['loclist']
-        let bufname = '[Location List]'
-    elseif len(wininfo) && wininfo[0]['quickfix']
-        let bufname = '[Quickfix List]'
+    " Quickfix and location lists are special cases when getting the name of
+    " the file in the active window
+    if v:version < 800
+        let wininfo = getwininfo(win_getid(winnr, a:tabnum))
+        if len(wininfo) && wininfo[0]['loclist']
+            let bufname = '[Location List]'
+        elseif len(wininfo) && wininfo[0]['quickfix']
+            let bufname = '[Quickfix List]'
+    endif
 
     " Otherwise use the file name. No absolute paths unless they're needed
     else
@@ -268,11 +268,15 @@ endfunction
 
 " Construct the tabline
 function! GetTabLine()
-    " Compute everything except the tabs first
+    " Compute everything except the tabs first. The checks for wince being
+    " installed are there to cover the case in which plugins haven't finished
+    " installing yet
     let vimVersionString = GetVimVersionString()
     let argcString = GetArgcString()
     let regListString = GetRegListString()
-    let uberwinFlagsString = wince_user#UberwinFlagsStr()
+    if exists('g:wince_version')
+        let uberwinFlagsString = wince_user#UberwinFlagsStr()
+    endif
 
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()
@@ -282,7 +286,9 @@ function! GetTabLine()
     let colsForTabs -= vimVersionString[1]
     let colsForTabs -= argcString[1]
     let colsForTabs -= regListString[1]
-    let colsForTabs -= uberwinFlagsString[1]
+    if exists('g:wince_version')
+        let colsForTabs -= uberwinFlagsString[1]
+    endif
 
     " Use the remaining space for tabs
     let tabsString = GetTabsString(colsForTabs)
@@ -292,7 +298,9 @@ function! GetTabLine()
     let tabline .= vimVersionString[0]
     let tabline .= argcString[0]
     let tabline .= tabsString
-    let tabline .= uberwinFlagsString[0]
+    if exists('g:wince_version')
+        let tabline .= uberwinFlagsString[0]
+    endif
     let tabline .= regListString[0]
     return tabline
 endfunction

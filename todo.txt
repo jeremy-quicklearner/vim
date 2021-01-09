@@ -1,6 +1,5 @@
 High-priority
 - Build an automated testing scheme for the Jersuite
-- Audit the undotree group type for performance improvements
 - Move undotree group type to its own plugin
 
 Easy

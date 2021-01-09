@@ -8,7 +8,7 @@ set wildmode=longest,list,full
 set wildmenu
 
 " Keep 100 lines of ex command history
-set history=50
+set history=100
 
 " Allow closing follds that are just one line long
 set foldminlines=0
