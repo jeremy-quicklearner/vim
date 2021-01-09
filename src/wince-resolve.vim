@@ -4,7 +4,7 @@ let s:Log = jer_log#LogFunctions('wince-resolve')
 
 " Internal variables - used by different helpers to communicate with each other
 let s:curpos = {}
-let s:relistedcond = 0
+let s:modelchanged = 0
 let s:nonsupwincache = {}
 
 " Input conditions - flags that influence the resolver's behaviour, set before
@@ -211,7 +211,7 @@ function! s:WinceResolveStateToModel(statewinids)
     " STEP 1.1: If any window in the model isn't in the state, remove it from
     "           the model. Also make sure all terminal windows are supwins.
     call s:Log.VRB('Step 1.1')
-    let s:relistedcond = 0
+    let s:modelchanged = 0
 
     " If any uberwin group in the model isn't fully represented in the state,
     " mark it hidden in the model
@@ -257,8 +257,8 @@ function! s:WinceResolveStateToModel(statewinids)
        for terminalwinid in terminalwinids
            call s:Log.INF('Step 1.1 relisting terminal window ', terminalwinid, ' from uberwin of group ', grouptypename, ' to supwin')
            call WinceModelAddSupwin(terminalwinid, -1, -1, -1)
-           let s:relistedcond = 1
        endfor
+       let s:modelchanged = 1
        let s:nonsupwincache = {}
     endfor
 
@@ -269,6 +269,7 @@ function! s:WinceResolveStateToModel(statewinids)
         if !WinceStateWinExists(modelsupwinid)
             call s:Log.INF('Step 1.1 removing state-missing supwin ', modelsupwinid, ' from model')
             let s:nonsupwincache = {}
+            let s:modelchanged = 1
             call WinceModelRemoveSupwin(modelsupwinid)
         endif
     endfor
@@ -321,8 +322,8 @@ function! s:WinceResolveStateToModel(statewinids)
             for terminalwinid in terminalwinids
                 call s:Log.INF('Step 1.1 relisting terminal window ', terminalwinid, ' from subwin of group ', supwinid, ':', grouptypename, ' to supwin')
                 call WinceModelAddSupwin(terminalwinid, -1, -1, -1)
-                let s:relistedcond = 1
             endfor
+            let s:modelchanged = 1
             let s:nonsupwincache = {}
         endfor
     endfor
@@ -360,7 +361,7 @@ function! s:WinceResolveStateToModel(statewinids)
                     let hidgroup = 1
                 endif
                 call WinceModelAddSupwin(winid, -1, -1, -1)
-                let s:relistedcond = 1
+                let s:modelchanged = 1
             endif
         endfor
     endfor
@@ -405,7 +406,7 @@ function! s:WinceResolveStateToModel(statewinids)
                         let hidgroup = 1
                     endif
                     call WinceModelAddSupwin(winid, -1, -1, -1)
-                    let s:relistedcond = 1
+                    let s:modelchanged = 1
                 endif
             endfor
         endfor
@@ -420,6 +421,7 @@ function! s:WinceResolveStateToModel(statewinids)
         if wininfo.category !=# 'supwin'
            call s:Log.INF('Step 1.2 found winid ', supwinid, ' listed as a supwin in the model but identified in the state as ', wininfo.category, ' ', wininfo.grouptype, ':', wininfo.typename, '. Removing from the model.')
             let s:nonsupwincache = {}
+            let s:modelchanged = 1
             call WinceModelRemoveSupwin(supwinid)
         endif
     endfor
@@ -455,6 +457,7 @@ function! s:WinceResolveStateToModel(statewinids)
         call s:Log.INF('Step 1.3 adding uberwin group ', grouptypename, ' to model with winids ', group.winids)
         try
             let s:nonsupwincache = {}
+            let s:modelchanged = 1
             call WinceModelAddOrShowUberwins(grouptypename, group.winids, [])
         catch /.*/
             call s:Log.WRN('Step 1.3 failed to add uberwin group ', grouptypename, ' to model:')
@@ -466,6 +469,7 @@ function! s:WinceResolveStateToModel(statewinids)
     for supwinid in groupedmissingwininfo.supwin
         call s:Log.INF('Step 1.3 adding window ', supwinid, ' to model as supwin')
         call WinceModelAddSupwin(supwinid, -1, -1, -1)
+        let s:modelchanged = 1
     endfor
     call s:Log.VRB('Add model-missing subwins to model: ', groupedmissingwininfo.subwin)
     for [supwinid, supwin] in items(groupedmissingwininfo.subwin)
@@ -478,6 +482,7 @@ function! s:WinceResolveStateToModel(statewinids)
             call s:Log.INF('Step 1.3 adding subwin group ', supwinid, ':', grouptypename, ' to model with winids ', group.winids)
             try
                 let s:nonsupwincache = {}
+                let s:modelchanged = 1
                 call WinceModelAddOrShowSubwins(
                \    supwinid,
                \    grouptypename,
@@ -506,6 +511,7 @@ function! s:WinceResolveStateToModel(statewinids)
             for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
                 call s:Log.DBG('Step 1.4 hiding subwin group ', grouptypename, ' of terminal supwin ', supwinid, ' in model')
                 let s:nonsupwincache = {}
+                let s:modelchanged = 1
                 call WinceModelHideSubwins(supwinid, grouptypename)
             endfor
         endif
@@ -575,123 +581,114 @@ function! s:WinceResolveModelToState(statewinids)
         endif
     endfor
 
-    " STEP 2.2: Temporarily close any windows that may be in the wrong place.
-    "           Any window that was added to the model in STEP 1 was added because
-    "           it spontaneously appeared in the state. It may have spontaneously
-    "           appeared in the wrong place, so any window that was added in STEP 1
-    "           must be temporarily closed. STEP 1 is the only place where windows
-    "           are added to the model with dummy dimensions, so any window in
-    "           the model with dummy dimensions was added in STEP 1 and
-    "           therefore needs to be temporarily closed.
-    "           Conversely, any window with non-dummy dimensions in the model
-    "           was not added in STEP 1 and therefore has been touched by a user
-    "           operation or by the previous execution of the resolver, which would
-    "           have left its model dimensions consistent with its state
-    "           dimensions.
-    "           One exception is a window that was relisted in STEP 1. But
-    "           since windows can be relisted as supwins (which we have no way
-    "           of closing and reopening robustly), we can't just close and
-    "           reopen them. Instead, if any window was relisted, just close
-    "           *all* uberwins and subwins. This is a bit of a sledgehammer,
-    "           but relisting isn't expected to be a common use case.
-    "           If there is an inconsistency, then the window has been touched by
-    "           something else after the user operation or resolver last
-    "           touched it. That touch may have put it in the wrong place.
-    "           So any window in the model with non-dummy dimensions inconsistent
-    "           with its state dimensions needs to be temporarily closed.
-    "           Since a window can be anywhere, closing it may affect the
-    "           dimensions of other windows and make them inconsistent after
-    "           they've been checked already. So if we close a window, we need
-    "           to make another pass.
-    call s:Log.VRB('Step 2.2')
-
     " For the rest of STEP 2, supwin IDs in the model don't change - so cache
     " them
     let supwinids = WinceModelSupwinIds()
-    let preserveduberwins = {}
-    let preservedsubwins = {}
-    let passneeded = 1
-    while passneeded
-        call s:Log.DBG('Start pass')
-        let passneeded = 0
-        " If any uberwins have dummy or inconsistent dimensions, remove them from the
-        " state along with any other shown uberwin groups with higher priority.
-        let uberwinsremoved = 0
+
+    " STEP 2.2: If any window has a chance of being in the wrong place,
+    "           temporarily close all uberwins and subwins.
+    "           A note on the algorithm used here: There was an older approach
+    "           that involved scanning all windows and closing them
+    "           individually if they had inconsistent or dummy dimensions
+    "           (since STEP 1 is the only place where windows are added to the
+    "           model with dummy dimensions). This approach required multiple
+    "           passes (since closing windows changes the dimensions of other
+    "           windows) and caused trouble with certain edge cases - in
+    "           particular, WinceCommonRecordAllDimensions() could not be
+    "           called on the supwins because there was no guarantee of a 
+    "           moment with all subwins closed and all uberwins open.
+    call s:Log.VRB('Step 2.2')
+    let doclose = 0
+    
+    " STEP 1 only makes changes to the model when it finds inconsistencies
+    " between the model and state. Such inconsistencies can only exist at the
+    " start of a resolver run if the state was touched by something other than
+    " the user operations since the end of the previous resolver run. So we
+    " know that happened if STEP 1 did anything, and we have to do the
+    " closing.
+    if s:modelchanged
+        call s:Log.INF('Step 2.2 to temporarily close all uberwins and subwins to account for changes in the model')
+        let doclose = 1
+    endif
+
+    " It's also possible for the user to make some change to the state (e.g.
+    " resizing a window) that doesn't set off any of STEP 1's checks. So we
+    " need to check that every window's state dimensions match its model
+    " dimensions. Any inconsistency means the state's been touched and we have
+    " to do the closing. Start by checking uberwins.
+    if !doclose
         for grouptypename in WinceModelShownUberwinGroupTypeNames()
             call s:Log.VRB('Check uberwin group ', grouptypename)
-            if WinceCommonUberwinGroupExistsInState(grouptypename)
-                if uberwinsremoved || s:relistedcond ||
-               \   !WinceCommonUberwinGroupDimensionsMatch(grouptypename)
-                    let preserveduberwins[grouptypename] =
-                   \    WinceCommonPreCloseAndReopenUberwins(grouptypename)
-                    call s:Log.VRB('Preserved info from uberwin group ', grouptypename, ': ', preserveduberwins[grouptypename])
-                    call s:Log.INF('Step 2.2 removing uberwin group ', grouptypename, ' from state')
-                    " TODO? Wrap in try-catch? Never seen it fail
-                    call WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
-                    let uberwinsremoved = 1
-                    let passneeded = 1
-                endif
+            if !WinceCommonUberwinGroupDimensionsMatch(grouptypename)
+                call s:Log.INF('Step 2.2 found uberwin group ', grouptypename, ' inconsistent. All uberwins and subwins to be temporarily closed')
+                let doclose = 1
+                break
             endif
         endfor
+    endif 
 
-        let toremove = {}
+    " Then check supwins and subwins
+    if !doclose
         for supwinid in supwinids
-            call s:Log.VRB('Check subwins of supwin ', supwinid)
-            let toremove[supwinid] = []
-            " If we removed uberwins, flag all shown subwins for removal
-            " Also flag all shown subwins of any supwin with dummy or inconsistent
-            " dimensions
-            if uberwinsremoved || s:relistedcond || !WinceCommonSupwinDimensionsMatch(supwinid)
-                call s:Log.DBG('Flag all subwin groups for supwin ', supwinid, ' for removal from state')
-                let toremove[supwinid] = WinceModelShownSubwinGroupTypeNamesBySupwinId(
-               \    supwinid
-               \)
-
-            " Otherwise, if any subwin of the supwin has dummy or inconsistent
-            " dimensions, flag that subwin's group along with all higher-priority
-            " shown subwin groups in the supwin
-            else
-                let subwinsflagged = 0
-                for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(
-               \    supwinid
-               \)
-                    call s:Log.VRB('Check subwin group ', supwinid, ':', grouptypename)
-                    if WinceCommonSubwinGroupExistsInState(supwinid, grouptypename)
-                        if subwinsflagged || !WinceCommonSubwinGroupDimensionsMatch(
-                       \    supwinid,
-                       \    grouptypename
-                       \)
-                            call s:Log.DBG('Flag subwin group ', supwinid, ':', grouptypename, ' for removal from state')
-                            call add(toremove[supwinid], grouptypename)
-                            let subwinsflagged = 1
-                        endif
-                    endif
-                endfor
+            call s:Log.VRB('Check supwin ', supwinid)
+            if !WinceCommonSupwinDimensionsMatch(supwinid)
+                call s:Log.INF('Step 2.2 found supwin ', supwinid, ' inconsistent. All uberwins and subwins to be temporarily closed')
+                let doclose = 1
+                break
             endif
-        endfor
-
-        " Remove all flagged subwins from the state
-        for supwinid in keys(toremove)
-            if !has_key(preservedsubwins, supwinid)
-                let preservedsubwins[supwinid] = {}
-            endif
-            " toremove[supwinid] is reversed so that we close subwins in
-            " descending priority order. See comments in
-            " WinceCommonCloseSubwinsWithHigherPriorityThan
-            for grouptypename in reverse(copy(toremove[supwinid]))
-                call s:Log.VRB('Removing flagged subwin group ', supwinid, ':', grouptypename)
-                if WinceCommonSubwinGroupExistsInState(supwinid, grouptypename)
-                    let preservedsubwins[supwinid][grouptypename] =
-                   \    WinceCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
-                    call s:Log.VRB('Preserved info from subwin group ', supwinid, ':', grouptypename, ': ', preservedsubwins[supwinid][grouptypename])
-                    call s:Log.INF('Step 2.2 removing subwin group ', supwinid, ':', grouptypename, ' from state')
-                    " TODO? Wrap in try-catch? Never seen it fail
-                    call WinceCommonCloseSubwins(supwinid, grouptypename)
-                    let passneeded = 1
+            for grouptypename in WinceModelShownSubwinGroupTypeNamesBySupwinId(
+           \    supwinid
+           \)
+                if !WinceCommonSubwinGroupDimensionsMatch(supwinid, grouptypename)
+                    call s:Log.INF('Step 2.2 found subwin group ', supwinid, ':', grouptypename, ' inconsistent. All uberwins and subwins to be temporarily closed')
+                    let doclose = 1
+                    break
                 endif
             endfor
+            if doclose
+                break
+            endif
         endfor
-    endwhile
+    endif
+
+    " Do the closing
+    let preserveduberwins = {}
+    let preservedsubwins = {}
+    let dims = {}
+    let views = {}
+    if doclose
+        for supwinid in supwinids
+            " use reverse() so that we close subwins in
+            " descending priority order. See comments in
+            " WinceCommonCloseSubwinsWithHigherPriorityThan
+            for grouptypename in reverse(
+           \    WinceModelShownSubwinGroupTypeNamesBySupwinId(supwinid)
+           \)
+                let preservedsubwins[supwinid] = {}
+                let preservedsubwins[supwinid][grouptypename] =
+               \    WinceCommonPreCloseAndReopenSubwins(supwinid, grouptypename)
+                call s:Log.VRB('Preserved info from subwin group ', supwinid, ':', grouptypename, ': ', preservedsubwins[supwinid][grouptypename])
+                call s:Log.INF('Step 2.2 removing subwin group ', supwinid, ':', grouptypename, ' from state')
+                " TODO? Wrap in try-catch? Never seen it fail
+                call WinceCommonCloseSubwins(supwinid, grouptypename)
+            endfor
+        endfor
+
+        for supwinid in supwinids
+            " Save dimensions and view of supwin
+            let dims[supwinid] = WinceStateGetWinDimensions(supwinid)
+            let views[supwinid] = WinceStateShieldWindow(supwinid)
+        endfor
+
+        for grouptypename in WinceModelShownUberwinGroupTypeNames()
+            let preserveduberwins[grouptypename] =
+           \    WinceCommonPreCloseAndReopenUberwins(grouptypename)
+            call s:Log.VRB('Preserved info from uberwin group ', grouptypename, ': ', preserveduberwins[grouptypename])
+            call s:Log.INF('Step 2.2 removing uberwin group ', grouptypename, ' from state')
+            " TODO? Wrap in try-catch? Never seen it fail
+            call WinceCommonCloseUberwinsByGroupTypeName(grouptypename)
+        endfor
+    endif
 
     " STEP 2.3: Add any missing windows to the state, including those that
     "           were temporarily removed, in the correct places
@@ -705,6 +702,9 @@ function! s:WinceResolveModelToState(statewinids)
             try
                 call s:Log.INF('Step 2.3 adding uberwin group ', grouptypename, ' to state')
                 let winids = WinceCommonOpenUberwins(grouptypename)
+                for uberwinid in winids
+                    let dims[uberwinid] = WinceStateGetWinDimensions(uberwinid)
+                endfor
                 " This Model write in ResolveModelToState is unfortunate, but I
                 " see no sensible way to put it anywhere else
                 let s:nonsupwincache = {}
@@ -725,6 +725,10 @@ function! s:WinceResolveModelToState(statewinids)
             endtry
         endif
     endfor
+
+    " If we saved supwin dimensions and views in STEP 2.2, restore them
+    call WinceCommonRestoreDimensions(dims)
+    call WinceCommonUnshieldWindows(views)
 
     " If any shown subwin in the model isn't in the state,
     " add it to the state
@@ -792,9 +796,10 @@ endfunction
 " STEP 3: Make sure that the subwins are afterimaged according to the cursor's
 "         final position
 function! s:WinceResolveCursor()
-    " STEP 3.1: See comments on WinceCommonUpdateAfterimagingByCursorWindow
+    " STEP 3.1: Reselect cursor window and update afterimaging
     call s:Log.VRB('Step 3.1')
-    call WinceCommonUpdateAfterimagingByCursorWindow(s:curpos.win)
+    let curwin = WinceCommonReselectCursorWindow(s:curpos.win)
+    call WinceCommonUpdateAfterimagingByCursorWindow(curwin)
 
     " STEP 3.2: If the model's current window does not match the state's
     "           current window (as it was at the start of this resolver run), then
@@ -806,7 +811,7 @@ function! s:WinceResolveCursor()
     call s:Log.VRB('Step 3.2')
     let modelcurrentwininfo = WinceModelCurrentWinInfo()
     let modelcurrentwinid = WinceModelIdByInfo(modelcurrentwininfo)
-    let resolvecurrentwinid = WinceModelIdByInfo(s:curpos.win)
+    let resolvecurrentwinid = WinceModelIdByInfo(curwin)
     if WinceModelIdByInfo(WinceModelPreviousWinInfo()) && modelcurrentwinid &&
    \   resolvecurrentwinid !=# modelcurrentwinid
         " If the current window doesn't exist in the state, then this resolver
@@ -816,7 +821,7 @@ function! s:WinceResolveCursor()
             call WinceModelSetCurrentWinInfo(WinceModelPreviousWinInfo())
         else
             call WinceModelSetPreviousWinInfo(modelcurrentwininfo)
-            call WinceModelSetCurrentWinInfo(s:curpos.win)
+            call WinceModelSetCurrentWinInfo(curwin)
         endif
     endif
 endfunction
@@ -871,7 +876,7 @@ function! s:ResolveInner()
 
     " STEP 3: The model and state are now consistent with each other, but
     "         afterimaging and tracked cursor positions may be inconsistent with the
-    "         final position of the cursor. Make it consistent.
+    "         final position of the cursor. Make them consistent.
     call s:WinceResolveCursor()
 
     " STEP 4: Now everything is consistent, so record the dimensions of all
@@ -882,7 +887,8 @@ function! s:ResolveInner()
     call s:Log.VRB('Step 4')
     call WinceCommonRecordAllDimensions()
 
-    " Restore the cursor position from when the resolver started
+    " Restore the (possibly-reselected) cursor position from when the
+    " resolver run started
     call s:Log.VRB('Restore cursor position')
     call WinceCommonRestoreCursorPosition(s:curpos)
     let s:curpos = {}

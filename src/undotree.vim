@@ -1,4 +1,6 @@
 " Undotree plugin manipulation
+" TODO: Figure out why opening the undotree with UndotreeOpen doesn't set
+" &number
 call jer_log#SetLevel('wince-undotree-subwin', 'WRN', 'WRN')
 let s:Log = jer_log#LogFunctions('wince-undotree-subwin')
 let s:Win = jer_win#WinFunctions()

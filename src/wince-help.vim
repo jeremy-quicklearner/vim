@@ -1,7 +1,6 @@
 " Wince Reference Definition for Help uberwin
 let s:Log = jer_log#LogFunctions('wince-help-uberwin')
 let s:Win = jer_win#WinFunctions()
-" TODO: Figure out why lhelpgrep sometimes resizes a bunch of windows
 
 if !exists('g:wince_enable_help') || !g:wince_enable_help
     call s:Log.CFG('Help uberwin disabled')
@@ -54,8 +53,10 @@ function! WinceToOpenHelp()
         endif
         0goto
     else
+        " This wonkiness with the widths avoids Vim equalizing other windows'
+        " sizes
         if g:wince_help_left
-            noautocmd vertical topleft split
+            noautocmd vertical topleft 1split
         else
             noautocmd vertical botright split
         endif
@@ -63,15 +64,14 @@ function! WinceToOpenHelp()
 
     let &l:scrollbind = 0
     let &l:cursorbind = 0
-    execute 'noautocmd vertical resize ' . g:wince_help_width
     let winid = s:Win.getid()
+    execute 'noautocmd vertical resize ' . g:wince_help_width
+    let &winfixwidth = 1
 
     if helpexists
         silent execute 'buffer ' . t:j_help.bufnr
         call WinceStatePostCloseAndReopen(winid, t:j_help)
     endif
-
-    let &winfixwidth = 1
 
     noautocmd call s:Win.gotoid(prevwinid)
 
@@ -92,6 +92,10 @@ if !s:Win.legacy
         let curwinid = s:Win.getid()
         noautocmd call s:Win.gotoid(helpwinid)
         noautocmd lopen
+        " Since we opened the location window with noautocmd, &syntax was set but
+        " the syntax wasn't loaded. Vim only loads syntax when the value
+        " *changes*, so set it to nothing before *changing* it to qf
+        noautocmd let &syntax = ''
         let &syntax = 'qf'
         let locwinid = s:Win.getid()
         noautocmd call win_gotoid(curwinid)
@@ -294,6 +298,10 @@ if !s:Win.legacy
                 let curwinid = s:Win.getid()
                 noautocmd call s:Win.gotoid(winid)
                 noautocmd lopen
+                " Since we opened the location window with noautocmd, &syntax was set
+                " but the syntax wasn't loaded. Vim only loads syntax when the value
+                " *changes*, so set it to nothing before *changing* it to qf
+                noautocmd let &syntax = ''
                 let &syntax = 'qf'
                 noautocmd call win_gotoid(curwinid)
             elseif !haslist && haswin

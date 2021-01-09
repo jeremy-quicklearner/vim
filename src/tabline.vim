@@ -43,19 +43,6 @@ function! GetArgcString()
     return [rv, len(rv) - 3]
 endfunction
 
-" If a register is populated, return its letter. Else a hyphen
-function! HyphenIfEmpty(letter)
-    " If an upper-case letter is passed to getreg() here, then for reasons
-    " unknown to me, the default register gets populated with the contents
-    " of whichever register is indexed by the character that HyphenIfEmpty
-    " returns.
-    if len(getreg(tolower(a:letter)))
-        return a:letter
-    else
-        return '-'
-    endif
-endfunction
-
 " Tabs
 
 " This function produces a string for one tab
@@ -261,17 +248,19 @@ endfunction
 
 " Get a list of registers in use as a tabline-friendly string
 function! GetRegListString()
-    let rv = '%3*[Reg '
-    for i in ['A', 'B', 'C', 'D', 'E',
-             \'F', 'G', 'H', 'I', 'J',
-             \'K', 'L', 'M', 'N', 'O',
-             \'P', 'Q', 'R', 'S', 'T',
-             \'U', 'V', 'W', 'X', 'Y',
-             \'Z']
-        " Call HyphenIfEmpty() dynamically so that the register list will
-        " update without messy autocmds
-        " TODO: I'm not sure this is actually necessary with GetTabline()
-        let rv .= '%{HyphenIfEmpty("' . i . '")}'
+    let rv = '%#TabLineFill#[Reg '
+    for i in ['a', 'b', 'c', 'd', 'e',
+             \'f', 'g', 'h', 'i', 'j',
+             \'k', 'l', 'm', 'n', 'o',
+             \'p', 'q', 'r', 's', 't',
+             \'u', 'v', 'w', 'x', 'y',
+             \'z']
+        " If a register is populated, show its letter. Else a hyphen
+        if !empty(getreg(i))
+            let rv .= toupper(i)
+        else
+            let rv .= '-'
+        endif
     endfor
     let rv .= ']'
     return [rv, 32]

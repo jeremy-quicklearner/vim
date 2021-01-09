@@ -907,80 +907,110 @@ function! WinceStatePostCloseAndReopen(winid, preserved)
     call s:MaybeRedraw()
 endfunction
 
-function! WinceStateResizeHorizontal(winid, width, preferleftdivider)
-    call s:Log.INF('WinceStateResizeHorizontal ', a:winid, ' ', a:width, ' ', a:preferleftdivider)
+" When Vim resizes a window, it always does so by moving the right-hand or
+" bottom divider. This isn't always ideal - in particular there's an algorithm
+" in the common code that requires resizing windows by moving the left-hand or
+" top divider. This can be done by moving the cursor to the window on the
+" other side of that divider, and resizing from there. These two functions do
+" exactly that - an 'indirect resize'.
+" If the window on the other side of the divider has fixed dimension, or if
+" there is no window on the other side of the divider, these functions do
+" nothing. These checks are done even for direct resize.
+function! WinceStateResizeHorizontal(winid, width, indirect)
+    call s:Log.INF('WinceStateResizeHorizontal ', a:winid, ' ', a:width, ' ', a:indirect)
     let winnr = s:Win.id2win(a:winid)
     if !winnr
         throw 'no window with winid ' . a:winid
     endif
+
+    " Go to window
     noautocmd silent execute winnr . 'wincmd w'
+
+    " Direct resize
+    if !a:indirect
+        " Check if we can do a direct resize
+        noautocmd silent wincmd l
+            if winnr() ==# winnr || &winfixwidth
+                return
+            endif
+        noautocmd silent execute winnr . 'wincmd w'
+
+        " Unfix, direct resize, refix
+        let wasfixed = &winfixwidth
+        let &winfixwidth = 0
+        noautocmd silent execute a:width . 'wincmd |'
+        let &winfixwidth = wasfixed
+        call s:MaybeRedraw()
+        return
+    endif
+
+    " Check if we can do an indirect resize
+    noautocmd silent wincmd h
+        if winnr() ==# winnr || &winfixwidth
+            return
+        endif
+    execute winnr . 'wincmd w'
+
+    " Indirect resize - go left to resize from other side, then return and
+    " refix
     let wasfixed = &winfixwidth
     let &winfixwidth = 0
-    if !a:preferleftdivider
-        noautocmd execute a:width . 'wincmd |'
-        call s:MaybeRedraw()
-        let &winfixwidth = wasfixed
-        return
-    endif
-    noautocmd wincmd h
-    if winnr() ==# winnr
-        noautocmd execute a:width . 'wincmd |'
-        call s:MaybeRedraw()
-        let &winfixwidth = wasfixed
-        return
-    elseif &winfixwidth
-        noautocmd wincmd p
-        noautocmd execute a:width . 'wincmd |'
-        call s:MaybeRedraw()
-        let &winfixwidth = wasfixed
-        return
-    endif
-    let otherwidth = s:Win.width(0)
-    let oldwidth = s:Win.width(winnr)
-    let newwidth = otherwidth + oldwidth - a:width
-    noautocmd execute newwidth . 'wincmd |'
-    call s:MaybeRedraw()
-    noautocmd wincmd p
+    noautocmd silent wincmd h
+        let otherwidth = s:Win.width(0)
+        let oldwidth = s:Win.width(winnr)
+        let newwidth = otherwidth + oldwidth - a:width
+        noautocmd silent execute newwidth . 'wincmd |'
+    noautocmd silent execute winnr . 'wincmd w'
     let &winfixwidth = wasfixed
+    call s:MaybeRedraw()
 endfunction
 
-function! WinceStateResizeVertical(winid, height, prefertopdivider)
-    call s:Log.INF('WinceStateResizeVertical ', a:winid, ' ', a:height, ' ', a:prefertopdivider)
+function! WinceStateResizeVertical(winid, height, indirect)
+    call s:Log.INF('WinceStateResizeVertical ', a:winid, ' ', a:height, ' ', a:indirect)
     let winnr = s:Win.id2win(a:winid)
     if !winnr
         throw 'no window with winid ' . a:winid
     endif
+
+    " Go to window and unfix
     noautocmd silent execute winnr . 'wincmd w'
+
+    " Direct resize
+    if !a:indirect
+        " Check if we can do a direct resize
+        noautocmd silent wincmd j
+            if winnr() ==# winnr || &winfixheight
+                return
+            endif
+        noautocmd silent execute winnr . 'wincmd w'
+
+        " Unfix, direct resize, refix
+        let wasfixed = &winfixheight
+        let &winfixheight = 0
+        noautocmd silent execute a:height . 'wincmd _'
+        let &winfixheight = wasfixed
+        call s:MaybeRedraw()
+        return
+    endif
+
+    " Check if we can do an indirect resize
+    noautocmd silent wincmd k
+        if winnr() ==# winnr || &winfixheight
+            return
+        endif
+    noautocmd silent execute winnr . 'wincmd w'
+
+    " Indirect resize - go up to resize from other side then return and refix
     let wasfixed = &winfixheight
     let &winfixheight = 0
-    if !a:prefertopdivider
-        noautocmd execute a:height . 'wincmd _'
-        call s:MaybeRedraw()
-        let &winfixheight = wasfixed
-        return
-    endif
-    noautocmd wincmd k
-
-    if winnr() ==# winnr
-        noautocmd execute a:height . 'wincmd _'
-        call s:MaybeRedraw()
-        let &winfixheight = wasfixed
-        return
-    elseif &winfixheight
-        noautocmd wincmd p
-        noautocmd execute a:height . 'wincmd _'
-        call s:MaybeRedraw()
-        let &winfixheight = wasfixed
-        return
-    endif
-
-    let otherheight = s:Win.height(0)
-    let oldheight = s:Win.height(winnr)
-    let newheight = otherheight + oldheight - a:height
-    noautocmd execute newheight . 'wincmd _'
-    call s:MaybeRedraw()
-    noautocmd wincmd p
+    noautocmd silent wincmd k
+        let otherheight = s:Win.height(0)
+        let oldheight = s:Win.height(winnr)
+        let newheight = otherheight + oldheight - a:height
+        noautocmd silent execute newheight . 'wincmd _'
+    noautocmd silent execute winnr . 'wincmd w'
     let &winfixheight = wasfixed
+    call s:MaybeRedraw()
 endfunction
 
 function! WinceStateFixednessByWinid(winid)

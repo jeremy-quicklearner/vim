@@ -30,14 +30,20 @@ function! WinceToOpenPreview()
 
     let previouswinid = s:Win.getid()
 
+    " This wonkiness with the heights avoids Vim equalizing other windows'
+    " sizes
     if g:wince_preview_bottom
-        noautocmd botright split
+        noautocmd botright 1split
     else
-        noautocmd topleft split
+        execute 'noautocmd topleft ' . &previewheight . 'split'
     endif
+
     let &l:scrollbind = 0
     let &l:cursorbind = 0
+    let winid = s:Win.getid()
     noautocmd execute 'resize ' . &previewheight
+    let &previewwindow = 1
+    let &winfixheight = 1
 
     " If the file being previewed is already open in another Vim instance,
     " this command throws (but works)
@@ -47,14 +53,13 @@ function! WinceToOpenPreview()
         call s:Log.WRN(v:exception)
     endtry
 
-    let winid = s:Win.getid()
     call WinceStatePostCloseAndReopen(winid, t:j_preview)
-    let &previewwindow = 1
-    let &winfixheight = 1
     " This looks strange but it's necessary. Without it, the above uses of
     " noautocmd stop the syntax highlighting from being applied even though
     " the syntax option is set
-    let &syntax = &syntax
+    let previewsyn = &syntax
+    noautocmd let &syntax = ''
+    let &syntax = previewsyn
 
     noautocmd call s:Win.gotoid(previouswinid)
 
@@ -147,8 +152,19 @@ call WinceAddUberwinGroupType('preview', ['preview'],
                              \function('WinceToClosePreview'),
                              \function('WinceToIdentifyPreview'))
 
-" TODO: Autocmd that makes sure &previewwindow isn't ever set in a terminal
-"       window
+" Make sure terminal windows don't have &previewwindow set
+function! UpdatePreviewUberwin()
+    call s:Log.DBG('UpdatePreviewUberwin')
+    for winnr in range(1, winnr('$'))
+        if getwinvar(winnr, '&buftype') ==# 'terminal'
+            call setwinvar(winnr, '&previewwindow', 0)
+        endif
+    endfor
+endfunction
+if !exists('g:wince_preview_chc')
+    let g:wince_preview_chc = 1
+    call jer_chc#Register(function('UpdatePreviewUberwin'), [], 0, -70, 1, 0, 1)
+endif
 
 " The preview uberwin is intended to only ever be opened by native commands like
 " ptag and pjump - no user operations. Therefore the window engine code interacts

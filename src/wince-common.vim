@@ -255,13 +255,14 @@ function! WinceCommonRestoreCursorPosition(info)
     call s:Log.DBG('Reselected cursor position: ', newpos)
     " If we failed to reselect, we fail to restore
     if newpos.category ==# 'none'
-        return
+        return newpos
     endif
     let winid = WinceModelIdByInfo(newpos)
     call WinceStateMoveCursorToWinid(winid)
     if WinceModelIdByInfo(a:info.win) ==# winid
         call WinceStateRestoreCursorPosition(a:info.cur)
     endif
+    return newpos
 endfunction
 
 " When windows are closed, Vim needs to choose which other windows to
@@ -311,20 +312,20 @@ function! s:CompareWinidsByWinnr(winid1, winid2)
     let winnr2 = WinceStateGetWinnrByWinid(a:winid2)
     return winnr1 == winnr2 ? 0 : winnr1 > winnr2 ? 1 : -1
 endfunction
-function! s:RestoreDimensionsByWinid(winid, olddims, issupwinid, prefertopleftdividers)
-    call s:Log.VRB('RestoreDimensionsByWinid ', a:winid, ' ', a:olddims, a:issupwinid, ' ', ' ', a:prefertopleftdividers)
+function! s:RestoreDimensionsByWinid(winid, olddims, issupwinid, indirectresize)
+    call s:Log.VRB('RestoreDimensionsByWinid ', a:winid, ' ', a:olddims, a:issupwinid, ' ', ' ', a:indirectresize)
     let newdims = WinceStateGetWinDimensions(a:winid)
     " This function gets called only when there are no subwins, so any
     " non-supwin must be an uberwin.
     let isuberwin = !a:issupwinid
     let fixed = WinceStateFixednessByWinid(a:winid)
-    if (a:olddims.w <# newdims.w ) || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
+    if (a:olddims.w <# newdims.w) || (isuberwin && fixed.w && a:olddims.w ># newdims.w)
         call s:Log.DBG('Set width for window ', a:winid, ' to ', a:olddims.w)
-        call WinceStateResizeHorizontal(a:winid, a:olddims.w, a:prefertopleftdividers)
+        call WinceStateResizeHorizontal(a:winid, a:olddims.w, a:indirectresize)
     endif
-    if (a:olddims.h <# newdims.h ) || (isuberwin && fixed.h && a:olddims.h ># newdims.h)
+    if (a:olddims.h <# newdims.h) || (isuberwin && fixed.h && a:olddims.h ># newdims.h)
         call s:Log.DBG('Set height for window ', a:winid, ' to ', a:olddims.h)
-        call WinceStateResizeVertical(a:winid, a:olddims.h, a:prefertopleftdividers)
+        call WinceStateResizeVertical(a:winid, a:olddims.h, a:indirectresize)
     endif
 endfunction
 " Restore dimensions remembered with WinceStateGetAllWinDimensionsByCurrentTab
@@ -611,14 +612,6 @@ function! WinceCommonReopenSubwins(supwinid, preserved)
            \    grouptype.grouptypename
            \)
 
-            " TODO: May not be necessary in most cases? Check to make sure
-            let supwinnr = WinceStateGetWinnrByWinid(a:supwinid)
-            let dims = WinceStateGetWinRelativeDimensionsList(winids, supwinnr)
-            call WinceModelChangeSubwinGroupDimensions(
-           \    a:supwinid,
-           \    grouptype.grouptypename,
-           \    dims
-           \)
         catch /.*/
             call s:Log.WRN('WinceCommonReopenSubwins failed to open ', grouptype.grouptypename, ' subwin group for supwin ', a:supwinid, ':')
             call s:Log.DBG(v:throwpoint)
@@ -782,9 +775,7 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     call s:Log.DBG('WinceCommonUpdateAfterimagingByCursorWindow ', a:curwin)
     " If the given cursor is in a window that doesn't exist, place it in a
     " window that does exist
-    " TODO: Probably a waste to do this here
-    let finalpos = WinceCommonReselectCursorWindow(a:curwin)
-    let catn = s:cases[finalpos.category]
+    let catn = s:cases[a:curwin.category]
 
     " If the cursor's position is in an uberwin (or in a window that doesn't exist),
     " afterimage all shown afterimaging subwins of all supwins
@@ -799,14 +790,14 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     " the cursor. Deafterimage all shown afterimaging subwins of the
     " supwin with the cursor.
     elseif catn ==# 2
-        call s:Log.DBG('Cursor position is supwin ', finalpos.id, '. Afterimaging all subwins of all other supwins')
+        call s:Log.DBG('Cursor position is supwin ', a:curwin.id, '. Afterimaging all subwins of all other supwins')
         for supwinid in WinceModelSupwinIds()
-            if supwinid !=# finalpos.id
+            if supwinid !=# a:curwin.id
                 call WinceCommonAfterimageSubwinsBySupwin(supwinid)
             endif
         endfor
-        call s:Log.DBG('Cursor position is supwin ', finalpos.id, '. Deafterimaging all its subwins. ')
-        call WinceCommonDeafterimageSubwinsBySupwin(finalpos.id)
+        call s:Log.DBG('Cursor position is supwin ', a:curwin.id, '. Deafterimaging all its subwins. ')
+        call WinceCommonDeafterimageSubwinsBySupwin(a:curwin.id)
 
     " If the cursor's position is in a subwin, afterimage all
     " shown afterimaging subwins of all supwins except the one with
@@ -817,21 +808,21 @@ function! WinceCommonUpdateAfterimagingByCursorWindow(curwin)
     " subwin, Deafterimage that group. I had fun writing this
     " comment.
     elseif catn ==# 3
-        call s:Log.DBG('Cursor position is subwin ', finalpos.supwin, ':', finalpos.grouptype, ':', finalpos.typename, '. Afterimaging all subwins of all other supwins.')
+        call s:Log.DBG('Cursor position is subwin ', a:curwin.supwin, ':', a:curwin.grouptype, ':', a:curwin.typename, '. Afterimaging all subwins of all other supwins.')
         for supwinid in WinceModelSupwinIds()
-            if supwinid !=# finalpos.supwin
+            if supwinid !=# a:curwin.supwin
                 call WinceCommonAfterimageSubwinsBySupwin(supwinid)
             endif
         endfor
-        call s:Log.DBG('Cursor position is subwin ', finalpos.supwin, ':', finalpos.grouptype, ':', finalpos.typename, '. Afterimaging all subwins of supwin ', finalpos.supwin, ' except those in group ', finalpos.supwin, ':', finalpos.grouptype)
-        call WinceCommonDeafterimageSubwinsBySupwin(finalpos.supwin)
+        call s:Log.DBG('Cursor position is subwin ', a:curwin.supwin, ':', a:curwin.grouptype, ':', a:curwin.typename, '. Afterimaging all subwins of supwin ', a:curwin.supwin, ' except those in group ', a:curwin.supwin, ':', a:curwin.grouptype)
+        call WinceCommonDeafterimageSubwinsBySupwin(a:curwin.supwin)
         call WinceCommonAfterimageSubwinsBySupwinExceptOne(
-                    \    finalpos.supwin,
-                    \    finalpos.grouptype
+                    \    a:curwin.supwin,
+                    \    a:curwin.grouptype
                     \)
 
     else
-       throw 'Cursor final position ' . string(finalpos) . ' is neither uberwin nor supwin nor subwin'
+       throw 'Cursor final position ' . string(a:curwin) . ' is neither uberwin nor supwin nor subwin'
     endif
 endfunction
 
@@ -954,8 +945,8 @@ function! s:DoWithout(curwin, callback, args, nouberwins, nosubwins, reselect)
             call WinceStateGotoTab(posttabnr)
         endif
         if a:reselect
-            call WinceCommonRestoreCursorPosition(info)
-            call WinceCommonUpdateAfterimagingByCursorWindow(info.win)
+            let newpos = WinceCommonRestoreCursorPosition(info)
+            call WinceCommonUpdateAfterimagingByCursorWindow(newpos)
         else
             let infowin = info.win
             if has_key(infowin, 'id')

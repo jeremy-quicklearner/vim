@@ -46,17 +46,23 @@ function! WinceToOpenOption()
 
     " The option window always splits using the 'new' command with no
     " modifiers, so 'vertical options' won't work. Instead, create an
-    " ephemeral window and open the option window from there. Use the buflog
-    " buffer for the ephemeral window to avoid creating a new buffer
+    " ephemeral window and open the option window from there.  This
+    " wonkiness with the widths avoids Vim equalizing other windows'
+    " sizes
     if g:wince_option_right
-        noautocmd silent vertical botright sbuffer jersuite_buflog
+        noautocmd silent vertical botright 1split
     else
-        noautocmd silent vertical topleft sbuffer jersuite_buflog
+        execute 'noautocmd silent vertical topleft ' . g:wince_option_width . 'split'
     endif
+
+    " Open the log buffer in the ephemeral window to ensure there are no issues
+    " closing it later
+    noautocmd silent buffer jersuite_buflog
+
     let &l:scrollbind = 0
     let &l:cursorbind = 0
     execute 'noautocmd vertical resize ' . g:wince_option_width
-    options
+    noautocmd silent options
     noautocmd wincmd j
     quit
     options

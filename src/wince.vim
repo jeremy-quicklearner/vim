@@ -236,13 +236,13 @@
 " JerCheckDep wince
 " \           jersuite_core
 " \           github.com/jeremy-quicklearner/vim-jersuite-core
-" \           1.1.2
+" \           1.1.3
 " \           2.0.0
 " let g:wince_version = 0.0.0
 " call jer_log#LogFunctions('jersuite').CFG('wince version ',
 "                                          \ g:jersuite_core_version)
 
-" Logging facilities - all in one place so they can be changed easily
+" Logging facilities
 call jer_log#SetLevel('wince-model',   'CFG', 'WRN')
 call jer_log#SetLevel('wince-state',   'CFG', 'WRN')
 call jer_log#SetLevel('wince-common',  'INF', 'WRN')
@@ -282,19 +282,15 @@ if !exists('g:wince_resolve_chc')
     call jer_chc#Register(function('WinceResolve'), [], 1, 0, 1, 0, 1)
 endif
 
-" When the resolver runs in a new tab, it should run as if the tab was entered
-function! s:InitTab()
-    let t:winresolvetabenteredcond = 1
-endfunction
-
 augroup Wince
     autocmd!
 
-    " Every tab must be initialized
-    autocmd VimEnter,TabNew * call s:InitTab()
+    " When the resolver runs in a new tab, it should run as if the tab was entered
+    autocmd VimEnter,TabNew * let t:winresolvetabenteredcond = 1
 
     " Run the resolver when Vim is resized
     autocmd VimResized * call WinceResolve()
+
 augroup END
 
 " Don't equalize window sizes when windows are closed

@@ -117,15 +117,15 @@ augroup StatusLine
     " Quickfix and Terminal windows have different statuslines that Vim sets
     " when they open or buffers enter them, so overwrite all non-default
     " statuslines after that happens
-    " TODO: Include in Wince
-    autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
+    " TODO? Haven't seen this happen in a while. Remove?
+    " autocmd BufWinEnter,TerminalOpen * call RegisterCorrectStatusLines()
 
     " Apply the command-line window's statusline on entering
     autocmd CmdWinEnter * let &l:statusline = '%!GetCmdwinStatusLine()'
 
     " Netrw windows also have local statuslines that get set by some autocmd
     " someplace. Overwrite them as well.
-    autocmd FileType netrw call RegisterCorrectStatusLines()
+    " autocmd FileType netrw call RegisterCorrectStatusLines()
 augroup END
 
 " Always show the status line

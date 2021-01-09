@@ -1,7 +1,8 @@
 " Wince Reference Definition for Loclist subwin
 let s:Log = jer_log#LogFunctions('wince-loclist-subwin')
 let s:Win = jer_win#WinFunctions()
-" TODO: Figure out why sometimes the syntax highlighting doesn't get applied
+" TODO? Figure out why sometimes the syntax highlighting doesn't get applied -
+" probably fixed
 
 " This helper is used in the help uberwin
 function! WinceLoclistFieldForStatusline(fieldname)
@@ -59,6 +60,10 @@ function! WinceToOpenLoclist()
         execute 'noautocmd belowright lopen ' . g:wince_loclist_height
     endif
 
+    " Since we opened the location window with noautocmd, &syntax was set
+    " but the syntax wasn't loaded. Vim only loads syntax when the value
+    " *changes*, so set it to nothing before *changing* it to qf
+    noautocmd let &syntax = ''
     let &syntax = 'qf'
 
     " lopen also moves the cursor to the location window, so return the

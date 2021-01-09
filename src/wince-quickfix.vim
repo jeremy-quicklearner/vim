@@ -35,12 +35,20 @@ function! WinceToOpenQuickfix()
         throw 'Quickfix window already exists with ID ' . qfwinid
     endif
 
-    " Open the quickfix window
+    " This wonkiness with the heights avoids Vim equalizing other windows'
+    " sizes
     if g:wince_quickfix_top
         execute 'noautocmd topleft copen ' . g:wince_quickfix_height
     else
-        execute 'noautocmd botright copen ' . g:wince_quickfix_height
+        noautocmd botright copen 1
     endif
+
+    execute 'noautocmd resize ' . g:wince_quickfix_height
+
+    " Since we opened the quickfix window with noautocmd, &syntax was set but
+    " the syntax wasn't loaded. Vim only loads syntax when the value
+    " *changes*, so set it to nothing before *changing* it to qf
+    noautocmd let &syntax = ''
     let &syntax = 'qf'
 
     " copen also moves the cursor to the quickfix window, so return the

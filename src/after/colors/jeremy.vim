@@ -13,7 +13,7 @@ let g:colors_name="jeremy"
 " The tab line
 highlight TabLine           ctermfg=Black   ctermbg=White   cterm=none
 highlight TabLineFill       ctermfg=Black   ctermbg=Green   cterm=none
-highlight TabLineSel        ctermfg=Black   ctermbg=Green   cterm=none
+highlight TabLineSel        ctermfg=White   ctermbg=Black   cterm=none
 
 " Status line colour for windows
 highlight StatusLine        ctermfg=White   ctermbg=Black   cterm=none
