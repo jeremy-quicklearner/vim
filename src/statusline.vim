@@ -3,25 +3,14 @@
 " Convert a window-local variable to a string based on a map lookup
 " If the variable doesn't exist in the window, return dne
 " If the value of the variable isn't in the map, return the value directly
+" This function used to be used for location list flags, which are now
+" subwin-based. Maybe I'll use it for something else later
 function! WinVarAsFlag(name, dne, map)
     if !exists('w:' . a:name)
         return a:dne
     else
         let val = eval('w:' . a:name)
         return get(a:map, val, val)
-    endif
-endfunction
-
-" Get the location window flag for the current window
-function! LocWinFlag()
-    " If there is a location list, the flag is visible
-    if len(getloclist(0)) && &ft !=# 'qf'
-        " The flag is [Loc] or [Hid] depending on whether the location window
-        " is hidden. If it is hidden but only because a terminal is open, the
-        " flag is [Ter]
-        return WinVarAsFlag('locwinHidden', '', {0:'[Loc]',1:'[Hid]',2:'[Ter]'})
-    else
-        return ''
     endif
 endfunction
 
@@ -42,62 +31,78 @@ function! SpaceIfArgs()
     endif
 endfunction
 
-function! SetStatusLine(arg)
-    " Always show the status line
-    set laststatus=2
-
-    set statusline=""
+" Set the status line for a supwin
+function! GetDefaultStatusLine()
+    let statusline=''
 
     " Buffer type
-    set statusline+=%3*\%y
+    let statusline .= '%3*%y'
 
     " Buffer state
-    set statusline+=%4*%r
-    set statusline+=%4*%m
+    let statusline .= '%4*%r'
+    let statusline .= '%4*%m'
 
     " Start truncating
-    set statusline+=%<
+    let statusline .= '%<'
 
     " Buffer number
-    set statusline+=%1*[%n]
+    let statusline .= '%1*[%n]'
 
     " Filename
-    set statusline+=%1*[%f]
+    let statusline .= '%1*[%f]'
 
     " Argument status
-    set statusline+=%5*%a%{SpaceIfArgs()}%1*
+    let statusline .= '%5*%a' . SpaceIfArgs() . '%1*'
 
     " Right-justify from now on
-    set statusline+=%=%<
+    let statusline .= '%=%<'
 
-    " Location window flag
-    set statusline+=%2*%{LocWinFlag()}
+    " Subwin flags. Skip if wince isn't installed (yet)
+    if exists('g:wince_version')
+        let statusline .= wince_user#SubwinFlagsForGlobalStatusline()
+    endif
 
     " Diff flag
-    set statusline+=%6*%{DiffFlag()}
+    let statusline .= '%6*' . DiffFlag()
 
     " [Column][Current line/Total lines][% of file]
-    set statusline+=%3*[%c][%l/%L][%p%%]
+    let statusline .= '%3*[%c][%l/%L][%p%%]'
 
-    " If statusline has a local value, it takes precedence over the global one
-    " we just set. So remove it.
-    call WinDo('setlocal statusline=', '')
+    return statusline
 endfunction
 
-" Register the above function to be called on the next CursorHold event
-function! RegisterSetLine()
-    call RegisterCursorHoldCallback(function('SetStatusLine'), "", 0, 0, 0)
+function! GetCmdwinStatusLine()
+    let statusline = ''
+
+    " 'Preview' string
+    let statusline .= '%7*[Command-Line]'
+
+    " Start truncating
+    let statusline .= '%<'
+
+    " Buffer number
+    let statusline .= '%1*[%n]'
+
+    " Reminder
+    let statusline .= '[<cr> to execute][<C-c> to cancel]'
+
+    " Right-justify from now on
+    let statusline .= '%=%<'
+
+    " [Column][Current line/Total lines][% of buffer]
+    let statusline .= '%7*[%c][%l/%L][%p%%]'
+
+    return statusline
 endfunction
 
 augroup StatusLine
     autocmd!
-    " Set the status line on entering Vim
-    autocmd VimEnter * call SetStatusLine('')
-    " Quickfix and Terminal windows have different statuslines that Vim sets
-    " when they open or buffers enter them, so overwrite the statusline
-    " after that happens
-    autocmd BufWinEnter,TerminalOpen * call RegisterSetLine()
-
-    " Also use the statusline for netrw windows
-    autocmd FileType netrw call RegisterSetLine()
+    " Apply the command-line window's statusline on entering
+    autocmd CmdWinEnter * let &l:statusline = '%!GetCmdwinStatusLine()'
 augroup END
+
+" Always show the status line
+set laststatus=2
+
+" The default status line is the value of the global statusline option
+set statusline=%!GetDefaultStatusLine()

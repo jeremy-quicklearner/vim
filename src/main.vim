@@ -1,23 +1,21 @@
-" Entry point
+" Entry point. setup.sh modifies ~/.vimrc by adding a direct invocation of this
+" script
+
 " Paths must come first because it influences where Vim will search for other
 " scripts
 source <sfile>:p:h/paths.vim
 
-" Util must be available to all of my code
-source <sfile>:p:h/util.vim
+" Things that need to be done early on
+source <sfile>:p:h/pre.vim
 
-" Anything I do should take precedence over anything a plugin does
+" Plugins need to be available for autoloading, so set them up first
 source <sfile>:p:h/plugin.vim
 
 " Specific categories of functionality get their own files
-source <sfile>:p:h/quickfix.vim
-source <sfile>:p:h/loclist.vim
-" Statusline and tabline are last because they may display information from
-" the others
 source <sfile>:p:h/statusline.vim
 source <sfile>:p:h/tabline.vim
 
-" Broader categories get their own files
+" Broader categories also get their own files
 source <sfile>:p:h/cosmetic.vim
 source <sfile>:p:h/formatting.vim
 
@@ -25,5 +23,5 @@ source <sfile>:p:h/formatting.vim
 source <sfile>:p:h/commands.vim
 source <sfile>:p:h/mappings.vim
 
-" Do I even need to say anything about this?
+" Broadest category
 source <sfile>:p:h/miscellaneous.vim

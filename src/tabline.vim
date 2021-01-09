@@ -42,19 +42,6 @@ function! GetArgcString()
     return [rv, len(rv) - 3]
 endfunction
 
-" If a register is populated, return its letter. Else a hyphen
-function! HyphenIfEmpty(letter)
-    " If an upper-case letter is passed to getreg() here, then for reasons
-    " unknown to me, the default register gets populated with the contents
-    " of whichever register is indexed by the character that HypenIsEmpty
-    " returns.
-    if len(getreg(tolower(a:letter)))
-        return a:letter
-    else
-        return '-'
-    endif
-endfunction
-
 " Tabs
 
 " This function produces a string for one tab
@@ -73,14 +60,15 @@ function! GetTabString(tabnum, tabcols)
     let buflist = tabpagebuflist(a:tabnum)
     let winnr = tabpagewinnr(a:tabnum)
 
-    " Name of file in active window of the tab
-    let wininfo = getwininfo(win_getid(winnr, a:tabnum))
-
-    " Quickfix and location lists are special cases
-    if len(wininfo) && wininfo[0]['loclist']
-        let bufname = '[Location List]'
-    elseif len(wininfo) && wininfo[0]['quickfix']
-        let bufname = '[Quickfix List]'
+    " Quickfix and location lists are special cases when getting the name of
+    " the file in the active window
+    if v:version < 800
+        let wininfo = getwininfo(win_getid(winnr, a:tabnum))
+        if len(wininfo) && wininfo[0]['loclist']
+            let bufname = '[Location List]'
+        elseif len(wininfo) && wininfo[0]['quickfix']
+            let bufname = '[Quickfix List]'
+    endif
 
     " Otherwise use the file name. No absolute paths unless they're needed
     else
@@ -260,40 +248,35 @@ endfunction
 
 " Get a list of registers in use as a tabline-friendly string
 function! GetRegListString()
-    let rv = '%3*[Reg '
-    for i in ['A', 'B', 'C', 'D', 'E',
-             \'F', 'G', 'H', 'I', 'J',
-             \'K', 'L', 'M', 'N', 'O',
-             \'P', 'Q', 'R', 'S', 'T',
-             \'U', 'V', 'W', 'X', 'Y',
-             \'Z']
-        " Call HyphenIfEmpty() dynamically so that the register list will
-        " update without messy autocmds
-        let rv .= '%{HyphenIfEmpty("' . i . '")}'
+    let rv = '%#TabLineFill#[Reg '
+    for i in ['a', 'b', 'c', 'd', 'e',
+             \'f', 'g', 'h', 'i', 'j',
+             \'k', 'l', 'm', 'n', 'o',
+             \'p', 'q', 'r', 's', 't',
+             \'u', 'v', 'w', 'x', 'y',
+             \'z']
+        " If a register is populated, show its letter. Else a hyphen
+        if !empty(getreg(i))
+            let rv .= toupper(i)
+        else
+            let rv .= '-'
+        endif
     endfor
     let rv .= ']'
     return [rv, 32]
 endfunction
 
-" Get the quickfix window flag
-function! GetQfWinFlag()
-    " If there is a quickfix list, the flag is visible
-    if len(getqflist())
-        " The flag is [Qfx] or [Hid] depending on whether the quickfix window
-        " is hidden
-        return ['%2*' . TabVarAsFlag('qfwinHidden', '', {0:'[Qfx]',1:'[Hid]'}), 5]
-    else
-        return ['', 0]
-    endif
-endfunction
-
 " Construct the tabline
 function! GetTabLine()
-    " Compute everything except the tabs first
+    " Compute everything except the tabs first. The checks for wince being
+    " installed are there to cover the case in which plugins haven't finished
+    " installing yet
     let vimVersionString = GetVimVersionString()
     let argcString = GetArgcString()
     let regListString = GetRegListString()
-    let qfWinFlag = GetQfWinFlag()
+    if exists('g:wince_version')
+        let uberwinFlagsString = wince_user#UberwinFlagsStr()
+    endif
 
     " Measure each item's length and subtract from the available columns.
     " What's left is available to the tabs. The reason not to just call len()
@@ -303,7 +286,9 @@ function! GetTabLine()
     let colsForTabs -= vimVersionString[1]
     let colsForTabs -= argcString[1]
     let colsForTabs -= regListString[1]
-    let colsForTabs -= qfWinFlag[1]
+    if exists('g:wince_version')
+        let colsForTabs -= uberwinFlagsString[1]
+    endif
 
     " Use the remaining space for tabs
     let tabsString = GetTabsString(colsForTabs)
@@ -313,8 +298,10 @@ function! GetTabLine()
     let tabline .= vimVersionString[0]
     let tabline .= argcString[0]
     let tabline .= tabsString
+    if exists('g:wince_version')
+        let tabline .= uberwinFlagsString[0]
+    endif
     let tabline .= regListString[0]
-    let tabline .= qfWinFlag[0]
     return tabline
 endfunction
 

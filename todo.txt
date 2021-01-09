@@ -1,26 +1,38 @@
+High-priority
+- Build an automated testing scheme for the Jersuite
+- Move undotree group type to its own plugin
+
 Easy
-- Install vim-surround
+- Look at every tpope plugin and decide which ones I want
 - Allow specifying extra plugins in .vimrc
 - Persistent undo
-- Add l: to all variables in functions
+- Add command that accepts range of lines and executes them as vimscript
+- Lookup shiftwidth and tabstop in a table of some kind. Make sure their values are applicable recursively to directories
+- Make a colour scheme without big white bars
 
 Hard but I know how
 - Command that populates location/quickfix list from backtraces
 - Split :Flash into its own plugin
 - Split :Tops into its own plugin
-- Put the line number refreshing into a cursorhold callback to avoid churn
-- Pre-8.1 version compatibility
+- Pre-8.0 version compatibility
+- Replace common big motions like H M L Ctrl-D and Ctrl-U with more animated versions
+- Add mapping to change instances of "false" to "true" and vice versa
+- Write that plugin that lets you scroll inside indented blocks while keeping the outside of the blocks at the top and bottom of the window
 
 I don't know how
-- Figure out why terminal windows keep spontaneously changing statuslines
-- Figure out some way to set formatting options dynamically, maybe based on file path
 - Figure out Tags
-- Add a way to switch off line wrapping per window
-
-I don't know if I know how
-- Add an undotree visualization plugin
 - Automatically jump to location/quickfix window after commands that change its content
-- Subwin/Uberwin engine
-- Make locwins into subwins
-- Make qfwins into uberwins
-- Make Help into uberwin
+- Figure out some convenient way to store sessions
+- Write a command that calls my company's compiler and puts errors in the quickfix list
+- Populate the pmenu with only tokens from the current indented block
+- Add a new subwin on the right that shows marks. Jump to each mark with <enter> and <space>
+- Add a new subwin on the right that shows the jump list
+- Add a new uberwin on the left that shows global marks. Jump to each mark with <enter> and <space>
+- Add a way to choose which window to use as the destination for quickfix window jumps based on available location lists
+- See if there's a way to draw columns to the left of indented blocks
+- Write a custom foldtext
+- Figure out a way to highlight matching angle brackets - tricky because the characters < and > aren't always used as angle brackets
+- Write a plugin that persists the the location lists outside the session, and restores them after this happens
+- Write a plugin that persists the the quickfix list outside the session, and restores it after this happens
+- Investigate whether the undotree can be persisted outside the session and restored after this happens
+- Come up with a plan for vim9script adoption in jersuite - may not be worth the headache

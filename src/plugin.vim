@@ -15,7 +15,7 @@ endif
 " Install any missing plugins
 " https://github.com/junegunn/vim-plug/wiki/extra#automatically-install-missing-plugins-on-startup
 autocmd VimEnter *
-            \  if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+            \  if !empty(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
             \|     PlugInstall --sync
             \| endif
 
@@ -23,8 +23,11 @@ autocmd VimEnter *
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami'
-Plug 'mbbill/undotree', {'on': 'UndotreeToggle'}
-Plug 'jeremy-quicklearner/vim-sign-utils', {'on': ['PlaceUtilSigns', 'UnplaceUtilSigns']}
+Plug 'mbbill/undotree'
+Plug 'jeremy-quicklearner/vim-jersuite-core'
+Plug 'jeremy-quicklearner/vim-wince'
+Plug 'jeremy-quicklearner/vim-wince-undotree'
+Plug 'jeremy-quicklearner/vim-sign-utils'
 call plug#end()
 
 " Netrw stuff
@@ -41,7 +44,7 @@ let g:auto_origami_foldcolumn=1
 augroup AutoOrigami
     autocmd!
     autocmd CursorHold,BufWinEnter,WinEnter *
-                \  if &buftype !=# 'terminal'
+                \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
                 \|     execute('AutoOrigamiFoldColumn')
                 \| endif
 augroup END
@@ -67,3 +70,19 @@ vnoremap <silent> <leader>sw :PlaceUtilSigns White<cr>
 nnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 " Remove signs from highlighted lines
 vnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
+
+" Wince stuff
+let g:wince_enable_help = 1
+let g:wince_enable_preview = 1
+let g:wince_enable_quickfix = 1
+let g:wince_enable_option = 1
+let g:wince_enable_loclist = 1
+let g:wince_disable_mappings = 0
+
+" Undotree stuff
+" TODO: Figure out why opening the undotree with UndotreeOpen doesn't set
+" &number
+let g:undotree_ShortIndicators = 1
+let g:undotree_HelpLine = 0
+let g:undotree_TreeNodeShape = 'O'
+

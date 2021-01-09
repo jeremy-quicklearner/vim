@@ -9,6 +9,35 @@ noremap <left> <nop>
 noremap <right> <nop>
 noremap <up> <nop>
 noremap <down> <nop>
+noremap <c-w><left> <nop>
+noremap <c-w><down> <nop>
+noremap <c-w><up> <nop>
+noremap <c-w><right> <nop>
+
+" Use Ctrl-h|j|k|l for window movement from normal mode
+nnoremap <silent> <c-h> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoLeft'<cr>
+nnoremap <silent> <c-j> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoDown'<cr>
+nnoremap <silent> <c-k> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoUp'<cr>
+nnoremap <silent> <c-l> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceGoRight'<cr>
+
+" Use Ctrl-W z to set dimensions both vertically and horizontally
+function! WinZoom(count)
+    call wince_user#ResizeCurrentSupwin(a:count, a:count, 0)
+endfunction
+nmap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
+vmap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
+
+" Wince matches Vim's default behaviour by treating z<cr> differently
+" from <c-w>_, but I'd rather z<cr> act the same way as <c-w>_
+nnoremap <silent> z<cr> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+vnoremap <silent> z<cr> :<c-u>execute wince_map#ProcessCounts(1) . 'WinceResizeHorizontal'<cr>
+
+" Jersuite log commands
+nnoremap <leader>jl :<c-u>JerLog<cr>
+nnoremap <leader>jc :<c-u>JerLogClear<cr>
+
+" Peek at entries in quickfix and location lists
+nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<space>"
 
 " Faster scrolling
 nnoremap <c-e> 2<c-e>
@@ -21,34 +50,6 @@ inoremap <c-y> <esc>2<c-y>a
 " Editing and Sourcing .vimrc
 nnoremap <leader>ve :vsplit $MYVIMRC<cr>
 nnoremap <leader>vs :source $MYVIMRC<cr>
-
-" Window maximizing (like in tmux)
-nnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
-vnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
-tnoremap <silent> <c-w>z :let t:qfwinHidden=1<cr>:cclose<cr>:call CloseAllLocWins()<cr><c-w>\|<c-w>_
-
-" Window navigation with Ctrl
-nnoremap <c-h> <c-w>h
-nnoremap <c-j> <c-w>j
-nnoremap <c-k> <c-w>k
-nnoremap <c-l> <c-w>l
-tnoremap <c-h> <c-w>h
-tnoremap <c-j> <c-w>j
-tnoremap <c-k> <c-w>k
-tnoremap <c-l> <c-w>l
-
-" Window resizing
-nnoremap <leader>= <c-w>+
-vnoremap <leader>= <c-w>+
-
-nnoremap <leader>- <c-w>-
-vnoremap <leader>- <c-w>-
-
-nnoremap <leader>o <c-w>>
-vnoremap <leader>o <c-w>>
-
-nnoremap <leader>p <c-w><
-vnoremap <leader>p <c-w><
 
 " Source current file
 nnoremap <leader>% :w<cr>:source %<cr>
@@ -83,12 +84,7 @@ vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 " Set the foldmethod to indent, then manual
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
-" Peek at entries in quickfix and location lists
-nnoremap <expr> <space> &buftype ==# 'quickfix' ? "zz\<cr>zz\<c-w>\<c-p>" : "\<cr>"
-
 " Colour and uncolour the column under the cursor
 nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
 nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>
 
-" Switch line numbers on and off
-nnoremap <silent> <leader>n :set number!<cr>:set relativenumber!<cr>
