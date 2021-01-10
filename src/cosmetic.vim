@@ -1,6 +1,5 @@
 " Cosmetic adjustments
-" TODO: Fix in plugin-loading case
-let s:Win = jer_win#WinFunctions()
+let s:Win = {}
 
 " This mess controls indication of the active window and cursor line by only setting 
 " relativenumber in the active window, and highlighting the cursor line in all
@@ -17,6 +16,9 @@ let s:Win = jer_win#WinFunctions()
 " lines. I don't know any solution for this
 if !exists('&cursorlineopt')
     function! IndicateActiveWindow(cmdwin)
+        if empty(s:Win)
+            return
+        endif
         let winids = wince_state#GetWinidsByCurrentTab()
         for winid in winids
             " Every window gets relativenumber off. This will be undone later
@@ -90,11 +92,34 @@ endif
 function! IndicateActiveWindowNoCmdWin()
     call IndicateActiveWindow(0)
 endfunction
-if !exists('g:jeremyactivewin_chc')
-    let g:jeremyactivewin_chc = 1
-    call jer_chc#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
-    call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
+
+" Registering post-user-operation callbacks fails if wince isn't installed,
+" which is the case while plugins are still installing. So register them in a
+" CursorHold autocmd that subsequently uninstalls itself
+function! s:TryUseDeps()
+    if !exists('g:wince_version')
+        return 0
+    endif
+    if !exists('g:jeremy_cosmetic_deps')
+        let g:jeremy_cosmetic_deps = 1
+        let s:Win = jer_win#WinFunctions()
+        call jer_chc#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
+        call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
+    endif
+    return 1
+endfunction
+if !s:TryUseDeps()
+    augroup CosmeticDeps
+        autocmd!
+        autocmd CursorHold * if s:TryUseDeps()
+       \                   |     augroup CosmeticDeps
+       \                   |         autocmd!
+       \                   |     augroup END
+       \                   |     augroup! CosmeticDeps
+       \                   | endif
+    augroup END
 endif
+
 " Do one call here on startup so that we don't have to wait until the first
 " CursorHold event
 call IndicateActiveWindow(0)
