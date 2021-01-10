@@ -16,7 +16,7 @@ let s:Win = {}
 " lines. I don't know any solution for this
 if !exists('&cursorlineopt')
     function! IndicateActiveWindow(cmdwin)
-        if empty(s:Win)
+        if !exists('g:wince_version')
             return
         endif
         let winids = wince_state#GetWinidsByCurrentTab()
@@ -73,6 +73,9 @@ if !exists('&cursorlineopt')
 else
     " This is the code for Vim >=8.2
     function! IndicateActiveWindow(cmdwin)
+        if !exists('g:wince_version')
+            return
+        endif
         let winids = wince_state#GetWinidsByCurrentTab()
         " Every window gets relativenumber off and cursorline on
         for winid in winids
