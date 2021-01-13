@@ -98,7 +98,7 @@ endfunction
 
 " Registering post-user-operation callbacks fails if wince isn't installed,
 " which is the case while plugins are still installing. So register them in a
-" CursorHold autocmd that subsequently uninstalls itself
+" Post-Event autocmd that subsequently uninstalls itself
 function! s:TryUseDeps()
     if !exists('g:wince_version')
         return 0
@@ -106,7 +106,7 @@ function! s:TryUseDeps()
     if !exists('g:jeremy_cosmetic_deps')
         let g:jeremy_cosmetic_deps = 1
         let s:Win = jer_win#WinFunctions()
-        call jer_chc#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
+        call jer_pec#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
         call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
     endif
     return 1
@@ -114,18 +114,23 @@ endfunction
 if !s:TryUseDeps()
     augroup CosmeticDeps
         autocmd!
-        autocmd CursorHold * if s:TryUseDeps()
-       \                   |     augroup CosmeticDeps
-       \                   |         autocmd!
-       \                   |     augroup END
-       \                   |     augroup! CosmeticDeps
-       \                   | endif
+        if exists('##SafeState')
+            autocmd SafeState * if s:TryUseDeps()
+           \                   |     augroup CosmeticDeps
+           \                   |         autocmd!
+           \                   |     augroup END
+           \                   |     augroup! CosmeticDeps
+           \                   | endif
+        else
+            autocmd CursorHold * if s:TryUseDeps()
+           \                   |     augroup CosmeticDeps
+           \                   |         autocmd!
+           \                   |     augroup END
+           \                   |     augroup! CosmeticDeps
+           \                   | endif
+        endif
     augroup END
 endif
-
-" Do one call here on startup so that we don't have to wait until the first
-" CursorHold event
-call IndicateActiveWindow(0)
 
 " For code, colour columns
 augroup ColumnLimit

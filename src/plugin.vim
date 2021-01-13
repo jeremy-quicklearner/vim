@@ -43,10 +43,17 @@ let g:netrw_liststyle=3
 let g:auto_origami_foldcolumn=1
 augroup AutoOrigami
     autocmd!
-    autocmd CursorHold,BufWinEnter,WinEnter *
-                \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
-                \|     execute('AutoOrigamiFoldColumn')
-                \| endif
+   if exists('##SafeState')
+       autocmd SafeState,BufWinEnter,WinEnter *
+                   \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
+                   \|     execute('AutoOrigamiFoldColumn')
+                   \| endif
+   else
+       autocmd CursorHold,BufWinEnter,WinEnter *
+                    \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
+                    \|     execute('AutoOrigamiFoldColumn')
+                    \| endif
+   endif
 augroup END
 
 " Vim Sign Utils stuff
