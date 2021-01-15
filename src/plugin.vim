@@ -78,6 +78,10 @@ nnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 " Remove signs from highlighted lines
 vnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 
+" Jersuite-core stuff
+" Use experimental SafeState feature
+let g:jersuite_forcecursorholdforpostevent = 0
+
 " Wince stuff
 let g:wince_enable_help = 1
 let g:wince_enable_preview = 1

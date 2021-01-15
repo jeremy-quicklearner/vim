@@ -109,6 +109,9 @@ function! s:TryUseDeps()
         call jer_pec#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
         call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
     endif
+    if !exists('##SafeState') || g:jersuite_forcecursorholdforpostevent
+        call IndicateActiveWindowNoCmdWin()
+    endif
     return 1
 endfunction
 if !s:TryUseDeps()
