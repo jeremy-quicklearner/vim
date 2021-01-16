@@ -4,7 +4,6 @@ High-priority
 
 Easy
 - Look at every tpope plugin and decide which ones I want
-- Allow specifying extra plugins in .vimrc
 - Persistent undo
 - Add command that accepts range of lines and executes them as vimscript
 - Lookup shiftwidth and tabstop in a table of some kind. Make sure their values are applicable recursively to directories

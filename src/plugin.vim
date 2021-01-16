@@ -28,6 +28,9 @@ Plug 'jeremy-quicklearner/vim-jersuite-core'
 Plug 'jeremy-quicklearner/vim-wince'
 Plug 'jeremy-quicklearner/vim-wince-undotree'
 Plug 'jeremy-quicklearner/vim-sign-utils'
+for extraplugin in g:jeremyExtraPlugins
+    Plug extraplugin
+endfor
 call plug#end()
 
 " Netrw stuff
