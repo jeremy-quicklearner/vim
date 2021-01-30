@@ -1,5 +1,4 @@
 " Cosmetic adjustments
-let s:Win = {}
 
 " This mess controls indication of the active window and cursor line by only setting 
 " relativenumber in the active window, and highlighting the cursor line in all
@@ -16,76 +15,63 @@ let s:Win = {}
 " lines. I don't know any solution for this
 if !exists('&cursorlineopt')
     function! IndicateActiveWindow(cmdwin)
-        if !exists('g:wince_version')
-            return
-        endif
-        let winids = wince_state#GetWinidsByCurrentTab()
-        for winid in winids
+        for winnr in range(1, winnr('$'))
             " Every window gets relativenumber off. This will be undone later
             " for the active window
-            call setwinvar(s:Win.id2win(winid), '&relativenumber', 0)
+            call setwinvar(winnr, '&relativenumber', 0)
 
-            " If there is a command window, then it must be the current one.
-            " Treat it as such and don't try to check if it's a location or
-            " quickfix window - those checks would break. And also return
-            " false since this is a command window.
+            " If there is a command window, then it must be the current one
+            " and we can't leave it. So skip the quickfix/loclist check below.
             if a:cmdwin
-                call setwinvar(s:Win.id2win(winid), '&cursorline', 1)
                 continue
             endif
     
             " If this is a location or quickfix window, find out which line is
             " selected
-            let idxline = -1
-            if !s:Win.legacy
-                if !empty(wince_loclist#ToIdentify(winid))
-                    let idxline = get(getloclist(s:Win.id2win(winid),{'idx':0}),'idx',-1)
-                elseif !empty(wince_quickfix#ToIdentify(winid))
-                    let idxline = get(getqflist({'idx':0}),'idx',-1)
+            let idxline = 0
+            if getwinvar(winnr, '&l:filetype') ==# 'qf'
+                let idxline = get(getloclist(winnr,{'idx':0}),'idx',0)
+                if idxline ==# 0
+                    let idxline = get(getqflist({'idx':0}),'idx',0)
                 endif
             endif
     
-            if idxline > -1
-                let curwinid = s:Win.getid()
-                call wince_state#MoveCursorToWinidSilently(winid)
+            if idxline ># 0
+                let curwinnr = winnr()
+                silent noautocmd execute winnr . 'wincmd w'
                 let locline = line('.')
-                call wince_state#MoveCursorToWinidSilently(curwinid)
+                silent noautocmd execute curwinnr . 'wincmd w'
                 " If this is a location or quickfix window and the cursor is
                 " on top of the selected line, do not highlight
                 if idxline ==# locline
-                    call setwinvar(s:Win.id2win(winid), '&cursorline', 0)
+                    call setwinvar(winnr, '&cursorline', 0)
                 " Highlight if the cursor is not on top of the selected line
                 else
-                    call setwinvar(s:Win.id2win(winid), '&cursorline', 1)
+                    call setwinvar(winnr, '&cursorline', 1)
                 endif
             " Highlight if this is not a location or quickfix window
             else
-                call setwinvar(s:Win.id2win(winid), '&cursorline', 1)
+                call setwinvar(winnr, '&cursorline', 1)
             endif
         endfor
     
         " The current window gets relativenumber on and cursorline off. In Vim
         " <8.2, relativenumber causes the line number to get highlighted
-        let winid = wince_state#GetCursorWinId()
-        call setwinvar(s:Win.id2win(winid), '&relativenumber', 1)
-        call setwinvar(s:Win.id2win(winid), '&cursorline', 0)
+        let winnr = winnr()
+        call setwinvar(winnr, '&relativenumber', 1)
+        call setwinvar(winnr, '&cursorline', 0)
     endfunction
 else
     " This is the code for Vim >=8.2
     function! IndicateActiveWindow(cmdwin)
-        if !exists('g:wince_version')
-            return
-        endif
-        let winids = wince_state#GetWinidsByCurrentTab()
         " Every window gets relativenumber off and cursorline on
-        for winid in winids
-            call setwinvar(s:Win.id2win(winid), '&relativenumber', 0)
-            call setwinvar(s:Win.id2win(winid), '&cursorline', 1)
+        for winnr in range(1, winnr('$'))
+            call setwinvar(winnr, '&relativenumber', 0)
+            call setwinvar(winnr, '&cursorline', 1)
         endfor
     
         " Except the current window, which gets relativenumber on
-        let winid = wince_state#GetCursorWinId()
-        call setwinvar(s:Win.id2win(winid), '&relativenumber', 1)
+        call setwinvar(winnr(), '&relativenumber', 1)
     endfunction
 
     " cursorline only highlights the line number. This way, it won't conflict
@@ -96,21 +82,17 @@ function! IndicateActiveWindowNoCmdWin()
     call IndicateActiveWindow(0)
 endfunction
 
-" Registering post-user-operation callbacks fails if wince isn't installed,
+" Registering post-user-operation callbacks fails if jersuite-core isn't installed,
 " which is the case while plugins are still installing. So register them in a
 " Post-Event autocmd that subsequently uninstalls itself
 function! s:TryUseDeps()
-    if !exists('g:wince_version')
+    if !exists('g:jersuite_core_version')
         return 0
     endif
     if !exists('g:jeremy_cosmetic_deps')
         let g:jeremy_cosmetic_deps = 1
-        let s:Win = jer_win#WinFunctions()
         call jer_pec#Register(function('IndicateActiveWindow'), [0], 0, 90, 1, 0, 1)
         call wince_user#AddPostUserOperationCallback(function('IndicateActiveWindowNoCmdWin'))
-    endif
-    if !exists('##SafeState') || g:jersuite_forcecursorholdforpostevent
-        call IndicateActiveWindowNoCmdWin()
     endif
     return 1
 endfunction
@@ -134,6 +116,7 @@ if !s:TryUseDeps()
         endif
     augroup END
 endif
+call IndicateActiveWindowNoCmdWin()
 
 " For code, colour columns
 augroup ColumnLimit

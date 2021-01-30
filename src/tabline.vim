@@ -26,8 +26,20 @@ endfunction
 
 " Get the current Vim version as a tabline-friendly string
 function! GetVimVersionString()
-    let rv = '%#TabLineFill#[Vim ' . v:version / 100 . '.' . v:version % 100 . ']'
-    return [rv, len(rv) - 14]
+    if exists('g:override_vim_version_string')
+        return ['%#TabLineFill#[SUBJECT]', 9]
+    endif
+    if !exists('s:vimversion')
+        let s:vimversion =
+       \    '%#TabLineFill#[Vim ' .
+       \    v:version / 100 . '.' .
+       \    v:version % 100 . ']'
+        let s:vimversion = [
+       \    s:vimversion,
+       \    len(s:vimversion) - len('%#TablineFill')
+       \]
+    endif
+    return s:vimversion
 endfunction
 
 " Get the argument count as a tabline-friendly string
