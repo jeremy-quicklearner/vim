@@ -5,7 +5,7 @@
 " objects.
 syntax match UndotreeNode ' \zsO\ze '
 syntax match UndotreeNodeCurrent '\zsO\ze.*>\d\+<'
-syntax match UndotreeTimeStamp '(.*)$'
+syntax match UndotreeTimeStamp conceal '(.*)$'
 syntax match UndotreeFirstNode '(Orig)'
 syntax match UndotreeBranch '[|/\\]'
 syntax match UndotreeSeq ' \zs\d\+\ze '

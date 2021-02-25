@@ -92,6 +92,7 @@ let g:wince_enable_quickfix = 1
 let g:wince_enable_option = 1
 let g:wince_enable_loclist = 1
 let g:wince_disable_mappings = 0
+let g:wince_disabled_mappings = {}
 
 " Undotree stuff
 " TODO: Figure out why opening the undotree with UndotreeOpen doesn't set
