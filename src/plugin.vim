@@ -46,17 +46,21 @@ let g:netrw_liststyle=3
 let g:auto_origami_foldcolumn=1
 augroup AutoOrigami
     autocmd!
-   if exists('##SafeState')
-       autocmd SafeState,BufWinEnter,WinEnter *
-                   \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
-                   \|     execute('AutoOrigamiFoldColumn')
-                   \| endif
-   else
-       autocmd CursorHold,BufWinEnter,WinEnter *
-                    \  if exists('g:loaded_auto_origami') && &buftype !=# 'terminal'
+    if exists('##SafeStateAgain') && exists('*state')
+        autocmd SafeState,BufWinEnter,WinEnter *
+                    \  if exists('v:false') && 
+                    \     exists('g:loaded_auto_origami') &&
+                    \     &buftype !=# 'terminal'
                     \|     execute('AutoOrigamiFoldColumn')
                     \| endif
-   endif
+    else
+       autocmd CursorHold,BufWinEnter,WinEnter *
+                    \  if exists('v:false') &&
+                    \     exists('g:loaded_auto_origami') &&
+                    \     &buftype !=# 'terminal'
+                    \|     execute('AutoOrigamiFoldColumn')
+                    \| endif
+    endif
 augroup END
 
 " Vim Sign Utils stuff
@@ -88,9 +92,11 @@ let g:jersuite_forcecursorholdforpostevent = 0
 " Wince stuff
 let g:wince_enable_help = 1
 let g:wince_enable_preview = 1
-let g:wince_enable_quickfix = 1
 let g:wince_enable_option = 1
-let g:wince_enable_loclist = 1
+if !jer_win#WinFunctions().legacy
+    let g:wince_enable_quickfix = 1
+    let g:wince_enable_loclist = 1
+endif
 let g:wince_disable_mappings = 0
 let g:wince_disabled_mappings = {}
 

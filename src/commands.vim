@@ -89,11 +89,13 @@ function! FlashCursorLine(command)
         setlocal signcolumn=auto
     endif
 endfunction
-command! -nargs=0 -complete=command Flash call FlashCursorLine("")
+command! -nargs=0 Flash call FlashCursorLine("")
 nnoremap <silent> <c-f> :Flash<cr>
 vnoremap <silent> <c-f> <esc>:Flash<cr>gv
 inoremap <silent> <c-f> <esc>:Flash<cr>a
-tnoremap <silent> <c-f> <c-\><c-n>:Flash<cr>i
+if exists('tnoremap')
+    tnoremap <silent> <c-f> <c-\><c-n>:Flash<cr>i
+endif
 
 
 " Show the block heirarchy surrounding the current line
@@ -161,5 +163,5 @@ function! EchomBlockTops(command)
         let llprev = ll
     endfor
 endfunction
-command! -nargs=0 -complete=command Tops call EchomBlockTops("")
+command! -nargs=0 Tops call EchomBlockTops("")
 nnoremap <silent> <leader>t :Tops<cr>

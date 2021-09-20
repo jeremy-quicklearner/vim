@@ -33,7 +33,7 @@ endfunction
 
 " Set the status line for a supwin
 function! GetDefaultStatusLine()
-    let statusline=''
+    let statusline =''
 
     " Buffer type
     let statusline .= '%3*%y'

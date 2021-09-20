@@ -27,17 +27,14 @@ endfunction
 " Get the current Vim version as a tabline-friendly string
 function! GetVimVersionString()
     if exists('g:override_vim_version_string')
-        return ['%#TabLineFill#[SUBJECT]', 9]
+        return ['%#TabLineFill#[' . g:override_vim_version_string . ']', 9]
     endif
     if !exists('s:vimversion')
-        let s:vimversion =
+        let vv =
        \    '%#TabLineFill#[Vim ' .
        \    v:version / 100 . '.' .
        \    v:version % 100 . ']'
-        let s:vimversion = [
-       \    s:vimversion,
-       \    len(s:vimversion) - len('%#TablineFill')
-       \]
+        let s:vimversion = [vv, len(vv) - len('%#TablineFill')]
     endif
     return s:vimversion
 endfunction
@@ -74,17 +71,14 @@ function! GetTabString(tabnum, tabcols)
 
     " Quickfix and location lists are special cases when getting the name of
     " the file in the active window
-    if v:version < 800
+    let bufname = fnamemodify(bufname(buflist[winnr - 1]), ':~:.')
+    if exists('*getwininfo')
         let wininfo = getwininfo(win_getid(winnr, a:tabnum))
-        if len(wininfo) && wininfo[0]['loclist']
+        if len(wininfo) && get(wininfo[0], 'loclist', 0)
             let bufname = '[Location List]'
-        elseif len(wininfo) && wininfo[0]['quickfix']
+        elseif len(wininfo) && get(wininfo[0], 'quickfix', 0)
             let bufname = '[Quickfix List]'
-    endif
-
-    " Otherwise use the file name. No absolute paths unless they're needed
-    else
-        let bufname = fnamemodify(bufname(buflist[winnr - 1]), ':~:.')
+        endif
     endif
 
     " If there's no buffer name (like in a new buffer) use '---'
@@ -180,7 +174,7 @@ function! GetTabString(tabnum, tabcols)
 
     " If the result is too short, pad it
     if lenrv < a:tabcols
-        let rv = substitute(rv, '\]', repeat('-', (a:tabcols - lenrv)) . ']', '')
+        let rv = substitute(rv, '\]$', repeat('-', (a:tabcols - lenrv)) . ']', '')
     endif
 
     " If just one digit in square brackets doesn't fit, the special cases at

@@ -1,15 +1,15 @@
 " Cosmetic adjustments
 
-" This mess controls indication of the active window and cursor line by only setting 
-" relativenumber in the active window, and highlighting the cursor line in all
-" windows. This is simple to do in Vim 8.2 and later, but more complicated
-" in earlier versions because the cursorline option always highlights the text
-" line. This messes up the highlighting for quickfix and loclist windows'
-" selected items. This first version of the function, which runs in Vim <8.2,
-" will enable cursorline everywhere except for loclist and quickfix windows
-" where the cursor is on top of the list item that was last selected.
-" Unfortunately this causes the line number not to be highlighted for such
-" windows. Such is life in pre-8.2.
+" This mess controls indication of the active window and cursor line by only
+" setting relativenumber in the active window, and highlighting the cursor line
+" in all windows. This is simple to do in Vim 8.2 and later, but more
+" complicated in earlier versions because the cursorline option always
+" highlights the text line. This messes up the highlighting for quickfix and
+" loclist windows'selected items. This first version of the function, which
+" runs in Vim <8.2, will enable cursorline everywhere except for loclist and
+" quickfix windows where the cursor is on top of the list item that was last
+" selected. Unfortunately this causes the line number not to be highlighted for
+" such windows. Such is life in pre-8.2.
 " Another unfortunate shortcoming in pre-8.2 is that highlighting the cursor
 " line in inactive windows causes signs' highlighting to be blocked for those
 " lines. I don't know any solution for this
@@ -82,9 +82,9 @@ function! IndicateActiveWindowNoCmdWin()
     call IndicateActiveWindow(0)
 endfunction
 
-" Registering post-user-operation callbacks fails if jersuite-core isn't installed,
-" which is the case while plugins are still installing. So register them in a
-" Post-Event autocmd that subsequently uninstalls itself
+" Registering post-user-operation callbacks fails if jersuite-core isn't
+" installed, which is the case while plugins are still installing. So register
+" them in a Post-Event autocmd that subsequently uninstalls itself
 function! s:TryUseDeps()
     if !exists('g:jersuite_core_version')
         return 0
@@ -96,23 +96,24 @@ function! s:TryUseDeps()
     endif
     return 1
 endfunction
+function! RemoveCosDepGroup()
+    if s:TryUseDeps()
+        augroup CosmeticDeps
+            autocmd!
+        augroup END
+        if has('patch-7.4.2300')
+            augroup! CosmeticDeps
+        endif
+    endif
+endfunction
 if !s:TryUseDeps()
     augroup CosmeticDeps
         autocmd!
-        if exists('##SafeState')
-            autocmd SafeState * if s:TryUseDeps()
-           \                   |     augroup CosmeticDeps
-           \                   |         autocmd!
-           \                   |     augroup END
-           \                   |     augroup! CosmeticDeps
-           \                   | endif
+        if exists('##SafeStateAgain') && exists('*state') &&
+       \   !g:jersuite_forcecursorholdforpostevent
+            autocmd SafeState * call RemoveCosDepGroup()
         else
-            autocmd CursorHold * if s:TryUseDeps()
-           \                   |     augroup CosmeticDeps
-           \                   |         autocmd!
-           \                   |     augroup END
-           \                   |     augroup! CosmeticDeps
-           \                   | endif
+            autocmd CursorHold * call RemoveCosDepGroup()
         endif
     augroup END
 endif
@@ -134,7 +135,9 @@ augroup LineNumbers
 augroup END
 
 " Show the sign column only if there are signs
-set signcolumn=auto
+if exists('+signcolumn')
+    set signcolumn=auto
+endif
 
 " Highlight search results everywhere
 set hlsearch
