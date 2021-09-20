@@ -27,24 +27,24 @@ fi
 # i.e. if the UUID isn't already there
 if ! grep -q $MY_UUID ~/.vimrc ; then
     # In case the .vimrc doesn't already end with a newline
-    echo ""                                                              >> ~/.vimrc
+    echo ""                                                                 >> ~/.vimrc
 
     # So someone reading the .vimrc knows what they're looking at
-    echo "\" Jeremy's Vim Configurations"                                >> ~/.vimrc
+    echo "\" Jeremy's Vim Configurations"                                   >> ~/.vimrc
 
     # So that if this script is run again by mistake, we don't modify the
     # .vimrc again
-    echo "\" $MY_UUID"                                                   >> ~/.vimrc
+    echo "\" $MY_UUID"                                                      >> ~/.vimrc
 
     # Default value of g:jeremyColouredColumns
-    echo "let g:jeremyColouredColumns=\"81,82\""                         >> ~/.vimrc
+    echo "let g:jeremyColouredColumns=\"81,82\""                            >> ~/.vimrc
 
     # Default value of g:jeremyColouredColumnFiletypes
-    echo "let g:jeremyColouredColumnFileTypes=\"vim,h,c,cpp,python,sh\"" >> ~/.vimrc
+    echo "let g:jeremyColouredColumnFileTypes=\"vim,h,c,cpp,python,sh,go\"" >> ~/.vimrc
 
     # A place to put extra plugins specific to this environment
-    echo "let g:jeremyExtraPlugins=[]"                                   >> ~/.vimrc
+    echo "let g:jeremyExtraPlugins=[]"                                      >> ~/.vimrc
 
     # Vim will run src/main.vim on startup
-    echo "source $VIMDIR/src/main.vim"                                   >> ~/.vimrc
+    echo "source $VIMDIR/src/main.vim"                                      >> ~/.vimrc
 fi
