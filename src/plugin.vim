@@ -28,9 +28,14 @@ Plug 'jeremy-quicklearner/vim-jersuite-core'
 Plug 'jeremy-quicklearner/vim-wince'
 Plug 'jeremy-quicklearner/vim-wince-undotree'
 Plug 'jeremy-quicklearner/vim-sign-utils'
-Plug 'google/vim-maktaba'
-Plug 'google/vim-codefmt'
-Plug 'google/vim-glaive'
+
+" Maktaba hits issues with funcrefs between these two versions
+if !has('patch-7.4.1577') || has('patch-7.4.1607')
+    Plug 'google/vim-maktaba'
+    Plug 'google/vim-codefmt'
+    Plug 'google/vim-glaive'
+endif
+
 for extraplugin in g:jeremyExtraPlugins
     Plug extraplugin
 endfor
