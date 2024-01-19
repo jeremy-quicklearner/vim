@@ -28,6 +28,10 @@ let g:wince_disabled_mappings['<c-w>z'] = 0
 nnoremap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
 vnoremap <silent> <c-w>z :<c-u>call WinZoom(wince_map#ProcessCounts(1))<cr>
 
+" More window-resizing shorthand
+nnoremap <silent> + :<c-u>WinceIncreaseHeight<cr>
+nnoremap <silent> _ :<c-w>WinceDecreaseHeight<cr>
+
 " Wince matches Vim's default behaviour by treating z<cr> differently
 " from <c-w>_, but I'd rather z<cr> act the same way as <c-w>_
 let g:wince_disabled_mappings['z<cr>'] = 0
