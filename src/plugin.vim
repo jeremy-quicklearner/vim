@@ -101,7 +101,8 @@ let g:jersuite_forcecursorholdforpostevent = 0
 let g:wince_enable_help = 1
 let g:wince_enable_preview = 1
 let g:wince_enable_option = 1
-if !jer_win#WinFunctions().legacy
+if v:version >=# 800 && (!exists('g:jersuite_forcelegacywinid') ||
+                       \ !g:jersuite_forcelegacywinid)
     let g:wince_enable_quickfix = 1
     let g:wince_enable_loclist = 1
 endif
