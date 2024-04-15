@@ -29,6 +29,12 @@ Plug 'jeremy-quicklearner/vim-wince'
 Plug 'jeremy-quicklearner/vim-wince-undotree'
 Plug 'jeremy-quicklearner/vim-sign-utils'
 
+" Minimum supported version
+if has('patch-8.1.2269')
+    Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+endif
+
+
 " Maktaba hits issues with funcrefs between these two versions
 if !has('patch-7.4.1577') || has('patch-7.4.1607')
     Plug 'google/vim-maktaba'
