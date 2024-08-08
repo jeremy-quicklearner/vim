@@ -39,6 +39,8 @@ call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
 Plug 'benknoble/vim-auto-origami'
 Plug 'mbbill/undotree'
+Plug 'tpope/vim-fugitive'
+Plug 'wellle/context.vim'
 Plug 'jeremy-quicklearner/vim-jersuite-core'
 Plug 'jeremy-quicklearner/vim-wince'
 Plug 'jeremy-quicklearner/vim-wince-undotree'
@@ -91,6 +93,10 @@ augroup AutoOrigami
     endif
 augroup END
 
+" vim-go stuff
+let go_list_height = 10
+autocmd FileType go nnoremap <c-[> :GoCallers<cr>
+
 " Vim Sign Utils stuff
 " Place a sign on the current line
 nnoremap <silent> <leader>sr :PlaceUtilSigns Red<cr>
@@ -113,6 +119,9 @@ nnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 " Remove signs from highlighted lines
 vnoremap <silent> <leader>S :UnplaceUtilSigns<cr>
 
+" context.vim stuff
+let g:context_border_char = '='
+let g:context_skip_regex = '^\([<=>]\{7\}\|\s*\($\|\h\S\+\s*:\(\s*$\|\s\+\)\|#\|//\|/\*\|\*\($\|\s\|/\)\)\)'
 " Jersuite-core stuff
 " Use experimental SafeState feature
 let g:jersuite_forcecursorholdforpostevent = 0

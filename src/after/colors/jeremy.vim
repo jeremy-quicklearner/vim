@@ -155,10 +155,10 @@ highlight User8             ctermbg=Black   ctermfg=Yellow  cterm=none
 highlight User9             ctermbg=Red     ctermfg=Red     cterm=none
 
 " Anything I haven't seen yet is red, so I can find it easily and recolour it
-highlight Debug             ctermfg=Red     ctermbg=Red     cterm=none
-highlight SpecialComment    ctermfg=Red     ctermbg=Red     cterm=none
-highlight Tag               ctermfg=Red     ctermbg=Red     cterm=none
-highlight Underlined        ctermfg=Red     ctermbg=Red     cterm=none
+highlight Debug             ctermfg=Red     ctermbg=Black   cterm=none
+highlight SpecialComment    ctermfg=Red     ctermbg=Blue    cterm=none
+highlight Tag               ctermfg=Red     ctermbg=Green   cterm=none
+highlight Underlined        ctermfg=Red     ctermbg=Yellow  cterm=none
 
 " Highlight groups relinked in src/after/syntax/undotree.vim
 highlight JUTNode           ctermfg=Magenta ctermbg=Black   cterm=none
