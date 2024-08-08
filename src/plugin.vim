@@ -19,6 +19,21 @@ autocmd VimEnter *
             \|     PlugInstall --sync
             \| endif
 
+" Plugin selection
+let s:google_plugins = 1
+" Maktaba hits issues with funcrefs between these two versions
+if has('patch-7.4.1577') && !has('patch-7.4.1607')
+    let s:google_plugins = 0
+endif
+" Maktaba's JSON encoding is broken between these two versions
+if has('patch-7.4.1434') && !has('patch-7.4.1445')
+    let s:google_plugins = 0
+endif
+" Maktaba uses "is/isnot" keyword that's broken in this version
+if has('patch-8.2.0044') && !has('patch-8.2.0045')
+    let s:google_plugins = 0
+endif
+
 " Load plugins
 call plug#begin()
 Plug 'justinmk/vim-syntax-extra'
@@ -35,8 +50,7 @@ if has('patch-8.1.2269')
 endif
 
 
-" Maktaba hits issues with funcrefs between these two versions
-if !has('patch-7.4.1577') || has('patch-7.4.1607')
+if s:google_plugins
     Plug 'google/vim-maktaba'
     Plug 'google/vim-codefmt'
     Plug 'google/vim-glaive'
