@@ -95,7 +95,7 @@ augroup END
 
 " vim-go stuff
 let go_list_height = 10
-autocmd FileType go nnoremap <c-[> :GoCallers<cr>
+autocmd FileType go nnoremap <c-[> :GoReferrers<cr>
 
 " Vim Sign Utils stuff
 " Place a sign on the current line
