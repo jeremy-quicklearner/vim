@@ -63,7 +63,7 @@ function! GetDefaultStatusLine()
     endif
 
     " Diff flag
-    let statusline .= '%6*' . DiffFlag()
+	let statusline .= '%6*%{DiffFlag()}'
 
     " [Column][Current line/Total lines][% of file]
     let statusline .= '%3*[%c][%l/%L][%p%%]'

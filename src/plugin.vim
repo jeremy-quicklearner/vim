@@ -51,7 +51,6 @@ if has('patch-8.1.2269')
     Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 endif
 
-
 if s:google_plugins
     Plug 'google/vim-maktaba'
     Plug 'google/vim-codefmt'
@@ -139,8 +138,7 @@ let g:wince_disable_mappings = 0
 let g:wince_disabled_mappings = {}
 
 " Undotree stuff
-" TODO: Figure out why opening the undotree with UndotreeOpen doesn't set
-" &number
+" TODO: Find a way to set &number when opening the undotree with UndotreeOpen
 let g:undotree_ShortIndicators = 1
 let g:undotree_HelpLine = 0
 let g:undotree_TreeNodeShape = 'O'

@@ -91,6 +91,6 @@ vnoremap <leader>> <esc>`>a<<esc>`<i><esc>
 nnoremap <silent> <leader>z :set foldmethod=indent<cr>:set foldmethod=manual<cr>
 
 " Colour and uncolour the column under the cursor
-nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . col("."))<cr>
-nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . col(".") . '\(\D\)', '\1', "g"))<cr>
+nnoremap <silent> <leader>c :execute("setlocal colorcolumn=" . &colorcolumn . "," . virtcol("."))<cr>
+nnoremap <silent> <leader>C :execute("set colorcolumn=" . substitute(&colorcolumn . " ", "," . virtcol(".") . '\(\D\)', '\1', "g"))<cr>
 
